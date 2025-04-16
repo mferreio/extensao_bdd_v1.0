@@ -2,12 +2,12 @@
     "manifest_version": 3,
     "name": "Gherkin Generator",
     "version": "1.0",
-    "description": "Gera cenarios Gherkin com base na navegação do usuario.",
+    "description": "Gera cenários Gherkin com base na navegação do usuário.",
     "permissions": ["activeTab", "scripting", "downloads", "storage"],
     "background": {
-      "service_worker": "background.js"
+        "service_worker": "background.js"
     },
     "action": {
-      "default_icon": "icon.png"
+        "default_icon": "icon.png"
     }
 }
