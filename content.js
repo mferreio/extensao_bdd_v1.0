@@ -225,7 +225,9 @@ function exportLogs() {
             content += 'Dado que o usuário está na página inicial\n';
             interactions.forEach((interaction, index) => {
                 const step = index === 0 ? 'Quando' : 'Então';
-                content += `${step} o usuário clica no elemento com seletor CSS ${interaction.cssSelector}\n`;
+                content += `${step} o usuário clica no elemento com:\n`;
+                content += `  CSS: ${interaction.cssSelector}\n`;
+                content += `  XPath: ${interaction.xpath}\n`;
             });
         } else if (format === 'json') {
             content = JSON.stringify(interactions, null, 2);
@@ -235,7 +237,9 @@ function exportLogs() {
             content += '    Given o usuário está na página inicial\n';
             interactions.forEach((interaction, index) => {
                 const step = index === 0 ? 'When' : 'Then';
-                content += `    ${step} o usuário clica no elemento com seletor CSS ${interaction.cssSelector}\n`;
+                content += `    ${step} o usuário clica no elemento com:\n`;
+                content += `      CSS: ${interaction.cssSelector}\n`;
+                content += `      XPath: ${interaction.xpath}\n`;
             });
         } else {
             showFeedback('Formato inválido selecionado.', 'error');
@@ -364,6 +368,65 @@ function getCSSSelector(element) {
     return selector;
 }
 
+function getAttributeBasedXPath(element) {
+    if (!element || element.nodeType !== Node.ELEMENT_NODE) return null;
+
+    const uniqueAttributes = ['id', 'data-pc-section', 'role', 'class'];
+
+    const buildXPath = (el, includeParent = false) => {
+        let path = el.tagName.toLowerCase();
+
+        // Adiciona condições baseadas nos atributos do elemento clicado
+        const conditions = [];
+        for (const attr of uniqueAttributes) {
+            if (el.hasAttribute(attr)) {
+                const value = el.getAttribute(attr).trim();
+                if (value) {
+                    if (attr === 'class') {
+                        const classes = value.split(' ').map(cls => `contains(@class, '${cls}')`);
+                        conditions.push(...classes); // Adiciona todas as classes como condições
+                    } else {
+                        conditions.push(`@${attr}="${value}"`); // Adiciona outros atributos únicos
+                    }
+                }
+            }
+        }
+
+        // Adiciona condição para o texto do elemento, se existir
+        const textContent = el.textContent.trim();
+        if (textContent) {
+            conditions.push(`text()='${textContent}'`);
+        }
+
+        // Constrói o XPath com as condições do elemento clicado
+        if (conditions.length > 0) {
+            path += `[${conditions.join(' and ')}]`;
+        }
+
+        // Adiciona atributos de 1 elemento ancestral, se necessário
+        if (includeParent && el.parentElement) {
+            const parentConditions = [];
+            for (const attr of uniqueAttributes) {
+                if (el.parentElement.hasAttribute(attr)) {
+                    const value = el.parentElement.getAttribute(attr).trim();
+                    if (value) {
+                        parentConditions.push(`@${attr}="${value}"`);
+                    }
+                }
+            }
+            const parentPath = el.parentElement.tagName.toLowerCase();
+            if (parentConditions.length > 0) {
+                return `//${parentPath}[${parentConditions.join(' and ')}]/${path}`;
+            }
+            return `//${parentPath}/${path}`;
+        }
+
+        return `//${path}`;
+    };
+
+    return buildXPath(element, true); // Inclui 1 elemento ancestral
+}
+
 document.addEventListener('click', (event) => {
     if (!isRecording) return;
 
@@ -380,17 +443,33 @@ document.addEventListener('click', (event) => {
         }
 
         const cssSelector = getCSSSelector(event.target);
+        const xpath = getAttributeBasedXPath(event.target);
 
-        console.log('Clique registrado:', { cssSelector });
-        interactions.push({ action: 'click', cssSelector, timestamp: Date.now() });
+        console.log('Clique registrado:', { cssSelector, xpath });
+        interactions.push({ action: 'click', cssSelector, xpath, timestamp: Date.now() });
 
         const log = document.getElementById('gherkin-log');
 
         // Adiciona o log para o clique atual
-        const logEntry = document.createElement('p');
-        logEntry.textContent = `USUÁRIO CLICOU NO ELEMENTO CSS: ${cssSelector}`;
-        logEntry.style.color = '#0D47A1'; // Azul escuro para contraste e acessibilidade
-        logEntry.style.fontWeight = 'bold'; // Negrito para destaque
+        const logEntry = document.createElement('div');
+        logEntry.style.marginBottom = '10px';
+        logEntry.style.padding = '10px';
+        logEntry.style.border = '1px solid #ccc';
+        logEntry.style.borderRadius = '5px';
+        logEntry.style.backgroundColor = '#f9f9f9';
+
+        const cssText = document.createElement('p');
+        cssText.textContent = `CSS: ${cssSelector}`;
+        cssText.style.color = '#0D47A1'; // Azul escuro para contraste
+        cssText.style.fontWeight = 'bold';
+
+        const xpathText = document.createElement('p');
+        xpathText.textContent = `XPath: ${xpath}`;
+        xpathText.style.color = '#1B5E20'; // Verde escuro para contraste
+        xpathText.style.fontWeight = 'bold';
+
+        logEntry.appendChild(cssText);
+        logEntry.appendChild(xpathText);
         log.appendChild(logEntry);
 
         // Rola automaticamente para o final do log
@@ -399,7 +478,7 @@ document.addEventListener('click', (event) => {
         // Salva as interações no armazenamento local
         saveInteractionsToStorage();
 
-        chrome.runtime.sendMessage({ action: 'interactionRegistered', interaction: { cssSelector } });
+        chrome.runtime.sendMessage({ action: 'interactionRegistered', interaction: { cssSelector, xpath } });
     } catch (error) {
         console.error('Erro ao registrar clique:', error);
     }
