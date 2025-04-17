@@ -2,11 +2,10 @@ document.getElementById('export').addEventListener('click', () => {
     chrome.storage.local.get('interactions', (data) => {
         const interactions = data.interactions || [];
         if (interactions.length === 0) {
-            alert('Nenhuma interacao registrada.');
+            alert('Nenhuma interação registrada.');
             return;
         }
 
-        // Obtém o formato selecionado no menu suspenso
         const format = document.getElementById('export-format').value;
         if (!['txt', 'json', 'features'].includes(format)) {
             alert('Formato inválido. Escolha entre txt, json ou features.');
@@ -15,21 +14,21 @@ document.getElementById('export').addEventListener('click', () => {
 
         let content = '';
         if (format === 'txt') {
-            content = 'Cenarios Gerados:\n\n';
-            content += 'Dado que o usuario esta na pagina inicial\n';
+            content = 'Cenários Gerados:\n\n';
+            content += 'Dado que o usuário está na página inicial\n';
             interactions.forEach((interaction, index) => {
-                const step = index === 0 ? 'Quando' : 'Entao';
-                content += `${step} o usuario clica em ${interaction.cssSelector} (${interaction.xpath})\n`;
+                const step = index === 0 ? 'Quando' : 'Então';
+                content += `${step} o usuário clica no elemento com XPATH relativo ${interaction.xpath}\n`;
             });
         } else if (format === 'json') {
             content = JSON.stringify(interactions, null, 2);
         } else if (format === 'features') {
-            content = 'Feature: Interacoes do usuario\n\n';
-            content += '  Scenario: Registro de interacoes\n';
-            content += '    Given o usuario esta na pagina inicial\n';
+            content = 'Feature: Interações do usuário\n\n';
+            content += '  Scenario: Registro de interações\n';
+            content += '    Given o usuário está na página inicial\n';
             interactions.forEach((interaction, index) => {
                 const step = index === 0 ? 'When' : 'Then';
-                content += `    ${step} o usuario clica em ${interaction.cssSelector} (${interaction.xpath})\n`;
+                content += `    ${step} o usuário clica no elemento com XPATH relativo ${interaction.xpath}\n`;
             });
         }
 

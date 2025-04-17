@@ -6,6 +6,41 @@ if (!window.isRecording) {
     var isRecording = false;
 }
 
+// Usa window.timerInterval para evitar redefinição
+if (!window.timerInterval) {
+    window.timerInterval = null;
+}
+
+// Torna o painel movível apenas ao clicar no cabeçalho
+function makePanelDraggable(panel) {
+    let isDragging = false;
+    let offsetX, offsetY;
+
+    const header = panel.querySelector('h3'); // Seleciona o cabeçalho do painel
+    header.style.cursor = 'move'; // Define o cursor de movimentação no cabeçalho
+
+    header.addEventListener('mousedown', (event) => {
+        isDragging = true;
+        offsetX = event.clientX - panel.getBoundingClientRect().left;
+        offsetY = event.clientY - panel.getBoundingClientRect().top;
+        panel.style.cursor = 'move';
+    });
+
+    document.addEventListener('mousemove', (event) => {
+        if (!isDragging) return;
+        panel.style.left = `${event.clientX - offsetX}px`;
+        panel.style.top = `${event.clientY - offsetY}px`;
+        panel.style.right = 'auto'; // Remove a posição fixa à direita
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (isDragging) {
+            isDragging = false;
+            panel.style.cursor = 'default';
+        }
+    });
+}
+
 // Verifica se o painel já existe para reutilizá-lo
 if (!window.panel) {
     let panel = document.getElementById('gherkin-panel');
@@ -13,9 +48,9 @@ if (!window.panel) {
         panel = document.createElement('div');
         panel.id = 'gherkin-panel';
         panel.className = 'gherkin-panel'; // Adiciona uma classe para aplicar o estilo
-        panel.style.position = 'fixed';
+        panel.style.position = 'absolute'; // Alterado para permitir movimentação
         panel.style.top = '10px';
-        panel.style.right = '10px';
+        panel.style.left = '10px'; // Alterado para iniciar no canto superior esquerdo
         panel.style.width = '90%';
         panel.style.maxWidth = '320px';
         panel.style.backgroundColor = '#ffffff';
@@ -53,8 +88,15 @@ if (!window.panel) {
         `;
         document.body.appendChild(panel);
 
+        // Torna o painel movível apenas pelo cabeçalho
+        makePanelDraggable(panel);
+
         // Adiciona eventos aos botões
         document.getElementById('gherkin-play').addEventListener('click', () => {
+            if (!chrome.runtime) {
+                console.error('Contexto da extensão inválido.');
+                return;
+            }
             isRecording = true;
             interactions = [];
             document.getElementById('gherkin-status').textContent = 'Status: Gravando';
@@ -66,6 +108,10 @@ if (!window.panel) {
         });
 
         document.getElementById('gherkin-pause').addEventListener('click', () => {
+            if (!chrome.runtime) {
+                console.error('Contexto da extensão inválido.');
+                return;
+            }
             isRecording = false;
             document.getElementById('gherkin-status').textContent = 'Status: Pausado';
             document.getElementById('gherkin-play').disabled = false;
@@ -75,6 +121,10 @@ if (!window.panel) {
         });
 
         document.getElementById('gherkin-finalize').addEventListener('click', () => {
+            if (!chrome.runtime) {
+                console.error('Contexto da extensão inválido.');
+                return;
+            }
             isRecording = false;
             document.getElementById('gherkin-status').textContent = 'Status: Finalizado';
             document.getElementById('gherkin-play').disabled = false;
@@ -88,6 +138,10 @@ if (!window.panel) {
         });
 
         document.getElementById('gherkin-export').addEventListener('click', () => {
+            if (!chrome.runtime) {
+                console.error('Contexto da extensão inválido.');
+                return;
+            }
             chrome.storage.local.get('interactions', (data) => {
                 const interactions = data.interactions || [];
                 if (interactions.length === 0) {
@@ -140,13 +194,11 @@ if (!window.panel) {
 }
 
 // Funções de timer
-let timerInterval;
-
 function startTimer() {
     const timerElement = document.getElementById('gherkin-timer');
     let seconds = 0;
 
-    timerInterval = setInterval(() => {
+    window.timerInterval = setInterval(() => {
         seconds++;
         const minutes = Math.floor(seconds / 60);
         const remainingSeconds = seconds % 60;
@@ -155,7 +207,7 @@ function startTimer() {
 }
 
 function stopTimer() {
-    clearInterval(timerInterval);
+    clearInterval(window.timerInterval);
     document.getElementById('gherkin-timer').textContent = 'Tempo de execução: 00:00';
 }
 
@@ -168,6 +220,81 @@ function debounce(func, wait) {
     };
 }
 
+function getRelativeXPath(element) {
+    const parts = [];
+    while (element && element.nodeType === Node.ELEMENT_NODE) {
+        let index = 1;
+        let sibling = element.previousElementSibling;
+        while (sibling) {
+            if (sibling.nodeName === element.nodeName) {
+                index++;
+            }
+            sibling = sibling.previousElementSibling;
+        }
+        const tagName = element.nodeName.toLowerCase();
+        const pathIndex = index > 1 ? `[${index}]` : '';
+        parts.unshift(`${tagName}${pathIndex}`);
+        element = element.parentNode;
+    }
+    return parts.length ? `./${parts.join('/')}` : null;
+}
+
+function getXPath(element, maxAncestors = 3) {
+    if (!element || element.nodeType !== Node.ELEMENT_NODE) return null;
+
+    const attributes = ['id', 'class', 'data-pc-section', 'data-pc-name', 'routerlink'];
+
+    // Função auxiliar para construir condições baseadas nos atributos
+    function buildConditions(el, maxConditions = 3) {
+        const conditions = [];
+        for (const attr of attributes) {
+            if (el.hasAttribute(attr)) {
+                const value = el.getAttribute(attr);
+                if (attr === 'class') {
+                    // Para classes, usa contains para lidar com múltiplas classes
+                    const classes = value.split(' ').filter(Boolean);
+                    classes.forEach(cls => {
+                        if (conditions.length < maxConditions) {
+                            conditions.push(`contains(@class, '${cls}')`);
+                        }
+                    });
+                } else if (conditions.length < maxConditions) {
+                    conditions.push(`@${attr}='${value}'`);
+                }
+            }
+        }
+        return conditions;
+    }
+
+    // Constrói o XPATH para o elemento atual
+    const conditions = buildConditions(element, 3); // Limita a 3 identificadores do último elemento
+
+    // Adiciona o texto do elemento, se disponível
+    const textContent = element.textContent.trim();
+    if (textContent) {
+        conditions.push(`normalize-space(text())='${textContent}'`);
+    }
+
+    let xpath = element.tagName.toLowerCase();
+    if (conditions.length > 0) {
+        xpath += `[${conditions.join(' and ')}]`;
+    }
+
+    // Adiciona identificadores de elementos ancestrais, limitando o número de ancestrais
+    let parent = element.parentElement;
+    let ancestorCount = 0;
+    while (parent && ancestorCount < maxAncestors) {
+        const parentConditions = buildConditions(parent, 1); // Limita a 1 identificador por ancestral
+        if (parentConditions.length > 0) {
+            xpath = `${parent.tagName.toLowerCase()}[${parentConditions.join(' and ')}]/${xpath}`;
+        }
+        parent = parent.parentElement;
+        ancestorCount++;
+    }
+
+    return `//${xpath}`;
+}
+
 document.addEventListener('click', (event) => {
     if (!isRecording) return;
 
@@ -177,29 +304,28 @@ document.addEventListener('click', (event) => {
     }
 
     const xpath = getXPath(event.target);
-    const cssSelector = event.target.tagName.toLowerCase() + (event.target.id ? `#${event.target.id}` : '');
 
-    if (!xpath || !cssSelector || interactions.some(i => i.xpath === xpath)) {
-        console.log('Interação ignorada: elemento inválido ou duplicado.');
+    // Verifica se o último log registrado é igual ao atual para evitar duplicação
+    const log = document.getElementById('gherkin-log');
+    const lastLog = log.lastElementChild;
+    if (lastLog && lastLog.textContent === `Usuário clicou no XPATH ${xpath}`) {
         return;
     }
 
-    console.log('Clique registrado:', { xpath, cssSelector });
-    interactions.push({ action: 'click', xpath, cssSelector });
+    console.log('Clique registrado:', { xpath });
+    interactions.push({ action: 'click', xpath, timestamp: Date.now() });
 
-    const log = document.getElementById('gherkin-log');
-
-    //  Linha com o CSS Selector
-    // const logEntryCss = document.createElement('p');
-    // logEntryCss.textContent = `Interação registrada: click no elemento ${cssSelector}`;
-    // log.appendChild(logEntryCss);
-
-    // Linha com o XPath
+    // Adiciona o log para o clique atual
     const logEntryXpath = document.createElement('p');
     logEntryXpath.textContent = `Usuário clicou no XPATH ${xpath}`;
+    logEntryXpath.style.color = '#EE9A00'; // Cor laranja
+    logEntryXpath.style.fontWeight = 'bold'; // Negrito
     log.appendChild(logEntryXpath);
 
-    chrome.runtime.sendMessage({ action: 'interactionRegistered', interaction: { xpath, cssSelector } });
+    // Rola automaticamente para o final do log
+    log.scrollTop = log.scrollHeight;
+
+    chrome.runtime.sendMessage({ action: 'interactionRegistered', interaction: { xpath } });
 });
 
 document.addEventListener('scroll', debounce(() => {
@@ -232,24 +358,3 @@ window.addEventListener('focus', () => {
         console.log('Janela voltou ao foco. Gravação continua ativa.');
     }
 });
-
-function getXPath(element) {
-    if (element.id !== '') {
-        return `//*[@id="${element.id}"]`;
-    }
-    if (element === document.body) {
-        return '/html/body';
-    }
-
-    let ix = 0;
-    const siblings = element.parentNode.childNodes;
-    for (let i = 0; i < siblings.length; i++) {
-        const sibling = siblings[i];
-        if (sibling === element) {
-            return getXPath(element.parentNode) + '/' + element.tagName.toLowerCase() + '[' + (ix + 1) + ']';
-        }
-        if (sibling.nodeType === 1 && sibling.tagName === element.tagName) {
-            ix++;
-        }
-    }
-}
