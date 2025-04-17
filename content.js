@@ -109,7 +109,7 @@ function toggleMinimizePanel(panel) {
     updatePanelButtons(panel, isMinimized);
 }
 
-// Função para criar o painel
+// Função para criar o painel com melhorias visuais
 function createPanel() {
     const panel = document.createElement('div');
     panel.id = 'gherkin-panel';
@@ -133,13 +133,20 @@ function createPanel() {
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
             <h3 style="margin: 0; font-size: 18px; color: #007bff; font-weight: bold; text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);">GERADOR DE XPATH</h3>
             <div class="button-container" style="display: flex; gap: 5px;">
-                <button id="gherkin-minimize" title="Minimizar" style="background-color: #ffc107; color: #333; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px;">−</button>
-                <button id="gherkin-reopen" title="Reabrir" style="display: none; background-color: #28a745; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px;">+</button>
-                <button id="gherkin-close" title="Fechar" style="background-color: #dc3545; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px;">×</button>
+                <button id="gherkin-minimize" title="Minimizar" style="background-color: transparent; border: none; cursor: pointer;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="#ffc107" viewBox="0 0 24 24"><path d="M19 13H5v-2h14v2z"/></svg>
+                </button>
+                <button id="gherkin-reopen" title="Reabrir" style="display: none; background-color: transparent; border: none; cursor: pointer;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="#28a745" viewBox="0 0 24 24"><path d="M12 21c4.97 0 9-4.03 9-9s-4.03-9-9-9-9 4.03-9 9 4.03 9 9 9zm0-2c-3.86 0-7-3.14-7-7s3.14-7 7-7 7 3.14 7 7-3.14 7-7 7zm-1-10h2v6h-2v-6zm0-4h2v2h-2v-2z"/></svg>
+                </button>
+                <button id="gherkin-close" title="Fechar" style="background-color: transparent; border: none; cursor: pointer;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="#dc3545" viewBox="0 0 24 24"><path d="M18.3 5.71L12 12l6.3 6.29-1.42 1.42L12 13.41l-6.29 6.3-1.42-1.42L10.59 12 4.29 5.71 5.71 4.29 12 10.59l6.29-6.3z"/></svg>
+                </button>
             </div>
         </div>
         <div class="gherkin-content">
             <p id="gherkin-status" style="font-size: 14px; margin: 5px 0; color: #555;">Status: Executando</p>
+            <div id="recording-indicator" style="display: none; margin: 10px auto; width: 10px; height: 10px; background-color: #ff0000; border-radius: 50%; animation: pulse 1s infinite;"></div>
             <p id="gherkin-timer" style="font-size: 14px; margin: 5px 0; color: #555;">Tempo de execução: 00:00</p>
             <div id="gherkin-log" style="overflow-y: auto; max-height: 370px; margin-top: 10px; border: 1px solid #ccc; padding: 5px; font-size: 12px; background-color: #f9f9f9;">
                 <p>Clique para capturar um elemento XPATH.</p>
@@ -160,7 +167,7 @@ function createPanel() {
     return panel;
 }
 
-// Função para exibir feedback visual
+// Função para exibir feedback visual aprimorado
 function showFeedback(message, type = 'success') {
     const feedback = document.createElement('div');
     feedback.textContent = message;
@@ -176,15 +183,31 @@ function showFeedback(message, type = 'success') {
     feedback.style.zIndex = '10001';
     feedback.style.fontSize = '14px';
     feedback.style.fontWeight = 'bold';
-    feedback.style.transition = 'opacity 0.3s ease';
+    feedback.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
     feedback.style.opacity = '1';
+    feedback.style.animation = 'fadeInOut 3s ease';
     document.body.appendChild(feedback);
 
     setTimeout(() => {
         feedback.style.opacity = '0';
         setTimeout(() => feedback.remove(), 300);
-    }, 2000);
+    }, 3000);
 }
+
+// Adiciona animação de pulso para o indicador de gravação
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes pulse {
+        0% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.2); opacity: 0.7; }
+        100% { transform: scale(1); opacity: 1; }
+    }
+    @keyframes fadeInOut {
+        0%, 100% { opacity: 0; }
+        50% { opacity: 1; }
+    }
+`;
+document.head.appendChild(style);
 
 // Função para exportar logs no formato selecionado
 function exportLogs() {
@@ -202,7 +225,7 @@ function exportLogs() {
             content += 'Dado que o usuário está na página inicial\n';
             interactions.forEach((interaction, index) => {
                 const step = index === 0 ? 'Quando' : 'Então';
-                content += `${step} o usuário clica no elemento com XPATH ${interaction.xpath}\n`;
+                content += `${step} o usuário clica no elemento com seletor CSS ${interaction.cssSelector}\n`;
             });
         } else if (format === 'json') {
             content = JSON.stringify(interactions, null, 2);
@@ -212,7 +235,7 @@ function exportLogs() {
             content += '    Given o usuário está na página inicial\n';
             interactions.forEach((interaction, index) => {
                 const step = index === 0 ? 'When' : 'Then';
-                content += `    ${step} o usuário clica no elemento com XPATH ${interaction.xpath}\n`;
+                content += `    ${step} o usuário clica no elemento com seletor CSS ${interaction.cssSelector}\n`;
             });
         } else {
             showFeedback('Formato inválido selecionado.', 'error');
@@ -300,79 +323,45 @@ function debounce(func, wait) {
     };
 }
 
-function getRelativeXPath(element) {
-    const parts = [];
-    while (element && element.nodeType === Node.ELEMENT_NODE) {
-        let index = 1;
-        let sibling = element.previousElementSibling;
-        while (sibling) {
-            if (sibling.nodeName === element.nodeName) {
-                index++;
-            }
-            sibling = sibling.previousElementSibling;
-        }
-        const tagName = element.nodeName.toLowerCase();
-        const pathIndex = index > 1 ? `[${index}]` : '';
-        parts.unshift(`${tagName}${pathIndex}`);
-        element = element.parentNode;
-    }
-    return parts.length ? `./${parts.join('/')}` : null;
-}
-
-function getXPath(element, maxAncestors = 3) {
+function getCSSSelector(element) {
     if (!element || element.nodeType !== Node.ELEMENT_NODE) return null;
 
-    const attributes = ['id', 'class', 'data-pc-section', 'data-pc-name', 'routerlink'];
+    const uniqueAttributes = ['id', 'data-pc-section', 'role', 'class'];
+    const ignoredAttributes = ['style'];
 
-    // Função auxiliar para construir condições baseadas nos atributos
-    function buildConditions(el, maxConditions = 3) {
-        const conditions = [];
-        for (const attr of attributes) {
+    // Função auxiliar para construir seletores baseados nos atributos
+    function buildSelector(el) {
+        for (const attr of uniqueAttributes) {
             if (el.hasAttribute(attr)) {
-                const value = el.getAttribute(attr);
-                if (attr === 'class') {
-                    // Para classes, usa contains para lidar com múltiplas classes
-                    const classes = value.split(' ').filter(Boolean);
-                    classes.forEach(cls => {
-                        if (conditions.length < maxConditions) {
-                            conditions.push(`contains(@class, '${cls}')`);
-                        }
-                    });
-                } else if (conditions.length < maxConditions) {
-                    conditions.push(`@${attr}='${value}'`);
+                const value = el.getAttribute(attr).trim();
+                if (value) {
+                    if (attr === 'class') {
+                        return `${el.tagName.toLowerCase()}.${value.split(' ').join('.')}`; // Usa classes como seletor
+                    }
+                    return `${el.tagName.toLowerCase()}[${attr}="${value}"]`; // Usa outros atributos únicos
                 }
             }
         }
-        return conditions;
+        return el.tagName.toLowerCase(); // Usa o nome da tag como último recurso
     }
 
-    // Constrói o XPATH para o elemento atual
-    const conditions = buildConditions(element, 3); // Limita a 3 identificadores do último elemento
+    // Gera o seletor completo, incluindo ancestrais necessários
+    let selector = buildSelector(element);
 
-    // Adiciona o texto do elemento, se disponível
-    const textContent = element.textContent.trim();
-    if (textContent) {
-        conditions.push(`normalize-space(text())='${textContent}'`);
-    }
-
-    let xpath = element.tagName.toLowerCase();
-    if (conditions.length > 0) {
-        xpath += `[${conditions.join(' and ')}]`;
-    }
-
-    // Adiciona identificadores de elementos ancestrais, limitando o número de ancestrais
+    // Inclui identificadores de dois elementos ancestrais
     let parent = element.parentElement;
     let ancestorCount = 0;
-    while (parent && ancestorCount < maxAncestors) {
-        const parentConditions = buildConditions(parent, 1); // Limita a 1 identificador por ancestral
-        if (parentConditions.length > 0) {
-            xpath = `${parent.tagName.toLowerCase()}[${parentConditions.join(' and ')}]/${xpath}`;
+
+    while (parent && ancestorCount < 2) {
+        const parentSelector = buildSelector(parent);
+        if (parentSelector) {
+            selector = `${parentSelector} > ${selector}`;
         }
         parent = parent.parentElement;
         ancestorCount++;
     }
 
-    return `//${xpath}`;
+    return selector;
 }
 
 document.addEventListener('click', (event) => {
@@ -390,19 +379,19 @@ document.addEventListener('click', (event) => {
             return;
         }
 
-        const xpath = getXPath(event.target);
+        const cssSelector = getCSSSelector(event.target);
 
-        console.log('Clique registrado:', { xpath });
-        interactions.push({ action: 'click', xpath, timestamp: Date.now() });
+        console.log('Clique registrado:', { cssSelector });
+        interactions.push({ action: 'click', cssSelector, timestamp: Date.now() });
 
         const log = document.getElementById('gherkin-log');
 
         // Adiciona o log para o clique atual
-        const logEntryXpath = document.createElement('p');
-        logEntryXpath.textContent = `Usuário clicou no XPATH ${xpath}`;
-        logEntryXpath.style.color = '#EE9A00'; // Cor laranja
-        logEntryXpath.style.fontWeight = 'bold'; // Negrito
-        log.appendChild(logEntryXpath);
+        const logEntry = document.createElement('p');
+        logEntry.textContent = `USUÁRIO CLICOU NO ELEMENTO CSS: ${cssSelector}`;
+        logEntry.style.color = '#0D47A1'; // Azul escuro para contraste e acessibilidade
+        logEntry.style.fontWeight = 'bold'; // Negrito para destaque
+        log.appendChild(logEntry);
 
         // Rola automaticamente para o final do log
         log.scrollTop = log.scrollHeight;
@@ -410,7 +399,7 @@ document.addEventListener('click', (event) => {
         // Salva as interações no armazenamento local
         saveInteractionsToStorage();
 
-        chrome.runtime.sendMessage({ action: 'interactionRegistered', interaction: { xpath } });
+        chrome.runtime.sendMessage({ action: 'interactionRegistered', interaction: { cssSelector } });
     } catch (error) {
         console.error('Erro ao registrar clique:', error);
     }
