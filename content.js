@@ -432,8 +432,14 @@ document.addEventListener('click', (event) => {
 
     try {
         // Verifica se o contexto da extensão está válido
-        if (!chrome.runtime || !chrome.runtime.id) {
+        if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.id) {
             console.warn('Erro: Contexto da extensão inválido. Ignorando clique.');
+            return;
+        }
+
+        // Verifica se o elemento clicado é válido
+        if (!event.target) {
+            console.warn('Erro: Elemento clicado é inválido ou nulo.');
             return;
         }
 
@@ -449,6 +455,12 @@ document.addEventListener('click', (event) => {
         interactions.push({ action: 'click', cssSelector, xpath, timestamp: Date.now() });
 
         const log = document.getElementById('gherkin-log');
+
+        // Verifica se o elemento de log existe antes de tentar usá-lo
+        if (!log) {
+            console.error('Erro: Elemento de log não encontrado no DOM.');
+            return;
+        }
 
         // Adiciona o log para o clique atual
         const logEntry = document.createElement('div');
