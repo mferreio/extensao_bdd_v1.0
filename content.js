@@ -3,7 +3,7 @@ if (!window.interactions) {
 }
 
 if (!window.isRecording) {
-    var isRecording = false;
+    var isRecording = true; // Sempre "Executando"
 }
 
 // Usa window.timerInterval para evitar redefinição
@@ -64,129 +64,28 @@ if (!window.panel) {
         panel.setAttribute('role', 'dialog');
         panel.setAttribute('aria-label', 'Painel Gherkin Generator');
         panel.innerHTML = `
-            <h3 style="margin: 0; font-size: 16px; color: #007bff;">Gherkin Generator</h3>
+            <h3 style="margin: 0; font-size: 16px; color: #007bff;">GERADOR DE XPATH</h3>
             <button id="gherkin-close" style="position: absolute; top: 5px; right: 5px; background: none; border: none; font-size: 16px; cursor: pointer;" aria-label="Fechar painel">×</button>
-            <p id="gherkin-status" style="font-size: 14px; margin: 5px 0;">Status: Inativo</p>
+            <p id="gherkin-status" style="font-size: 14px; margin: 5px 0;">Status: Executando</p>
             <p id="gherkin-timer" style="font-size: 14px; margin: 5px 0;">Tempo de execução: 00:00</p>
-            <div style="display: flex; justify-content: space-between; margin-top: 10px;">
-                <button id="gherkin-play" style="flex: 1; margin-right: 5px;" aria-label="Iniciar gravação">Play</button>
-                <button id="gherkin-pause" style="flex: 1; margin-right: 5px;" disabled aria-label="Pausar gravação">Pause</button>
-                <button id="gherkin-finalize" style="flex: 1;" disabled aria-label="Finalizar gravação">Finalizar</button>
+            <div id="gherkin-log" style="overflow-y: auto; max-height: 485px; margin-top: 10px; border: 1px solid #ccc; padding: 5px; font-size: 12px; background-color: #f9f9f9;">
+                <p>Clique para capturar um elemento XPATH.</p>
             </div>
-            <div style="margin-top: 10px;">
-                <label for="gherkin-export-format">Escolha o formato de exportação:</label>
-                <select id="gherkin-export-format" style="width: 50%; margin-top: 5px;" aria-label="Formato de exportação">
-                    <option value="txt">TXT</option>
-                    <option value="json">JSON</option>
-                    <option value="features">FEATURES</option>
-                </select>
-            </div>
-            <button id="gherkin-export" style="width: 100%; margin-top: 10px;" disabled aria-label="Exportar cenários">Exportar</button>
-            <div id="gherkin-log" style="overflow-y: auto; max-height: 380px; margin-top: 10px; border: 1px solid #ccc; padding: 5px; font-size: 12px; background-color: #f9f9f9;">
-                <p>Nenhuma interação registrada ainda.</p>
-            </div>
+            <p id="gherkin-footer" style="position: absolute; bottom: 10px; left: 10px; font-size: 10px; margin: 0; color: #555;">By: Matheus Ferreira de Oliveira</p>
         `;
         document.body.appendChild(panel);
 
         // Torna o painel movível apenas pelo cabeçalho
         makePanelDraggable(panel);
 
-        // Adiciona eventos aos botões
-        document.getElementById('gherkin-play').addEventListener('click', () => {
-            if (!chrome.runtime) {
-                console.error('Contexto da extensão inválido.');
-                return;
-            }
-            isRecording = true;
-            interactions = [];
-            document.getElementById('gherkin-status').textContent = 'Status: Gravando';
-            document.getElementById('gherkin-play').disabled = true;
-            document.getElementById('gherkin-pause').disabled = false;
-            document.getElementById('gherkin-finalize').disabled = false;
-            panel.style.borderColor = '#007bff'; // Indicador visual de gravação
-            startTimer();
-        });
-
-        document.getElementById('gherkin-pause').addEventListener('click', () => {
-            if (!chrome.runtime) {
-                console.error('Contexto da extensão inválido.');
-                return;
-            }
-            isRecording = false;
-            document.getElementById('gherkin-status').textContent = 'Status: Pausado';
-            document.getElementById('gherkin-play').disabled = false;
-            document.getElementById('gherkin-pause').disabled = true;
-            panel.style.borderColor = '#ccc'; // Indicador visual de pausa
-            stopTimer();
-        });
-
-        document.getElementById('gherkin-finalize').addEventListener('click', () => {
-            if (!chrome.runtime) {
-                console.error('Contexto da extensão inválido.');
-                return;
-            }
-            isRecording = false;
-            document.getElementById('gherkin-status').textContent = 'Status: Finalizado';
-            document.getElementById('gherkin-play').disabled = false;
-            document.getElementById('gherkin-pause').disabled = true;
-            document.getElementById('gherkin-finalize').disabled = true;
-            panel.style.borderColor = '#28a745'; // Indicador visual de finalização
-            stopTimer();
-            chrome.storage.local.set({ interactions }, () => {
-                document.getElementById('gherkin-export').disabled = false;
-            });
-        });
-
-        document.getElementById('gherkin-export').addEventListener('click', () => {
-            if (!chrome.runtime) {
-                console.error('Contexto da extensão inválido.');
-                return;
-            }
-            chrome.storage.local.get('interactions', (data) => {
-                const interactions = data.interactions || [];
-                if (interactions.length === 0) {
-                    alert('Nenhuma interação registrada.');
-                    return;
-                }
-
-                const format = document.getElementById('gherkin-export-format').value;
-                let content = '';
-                if (format === 'txt') {
-                    content = 'Cenários Gerados:\n\n';
-                    content += 'Dado que o usuário está na página inicial\n';
-                    interactions.forEach((interaction, index) => {
-                        const step = index === 0 ? 'Quando' : 'Então';
-                        content += `${step} o usuário clica em ${interaction.cssSelector} (${interaction.xpath})\n`;
-                    });
-                } else if (format === 'json') {
-                    content = JSON.stringify(interactions, null, 2);
-                } else if (format === 'features') {
-                    content = 'Feature: Interações do usuário\n\n';
-                    content += '  Scenario: Registro de interações\n';
-                    content += '    Given o usuário está na página inicial\n';
-                    interactions.forEach((interaction, index) => {
-                        const step = index === 0 ? 'When' : 'Then';
-                        content += `    ${step} o usuário clica em ${interaction.cssSelector} (${interaction.xpath})\n`;
-                    });
-                }
-
-                const blob = new Blob([content], { type: 'text/plain' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `scenarios.${format}`;
-                a.click();
-
-                // Indicador visual de exportação concluída
-                panel.style.borderColor = '#ffc107';
-                setTimeout(() => panel.style.borderColor = '#ccc', 2000);
-            });
-        });
-
+        // Adiciona evento para fechar o painel
         document.getElementById('gherkin-close').addEventListener('click', () => {
             panel.style.opacity = '0';
             setTimeout(() => panel.remove(), 300);
         });
+
+        // Inicia o timer automaticamente
+        startTimer();
     }
 
     // Armazena o painel na variável global
@@ -298,63 +197,37 @@ function getXPath(element, maxAncestors = 3) {
 document.addEventListener('click', (event) => {
     if (!isRecording) return;
 
-    if (event.target.closest('#gherkin-panel')) {
-        console.log('Clique ignorado: ocorreu dentro do painel da extensão.');
-        return;
-    }
+    try {
+        // Verifica se o contexto da extensão está válido
+        if (!chrome.runtime || !chrome.runtime.id) {
+            console.warn('Erro: Contexto da extensão inválido. Ignorando clique.');
+            return;
+        }
 
-    const xpath = getXPath(event.target);
+        if (event.target.closest('#gherkin-panel')) {
+            console.log('Clique ignorado: ocorreu dentro do painel da extensão.');
+            return;
+        }
 
-    // Verifica se o último log registrado é igual ao atual para evitar duplicação
-    const log = document.getElementById('gherkin-log');
-    const lastLog = log.lastElementChild;
-    if (lastLog && lastLog.textContent === `Usuário clicou no XPATH ${xpath}`) {
-        return;
-    }
+        const xpath = getXPath(event.target);
 
-    console.log('Clique registrado:', { xpath });
-    interactions.push({ action: 'click', xpath, timestamp: Date.now() });
+        console.log('Clique registrado:', { xpath });
+        interactions.push({ action: 'click', xpath, timestamp: Date.now() });
 
-    // Adiciona o log para o clique atual
-    const logEntryXpath = document.createElement('p');
-    logEntryXpath.textContent = `Usuário clicou no XPATH ${xpath}`;
-    logEntryXpath.style.color = '#EE9A00'; // Cor laranja
-    logEntryXpath.style.fontWeight = 'bold'; // Negrito
-    log.appendChild(logEntryXpath);
+        const log = document.getElementById('gherkin-log');
 
-    // Rola automaticamente para o final do log
-    log.scrollTop = log.scrollHeight;
+        // Adiciona o log para o clique atual
+        const logEntryXpath = document.createElement('p');
+        logEntryXpath.textContent = `Usuário clicou no XPATH ${xpath}`;
+        logEntryXpath.style.color = '#EE9A00'; // Cor laranja
+        logEntryXpath.style.fontWeight = 'bold'; // Negrito
+        log.appendChild(logEntryXpath);
 
-    chrome.runtime.sendMessage({ action: 'interactionRegistered', interaction: { xpath } });
-});
+        // Rola automaticamente para o final do log
+        log.scrollTop = log.scrollHeight;
 
-document.addEventListener('scroll', debounce(() => {
-    if (!isRecording) return;
-
-    const timestamp = Date.now();
-    if (interactions.some(i => i.action === 'scroll' && timestamp - i.timestamp < 1000)) {
-        console.log('Rolagem ignorada: duplicada.');
-        return;
-    }
-
-    console.log('Rolagem registrada.');
-    interactions.push({ action: 'scroll', timestamp });
-}, 200));
-
-document.addEventListener('keydown', debounce((event) => {
-    if (!isRecording) return;
-
-    if (interactions.some(i => i.action === 'keydown' && i.key === event.key)) {
-        console.log('Tecla ignorada: duplicada.');
-        return;
-    }
-
-    console.log('Tecla pressionada:', event.key);
-    interactions.push({ action: 'keydown', key: event.key, timestamp: Date.now() });
-}, 200));
-
-window.addEventListener('focus', () => {
-    if (isRecording) {
-        console.log('Janela voltou ao foco. Gravação continua ativa.');
+        chrome.runtime.sendMessage({ action: 'interactionRegistered', interaction: { xpath } });
+    } catch (error) {
+        console.error('Erro ao registrar clique:', error);
     }
 });
