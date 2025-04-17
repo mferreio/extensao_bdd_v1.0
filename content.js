@@ -48,11 +48,11 @@ if (!window.panel) {
         panel = document.createElement('div');
         panel.id = 'gherkin-panel';
         panel.className = 'gherkin-panel'; // Adiciona uma classe para aplicar o estilo
-        panel.style.position = 'absolute'; // Alterado para permitir movimentação
+        panel.style.position = 'fixed'; // Alterado para fixar o painel na tela
         panel.style.top = '10px';
         panel.style.left = '10px'; // Alterado para iniciar no canto superior esquerdo
-        panel.style.width = '90%';
-        panel.style.maxWidth = '320px';
+        panel.style.width = '400px'; // Aumenta a largura padrão
+        panel.style.height = '600px'; // Aumenta a altura padrão
         panel.style.backgroundColor = '#ffffff';
         panel.style.border = '1px solid #ccc';
         panel.style.borderRadius = '8px';
@@ -82,7 +82,7 @@ if (!window.panel) {
                 </select>
             </div>
             <button id="gherkin-export" style="width: 100%; margin-top: 10px;" disabled aria-label="Exportar cenários">Exportar</button>
-            <div id="gherkin-log" style="overflow-y: auto; max-height: 100px; margin-top: 10px; border: 1px solid #ccc; padding: 5px; font-size: 12px; background-color: #f9f9f9;">
+            <div id="gherkin-log" style="overflow-y: auto; max-height: 380px; margin-top: 10px; border: 1px solid #ccc; padding: 5px; font-size: 12px; background-color: #f9f9f9;">
                 <p>Nenhuma interação registrada ainda.</p>
             </div>
         `;
