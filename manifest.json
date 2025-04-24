@@ -2,8 +2,8 @@
     "manifest_version": 3,
     "name": "Gherkin Generator",
     "version": "1.0",
-    "description": "Gera cenários Gherkin com base na navegação do usuário.",
-    "permissions": ["activeTab", "scripting", "downloads", "storage"],
+    "description": "Gera Xpath e CSS_selectors com base na navegação do usuário.",
+    "permissions": ["activeTab", "scripting", "downloads", "storage", "background"],
     "background": {
         "service_worker": "background.js"
     },

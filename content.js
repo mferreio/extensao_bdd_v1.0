@@ -1,24 +1,30 @@
+// Verifica se as variáveis globais já foram definidas para evitar redefinição
 if (!window.interactions) {
-    var interactions = [];
+    window.interactions = [];
 }
 
-if (!window.isRecording) {
-    var isRecording = true; // Sempre "Executando"
+if (typeof window.isRecording === 'undefined') {
+    window.isRecording = true; // Sempre "Executando"
 }
 
-// Usa window.timerInterval para evitar redefinição
-if (!window.timerInterval) {
+if (typeof window.timerInterval === 'undefined') {
     window.timerInterval = null;
 }
 
-let isPaused = false; // Estado para controlar pausa e continuação
-let elapsedSeconds = 0; // Armazena o tempo decorrido
+if (typeof window.isPaused === 'undefined') {
+    window.isPaused = false; // Estado para controlar pausa e continuação
+}
 
+if (typeof window.elapsedSeconds === 'undefined') {
+    window.elapsedSeconds = 0; // Armazena o tempo decorrido
+}
+
+// Função para alternar entre pausa e gravação
 function togglePause() {
     const pauseButton = document.getElementById('gherkin-pause');
-    isPaused = !isPaused;
+    window.isPaused = !window.isPaused;
 
-    if (isPaused) {
+    if (window.isPaused) {
         pauseButton.textContent = 'Continuar';
         pauseButton.style.backgroundColor = '#28a745'; // Verde para "Continuar"
         document.getElementById('gherkin-status').textContent = 'Status: Pausado';
@@ -29,36 +35,6 @@ function togglePause() {
         document.getElementById('gherkin-status').textContent = 'Status: Gravando';
         startTimer(); // Retoma o timer
     }
-}
-
-// Torna o painel movível apenas ao clicar no cabeçalho
-function makePanelDraggable(panel) {
-    let isDragging = false;
-    let offsetX, offsetY;
-
-    const header = panel.querySelector('h3'); // Seleciona o cabeçalho do painel
-    header.style.cursor = 'move'; // Define o cursor de movimentação no cabeçalho
-
-    header.addEventListener('mousedown', (event) => {
-        isDragging = true;
-        offsetX = event.clientX - panel.getBoundingClientRect().left;
-        offsetY = event.clientY - panel.getBoundingClientRect().top;
-        panel.style.cursor = 'move';
-    });
-
-    document.addEventListener('mousemove', (event) => {
-        if (!isDragging) return;
-        panel.style.left = `${event.clientX - offsetX}px`;
-        panel.style.top = `${event.clientY - offsetY}px`;
-        panel.style.right = 'auto'; // Remove a posição fixa à direita
-    });
-
-    document.addEventListener('mouseup', () => {
-        if (isDragging) {
-            isDragging = false;
-            panel.style.cursor = 'default';
-        }
-    });
 }
 
 // Função para alternar entre temas claro e escuro
@@ -109,24 +85,88 @@ function toggleMinimizePanel(panel) {
     const content = panel.querySelector('.gherkin-content');
     const header = panel.querySelector('h3');
     const footer = panel.querySelector('#gherkin-footer');
+    const minimizeButton = panel.querySelector('#gherkin-minimize');
+    const reopenButton = panel.querySelector('#gherkin-reopen');
+    const closeButton = panel.querySelector('#gherkin-close');
+    const exportButton = panel.querySelector('#gherkin-export');
+    const pauseButton = panel.querySelector('#gherkin-pause');
+    const clearButton = panel.querySelector('#gherkin-clear');
     const isMinimized = panel.classList.toggle('minimized');
 
     if (isMinimized) {
         content.style.display = 'none';
-        header.style.fontSize = '12px';
-        header.style.textAlign = 'center';
+        header.style.display = 'none';
         footer.style.display = 'none';
         panel.style.height = '50px';
-        panel.style.width = '200px';
+        panel.style.width = '100px';
+        minimizeButton.style.display = 'none'; // Oculta o botão Minimizar
+        reopenButton.style.display = 'flex'; // Exibe o botão Abrir
+        closeButton.style.display = 'flex'; // Exibe o botão Fechar
+        exportButton.style.display = 'none'; // Oculta o botão Exportar
+        pauseButton.style.display = 'none'; // Oculta o botão Pausar
+        clearButton.style.display = 'none'; // Oculta o botão Limpar
+
+        // Alinha os botões "Abrir" e "Fechar" no lado direito
+        const buttonContainer = panel.querySelector('.button-container');
+        buttonContainer.style.justifyContent = 'flex-end';
+        buttonContainer.style.alignItems = 'center';
+        buttonContainer.style.gap = '5px';
     } else {
         content.style.display = 'block';
-        header.style.fontSize = '16px';
+        header.style.display = 'block';
         footer.style.display = 'block';
         panel.style.height = '600px';
         panel.style.width = '400px';
-    }
+        minimizeButton.style.display = 'flex'; // Exibe o botão Minimizar
+        reopenButton.style.display = 'none'; // Oculta o botão Abrir
+        closeButton.style.display = 'flex'; // Mantém o botão Fechar visível
+        exportButton.style.display = 'flex'; // Exibe o botão Exportar
+        pauseButton.style.display = 'flex'; // Exibe o botão Pausar
+        clearButton.style.display = 'flex'; // Exibe o botão Limpar
 
-    updatePanelButtons(panel, isMinimized);
+        // Restaura o layout padrão dos botões
+        const buttonContainer = panel.querySelector('.button-container');
+        buttonContainer.style.justifyContent = 'space-between';
+        buttonContainer.style.alignItems = 'center';
+        buttonContainer.style.gap = '5px';
+    }
+}
+
+// Função para tornar o painel movível para qualquer lugar do navegador
+function makePanelDraggable(panel) {
+    let isDragging = false;
+    let offsetX, offsetY;
+
+    panel.addEventListener('mousedown', (event) => {
+        if (event.target.closest('.button-container')) return; // Evita arrastar ao clicar nos botões
+        isDragging = true;
+        offsetX = event.clientX - panel.getBoundingClientRect().left;
+        offsetY = event.clientY - panel.getBoundingClientRect().top;
+        panel.style.cursor = 'move';
+    });
+
+    document.addEventListener('mousemove', (event) => {
+        if (!isDragging) return;
+        panel.style.left = `${event.clientX - offsetX}px`;
+        panel.style.top = `${event.clientY - offsetY}px`;
+        panel.style.right = 'auto'; // Remove a posição fixa à direita
+        panel.style.bottom = 'auto'; // Remove a posição fixa à parte inferior
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (isDragging) {
+            isDragging = false;
+            panel.style.cursor = 'default';
+        }
+    });
+}
+
+// Função para limpar a tela de log
+function clearLog() {
+    const log = document.getElementById('gherkin-log');
+    if (log) {
+        log.innerHTML = '<p>Clique para capturar um elemento XPATH.</p>';
+    }
 }
 
 // Função para criar o painel com melhorias visuais
@@ -152,12 +192,12 @@ function createPanel() {
     panel.innerHTML = `
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
             <h3 style="margin: 0; font-size: 18px; color: #007bff; font-weight: bold; text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);">GERADOR DE XPATH E CSS</h3>
-            <div class="button-container" style="display: flex; gap: 5px;">
+            <div class="button-container" style="display: flex; gap: 5px; justify-content: flex-end;">
                 <button id="gherkin-minimize" title="Minimizar" style="background-color: transparent; border: none; cursor: pointer;">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="#ffc107" viewBox="0 0 24 24"><path d="M19 13H5v-2h14v2z"/></svg>
                 </button>
-                <button id="gherkin-reopen" title="Reabrir" style="display: none; background-color: transparent; border: none; cursor: pointer;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="#28a745" viewBox="0 0 24 24"><path d="M12 21c4.97 0 9-4.03 9-9s-4.03-9-9-9-9 4.03-9 9 4.03 9 9 9zm0-2c-3.86 0-7-3.14-7-7s3.14-7 7-7 7 3.14 7 7-3.14 7-7 7zm-1-10h2v6h-2v-6zm0-4h2v2h-2v-2z"/></svg>
+                <button id="gherkin-reopen" title="Reabrir" style="display: none; background-color: transparent; border: none; cursor: pointer; font-size: 14px; font-weight: bold; color: #28a745;">
+                    Abrir
                 </button>
                 <button id="gherkin-close" title="Fechar" style="background-color: transparent; border: none; cursor: pointer;">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="#dc3545" viewBox="0 0 24 24"><path d="M18.3 5.71L12 12l6.3 6.29-1.42 1.42L12 13.41l-6.29 6.3-1.42-1.42L10.59 12 4.29 5.71 5.71 4.29 12 10.59l6.29-6.3z"/></svg>
@@ -168,18 +208,37 @@ function createPanel() {
             <p id="gherkin-status" style="font-size: 14px; margin: 5px 0; color: #555;">Status: Gravando</p>
             <div id="recording-indicator" style="display: none; margin: 10px auto; width: 10px; height: 10px; background-color: #ff0000; border-radius: 50%; animation: pulse 1s infinite;"></div>
             <p id="gherkin-timer" style="font-size: 14px; margin: 5px 0; color: #555;">Tempo de execução: 00:00</p>
-            <div id="gherkin-log" style="overflow-y: auto; max-height: 370px; margin-top: 10px; border: 1px solid #ccc; padding: 5px; font-size: 12px; background-color: #f9f9f9;">
+            <div id="gherkin-log" style="overflow-y: auto; height: 440px; margin-top: 10px; border: 1px solid #ccc; padding: 5px; font-size: 12px; background-color: #f9f9f9;">
                 <p>Clique para capturar um elemento XPATH.</p>
             </div>
-            <div style="margin-top: 10px; display: flex; gap: 10px;">
-                <button id="gherkin-export" style="background-color: #007bff; color: white; border: none; border-radius: 5px; padding: 5px 10px; cursor: pointer; flex: 1;">Exportar</button>
-                <button id="gherkin-pause" style="background-color: #ffc107; color: white; border: none; border-radius: 5px; padding: 5px 10px; cursor: pointer; flex: 1;">Pausar</button>
-            </div>
         </div>
-        <p id="gherkin-footer" style="position: absolute; bottom: 10px; left: 10px; font-size: 10px; margin: 0; color: #555;">By: Matheus Ferreira de Oliveira</p>
+        <div style="position: absolute; bottom: 10px; right: 10px; display: flex; gap: 5px; justify-content: flex-end;">
+            <button id="gherkin-export" style="background-color: #007bff; color: white; border: none; border-radius: 5px; padding: 10px; cursor: pointer; flex: 1;">Exportar</button>
+            <button id="gherkin-pause" style="background-color: #ffc107; color: white; border: none; border-radius: 5px; padding: 10px; cursor: pointer; flex: 1;">Pausar</button>
+            <button id="gherkin-clear" style="background-color: #dc3545; color: white; border: none; border-radius: 5px; padding: 10px; cursor: pointer; flex: 1;">Limpar</button>
+        </div>
+        <p id="gherkin-footer" style="position: absolute; bottom: -20px; right: 10px; font-size: 10px; margin: 0; color: #555;">By: Matheus Ferreira de Oliveira</p>
     `;
     document.body.appendChild(panel);
     return panel;
+}
+
+// Verifica se `style` já foi definido para evitar duplicação
+if (!window.gherkinStyle) {
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes fadeInOut {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 1; }
+        }
+    `;
+    document.head.appendChild(style);
+    window.gherkinStyle = style; // Marca o estilo como já adicionado
 }
 
 // Função para exibir feedback visual aprimorado
@@ -209,74 +268,132 @@ function showFeedback(message, type = 'success') {
     }, 3000);
 }
 
-// Adiciona animação de pulso para o indicador de gravação
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes pulse {
-        0% { transform: scale(1); opacity: 1; }
-        50% { transform: scale(1.2); opacity: 0.7; }
-        100% { transform: scale(1); opacity: 1; }
-    }
-    @keyframes fadeInOut {
-        0%, 100% { opacity: 0; }
-        50% { opacity: 1; }
-    }
-`;
-document.head.appendChild(style);
-
-// Função para exportar logs no formato selecionado
+// Função para exportar logs no formato TXT
 function exportLogs() {
-    const format = document.getElementById('gherkin-export-format').value;
-    chrome.storage.local.get('interactions', (data) => {
-        const interactions = data.interactions || [];
-        if (interactions.length === 0) {
-            showFeedback('Nenhuma interação registrada.', 'error');
-            return;
-        }
+    if (!window.interactions || window.interactions.length === 0) {
+        showFeedback('Nenhuma interação registrada.', 'error');
+        return;
+    }
 
-        let content = '';
-        if (format === 'txt') {
-            content = 'Cenários Gerados:\n\n';
-            content += 'Dado que o usuário está na página inicial\n';
-            interactions.forEach((interaction, index) => {
-                const step = index === 0 ? 'Quando' : 'Então';
-                content += `${step} o usuário clica no elemento com:\n`;
-                content += `  CSS: ${interaction.cssSelector}\n`;
-                content += `  XPath: ${interaction.xpath}\n`;
-            });
-        } else if (format === 'json') {
-            content = JSON.stringify(interactions, null, 2);
-        } else if (format === 'features') {
-            content = 'Feature: Interações do usuário\n\n';
-            content += '  Scenario: Registro de interações\n';
-            content += '    Given o usuário está na página inicial\n';
-            interactions.forEach((interaction, index) => {
-                const step = index === 0 ? 'When' : 'Then';
-                content += `    ${step} o usuário clica no elemento com:\n`;
-                content += `      CSS: ${interaction.cssSelector}\n`;
-                content += `      XPath: ${interaction.xpath}\n`;
-            });
-        } else {
-            showFeedback('Formato inválido selecionado.', 'error');
-            return;
-        }
+    let content = 'Cenários Gerados:\n\n';
+    content += 'Dado que o usuário está na página inicial\n';
 
-        const blob = new Blob([content], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `logs.${format}`;
-        a.click();
-
-        showFeedback('Exportação realizada com sucesso!');
+    window.interactions.forEach((interaction, index) => {
+        const step = index === 0 ? 'Quando' : 'Então';
+        content += `${step} o usuário clica no elemento com:\n`;
+        content += `  CSS: ${interaction.cssSelector}\n`;
+        content += `  XPath: ${interaction.xpath}\n`;
     });
+
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'interactions.txt';
+    a.click();
+
+    showFeedback('Exportação realizada com sucesso!');
 }
 
 // Função para registrar interações no armazenamento local
 function saveInteractionsToStorage() {
-    chrome.storage.local.set({ interactions }, () => {
+    chrome.storage.local.set({ interactions: window.interactions }, () => {
         console.log('Interações salvas no armazenamento local.');
     });
+}
+
+// Função para inicializar eventos nos botões
+function initializeButtonEvents() {
+    const pauseButton = document.getElementById('gherkin-pause');
+    const exportButton = document.getElementById('gherkin-export');
+    const clearButton = document.getElementById('gherkin-clear');
+    const minimizeButton = document.getElementById('gherkin-minimize');
+    const reopenButton = document.getElementById('gherkin-reopen');
+    const closeButton = document.getElementById('gherkin-close');
+
+    if (pauseButton) {
+        pauseButton.addEventListener('click', togglePause);
+    }
+
+    if (exportButton) {
+        exportButton.addEventListener('click', exportLogs);
+    }
+
+    if (clearButton) {
+        clearButton.addEventListener('click', clearLog);
+    }
+
+    if (minimizeButton) {
+        minimizeButton.addEventListener('click', () => {
+            const panel = document.getElementById('gherkin-panel');
+            if (panel) toggleMinimizePanel(panel);
+        });
+    }
+
+    if (reopenButton) {
+        reopenButton.addEventListener('click', () => {
+            const panel = document.getElementById('gherkin-panel');
+            if (panel) toggleMinimizePanel(panel);
+        });
+    }
+
+    if (closeButton) {
+        closeButton.addEventListener('click', () => {
+            const panel = document.getElementById('gherkin-panel');
+            if (panel) {
+                panel.style.opacity = '0';
+                setTimeout(() => panel.remove(), 300);
+                window.panel = null; // Remove a referência global ao painel
+            }
+        });
+    }
+}
+
+// Função para limpar o cache, zerar o contador e redefinir interações
+function resetExtensionState() {
+    chrome.storage.local.clear(() => {
+        console.log('Cache limpo com sucesso.');
+    });
+
+    const log = document.getElementById('gherkin-log');
+    if (log) {
+        log.innerHTML = '<p>Clique para capturar um elemento XPATH.</p>';
+    }
+
+    window.interactions = []; // Zera as interações registradas
+    window.elapsedSeconds = 0; // Zera o contador de tempo
+
+    const timerElement = document.getElementById('gherkin-timer');
+    if (timerElement) {
+        timerElement.textContent = 'Tempo de execução: 00:00';
+    }
+
+    // Garante que o intervalo do timer seja limpo antes de iniciar novamente
+    if (window.timerInterval) {
+        clearInterval(window.timerInterval);
+        window.timerInterval = null;
+    }
+}
+
+// Funções de timer
+function startTimer() {
+    const timerElement = document.getElementById('gherkin-timer');
+    if (!timerElement) return;
+
+    // Garante que o intervalo do timer seja limpo antes de iniciar
+    if (window.timerInterval) {
+        clearInterval(window.timerInterval);
+    }
+
+    window.elapsedSeconds = 0; // Reinicia o contador de segundos
+    window.timerInterval = setInterval(() => {
+        if (!window.isPaused) {
+            window.elapsedSeconds++;
+            const minutes = Math.floor(window.elapsedSeconds / 60);
+            const remainingSeconds = window.elapsedSeconds % 60;
+            timerElement.textContent = `Tempo de execução: ${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
+        }
+    }, 1000);
 }
 
 // Verifica se o painel já existe para reutilizá-lo
@@ -289,51 +406,23 @@ if (!window.panel) {
     // Atualiza os botões ao abrir o painel
     updatePanelButtons(panel, false);
 
-    // Adiciona evento para minimizar o painel
-    document.getElementById('gherkin-minimize').addEventListener('click', () => {
-        toggleMinimizePanel(panel);
-    });
-
-    // Adiciona evento para reabrir o painel
-    document.getElementById('gherkin-reopen').addEventListener('click', () => {
-        toggleMinimizePanel(panel);
-    });
-
-    // Adiciona evento para fechar o painel
-    document.getElementById('gherkin-close').addEventListener('click', () => {
-        panel.style.opacity = '0';
-        setTimeout(() => panel.remove(), 300);
-    });
-
-    // Adiciona evento para exportar logs
-    document.getElementById('gherkin-export').addEventListener('click', exportLogs);
-
-    // Adiciona evento ao botão "Pausar/Continuar"
-    document.getElementById('gherkin-pause').addEventListener('click', togglePause);
+    // Inicializa os eventos dos botões
+    initializeButtonEvents();
 
     // Aplica o tema salvo
     applySavedTheme();
 
+    // Limpa o cache, zera o contador e redefine o estado ao abrir o painel
+    resetExtensionState();
+
     // Inicia o timer automaticamente
     startTimer();
-}
 
-// Funções de timer
-function startTimer() {
-    const timerElement = document.getElementById('gherkin-timer');
-
-    window.timerInterval = setInterval(() => {
-        if (!isPaused) {
-            elapsedSeconds++;
-            const minutes = Math.floor(elapsedSeconds / 60);
-            const remainingSeconds = elapsedSeconds % 60;
-            timerElement.textContent = `Tempo de execução: ${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
-        }
-    }, 1000);
-}
-
-function stopTimer() {
-    clearInterval(window.timerInterval);
+    window.panel = panel; // Armazena a referência global ao painel
+} else {
+    // Se o painel já existir, redefine o estado e reinicia o timer
+    resetExtensionState();
+    startTimer();
 }
 
 // Registro de interações com debounce
@@ -423,23 +512,21 @@ function getAttributeBasedXPath(element) {
     return buildXPath(element);
 }
 
+function isExtensionContextValid() {
+    return typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id;
+}
+
+// Registro de cliques
 document.addEventListener('click', (event) => {
-    if (!isRecording || isPaused) return; // Ignora cliques se estiver pausado
+    if (!window.isRecording || window.isPaused) return; // Ignora cliques se estiver pausado
 
     try {
-        // Verifica se o contexto da extensão está válido
-        if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.id) {
+        if (!isExtensionContextValid()) {
             console.warn('Erro: Contexto da extensão inválido. Ignorando clique.');
             return;
         }
 
-        // Verifica se o elemento clicado é válido
-        if (!event.target) {
-            console.warn('Erro: Elemento clicado é inválido ou nulo.');
-            return;
-        }
-
-        if (event.target.closest('#gherkin-panel')) {
+        if (!event.target || event.target.closest('#gherkin-panel')) {
             console.log('Clique ignorado: ocorreu dentro do painel da extensão.');
             return;
         }
@@ -448,17 +535,14 @@ document.addEventListener('click', (event) => {
         const xpath = getAttributeBasedXPath(event.target);
 
         console.log('Clique registrado:', { cssSelector, xpath });
-        interactions.push({ action: 'click', cssSelector, xpath, timestamp: Date.now() });
+        window.interactions.push({ action: 'click', cssSelector, xpath, timestamp: Date.now() });
 
         const log = document.getElementById('gherkin-log');
-
-        // Verifica se o elemento de log existe antes de tentar usá-lo
         if (!log) {
             console.error('Erro: Elemento de log não encontrado no DOM.');
             return;
         }
 
-        // Adiciona o log para o clique atual
         const logEntry = document.createElement('div');
         logEntry.style.marginBottom = '10px';
         logEntry.style.padding = '10px';
@@ -468,26 +552,30 @@ document.addEventListener('click', (event) => {
 
         const cssText = document.createElement('p');
         cssText.textContent = `CSS: ${cssSelector}`;
-        cssText.style.color = '#0D47A1'; // Azul escuro para contraste
+        cssText.style.color = '#0D47A1';
         cssText.style.fontWeight = 'bold';
 
         const xpathText = document.createElement('p');
         xpathText.textContent = `XPath: ${xpath}`;
-        xpathText.style.color = '#1B5E20'; // Verde escuro para contraste
+        xpathText.style.color = '#1B5E20';
         xpathText.style.fontWeight = 'bold';
 
         logEntry.appendChild(cssText);
         logEntry.appendChild(xpathText);
         log.appendChild(logEntry);
 
-        // Rola automaticamente para o final do log
         log.scrollTop = log.scrollHeight;
 
-        // Salva as interações no armazenamento local
         saveInteractionsToStorage();
-
         chrome.runtime.sendMessage({ action: 'interactionRegistered', interaction: { cssSelector, xpath } });
     } catch (error) {
         console.error('Erro ao registrar clique:', error);
+    }
+});
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action === 'keepAlive') {
+        console.log('Recebida mensagem para manter o Service Worker ativo.');
+        sendResponse({ status: 'alive' });
     }
 });

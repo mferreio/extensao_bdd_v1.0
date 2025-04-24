@@ -1,118 +1,89 @@
-document.getElementById('export').addEventListener('click', () => {
-    chrome.storage.local.get('interactions', (data) => {
-        const interactions = data.interactions || [];
-        if (interactions.length === 0) {
-            alert('Nenhuma interação registrada.');
-            return;
-        }
+document.addEventListener('DOMContentLoaded', () => {
+    const playButton = document.getElementById('play');
+    const pauseButton = document.getElementById('pause');
+    const finalizeButton = document.getElementById('finalize');
+    const exportButton = document.getElementById('export');
 
-        const format = document.getElementById('export-format').value;
-        if (!['txt', 'json', 'features'].includes(format)) {
-            alert('Formato inválido. Escolha entre txt, json ou features.');
-            return;
-        }
+    if (playButton) {
+        playButton.addEventListener('click', () => {
+            chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+                const tab = tabs[0];
+                if (!tab || tab.url.startsWith('chrome://') || tab.url.startsWith('about:')) {
+                    alert('Não é possível registrar interações nesta página.');
+                    return;
+                }
 
-        let content = '';
-        if (format === 'txt') {
-            content = 'Cenários Gerados:\n\n';
-            content += 'Dado que o usuário está na página inicial\n';
-            interactions.forEach((interaction, index) => {
-                const step = index === 0 ? 'Quando' : 'Então';
-                content += `${step} o usuário clica no elemento com XPATH relativo ${interaction.xpath}\n`;
-            });
-        } else if (format === 'json') {
-            content = JSON.stringify(interactions, null, 2);
-        } else if (format === 'features') {
-            content = 'Feature: Interações do usuário\n\n';
-            content += '  Scenario: Registro de interações\n';
-            content += '    Given o usuário está na página inicial\n';
-            interactions.forEach((interaction, index) => {
-                const step = index === 0 ? 'When' : 'Then';
-                content += `    ${step} o usuário clica no elemento com XPATH relativo ${interaction.xpath}\n`;
-            });
-        }
-
-        const blob = new Blob([content], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `scenarios.${format}`;
-        a.click();
-    });
-});
-
-document.getElementById('play').addEventListener('click', () => {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        const tab = tabs[0];
-        if (!tab || tab.url.startsWith('chrome://') || tab.url.startsWith('about:')) {
-            alert('Nao e possivel registrar interacoes nesta pagina.');
-            return;
-        }
-
-        chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            files: ['content.js']
-        }, () => {
-            if (chrome.runtime.lastError) {
-                alert('Erro ao injetar o script: ' + chrome.runtime.lastError.message);
-            } else {
-                chrome.tabs.sendMessage(tab.id, { action: 'startRecording' }, (response) => {
+                chrome.scripting.executeScript({
+                    target: { tabId: tab.id },
+                    files: ['content.js']
+                }, () => {
                     if (chrome.runtime.lastError) {
-                        alert('Erro ao iniciar o registro: ' + chrome.runtime.lastError.message);
-                    } else if (response && response.status === 'recordingStarted') {
-                        alert('Registro de interacoes iniciado.');
-                        document.getElementById('play').disabled = true;
-                        document.getElementById('pause').disabled = false;
-                        document.getElementById('finalize').disabled = false;
-                        document.getElementById('export').disabled = true;
-                        document.getElementById('status').textContent = 'Status: Gravando';
-                        startTimer();
+                        alert('Erro ao injetar o script: ' + chrome.runtime.lastError.message);
                     } else {
-                        alert('Erro desconhecido ao iniciar o registro.');
+                        chrome.tabs.sendMessage(tab.id, { action: 'startRecording' }, (response) => {
+                            if (chrome.runtime.lastError) {
+                                alert('Erro ao iniciar o registro: ' + chrome.runtime.lastError.message);
+                            } else if (response && response.status === 'recordingStarted') {
+                                alert('Registro de interações iniciado.');
+                                playButton.disabled = true;
+                                pauseButton.disabled = false;
+                                finalizeButton.disabled = false;
+                                exportButton.disabled = true;
+                                document.getElementById('status').textContent = 'Status: Gravando';
+                                startTimer();
+                            } else {
+                                alert('Erro desconhecido ao iniciar o registro.');
+                            }
+                        });
                     }
                 });
-            }
+            });
         });
-    });
-});
+    }
 
-document.getElementById('pause').addEventListener('click', () => {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        chrome.tabs.sendMessage(tabs[0].id, { action: 'pauseRecording' }, (response) => {
-            if (chrome.runtime.lastError) {
-                alert('Erro ao pausar o registro: ' + chrome.runtime.lastError.message);
-            } else {
-                alert('Registro pausado.');
-                document.getElementById('play').disabled = false;
-                document.getElementById('pause').disabled = true;
-            }
-        });
-    });
-});
-
-document.getElementById('finalize').addEventListener('click', () => {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        chrome.tabs.sendMessage(tabs[0].id, { action: 'finalizeRecording' }, (response) => {
-            if (chrome.runtime.lastError) {
-                alert('Erro ao finalizar o registro: ' + chrome.runtime.lastError.message);
-            } else {
-                chrome.storage.local.set({ interactions: response.interactions }, () => {
-                    alert('Registro finalizado. Voce pode exportar os cenarios.');
-                    document.getElementById('play').disabled = false;
-                    document.getElementById('pause').disabled = true;
-                    document.getElementById('finalize').disabled = true;
-                    document.getElementById('export').disabled = false;
-                    document.getElementById('status').textContent = 'Status: Finalizado';
-                    stopTimer();
-
-                    // Limpa interações após finalizar
-                    chrome.storage.local.remove('interactions', () => {
-                        console.log('Interacoes limpas do armazenamento.');
-                    });
+    if (pauseButton) {
+        pauseButton.addEventListener('click', () => {
+            chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+                chrome.tabs.sendMessage(tabs[0].id, { action: 'pauseRecording' }, (response) => {
+                    if (chrome.runtime.lastError) {
+                        alert('Erro ao pausar o registro: ' + chrome.runtime.lastError.message);
+                    } else {
+                        alert('Registro pausado.');
+                        playButton.disabled = false;
+                        pauseButton.disabled = true;
+                        document.getElementById('status').textContent = 'Status: Pausado';
+                        stopTimer();
+                    }
                 });
-            }
+            });
         });
-    });
+    }
+
+    if (finalizeButton) {
+        finalizeButton.addEventListener('click', () => {
+            chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+                chrome.tabs.sendMessage(tabs[0].id, { action: 'finalizeRecording' }, (response) => {
+                    if (chrome.runtime.lastError) {
+                        alert('Erro ao finalizar o registro: ' + chrome.runtime.lastError.message);
+                    } else {
+                        chrome.storage.local.set({ interactions: response.interactions }, () => {
+                            alert('Registro finalizado. Você pode exportar os cenários.');
+                            playButton.disabled = false;
+                            pauseButton.disabled = true;
+                            finalizeButton.disabled = true;
+                            exportButton.disabled = false;
+                            document.getElementById('status').textContent = 'Status: Finalizado';
+                            stopTimer();
+                        });
+                    }
+                });
+            });
+        });
+    }
+
+    if (exportButton) {
+        exportButton.addEventListener('click', exportScenarios);
+    }
 });
 
 function exportScenarios() {
