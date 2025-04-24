@@ -11,6 +11,26 @@ if (!window.timerInterval) {
     window.timerInterval = null;
 }
 
+let isPaused = false; // Estado para controlar pausa e continuação
+let elapsedSeconds = 0; // Armazena o tempo decorrido
+
+function togglePause() {
+    const pauseButton = document.getElementById('gherkin-pause');
+    isPaused = !isPaused;
+
+    if (isPaused) {
+        pauseButton.textContent = 'Continuar';
+        pauseButton.style.backgroundColor = '#28a745'; // Verde para "Continuar"
+        document.getElementById('gherkin-status').textContent = 'Status: Pausado';
+        stopTimer(); // Pausa o timer
+    } else {
+        pauseButton.textContent = 'Pausar';
+        pauseButton.style.backgroundColor = '#ffc107'; // Amarelo para "Pausar"
+        document.getElementById('gherkin-status').textContent = 'Status: Gravando';
+        startTimer(); // Retoma o timer
+    }
+}
+
 // Torna o painel movível apenas ao clicar no cabeçalho
 function makePanelDraggable(panel) {
     let isDragging = false;
@@ -131,7 +151,7 @@ function createPanel() {
     panel.setAttribute('aria-label', 'Painel Gherkin Generator');
     panel.innerHTML = `
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-            <h3 style="margin: 0; font-size: 18px; color: #007bff; font-weight: bold; text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);">GERADOR DE XPATH</h3>
+            <h3 style="margin: 0; font-size: 18px; color: #007bff; font-weight: bold; text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);">GERADOR DE XPATH E CSS</h3>
             <div class="button-container" style="display: flex; gap: 5px;">
                 <button id="gherkin-minimize" title="Minimizar" style="background-color: transparent; border: none; cursor: pointer;">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="#ffc107" viewBox="0 0 24 24"><path d="M19 13H5v-2h14v2z"/></svg>
@@ -145,20 +165,15 @@ function createPanel() {
             </div>
         </div>
         <div class="gherkin-content">
-            <p id="gherkin-status" style="font-size: 14px; margin: 5px 0; color: #555;">Status: Executando</p>
+            <p id="gherkin-status" style="font-size: 14px; margin: 5px 0; color: #555;">Status: Gravando</p>
             <div id="recording-indicator" style="display: none; margin: 10px auto; width: 10px; height: 10px; background-color: #ff0000; border-radius: 50%; animation: pulse 1s infinite;"></div>
             <p id="gherkin-timer" style="font-size: 14px; margin: 5px 0; color: #555;">Tempo de execução: 00:00</p>
             <div id="gherkin-log" style="overflow-y: auto; max-height: 370px; margin-top: 10px; border: 1px solid #ccc; padding: 5px; font-size: 12px; background-color: #f9f9f9;">
                 <p>Clique para capturar um elemento XPATH.</p>
             </div>
-            <div style="margin-top: 10px;">
-                <label for="gherkin-export-format" style="color: #555;">Formato de Exportação:</label>
-                <select id="gherkin-export-format" style="width: 100%; padding: 5px; border-radius: 5px;">
-                    <option value="txt">TXT</option>
-                    <option value="json">JSON</option>
-                    <option value="features">FEATURES</option>
-                </select>
-                <button id="gherkin-export" style="background-color: #007bff; color: white; border: none; border-radius: 5px; padding: 5px 10px; cursor: pointer; margin-top: 10px;">Exportar</button>
+            <div style="margin-top: 10px; display: flex; gap: 10px;">
+                <button id="gherkin-export" style="background-color: #007bff; color: white; border: none; border-radius: 5px; padding: 5px 10px; cursor: pointer; flex: 1;">Exportar</button>
+                <button id="gherkin-pause" style="background-color: #ffc107; color: white; border: none; border-radius: 5px; padding: 5px 10px; cursor: pointer; flex: 1;">Pausar</button>
             </div>
         </div>
         <p id="gherkin-footer" style="position: absolute; bottom: 10px; left: 10px; font-size: 10px; margin: 0; color: #555;">By: Matheus Ferreira de Oliveira</p>
@@ -293,6 +308,9 @@ if (!window.panel) {
     // Adiciona evento para exportar logs
     document.getElementById('gherkin-export').addEventListener('click', exportLogs);
 
+    // Adiciona evento ao botão "Pausar/Continuar"
+    document.getElementById('gherkin-pause').addEventListener('click', togglePause);
+
     // Aplica o tema salvo
     applySavedTheme();
 
@@ -303,19 +321,19 @@ if (!window.panel) {
 // Funções de timer
 function startTimer() {
     const timerElement = document.getElementById('gherkin-timer');
-    let seconds = 0;
 
     window.timerInterval = setInterval(() => {
-        seconds++;
-        const minutes = Math.floor(seconds / 60);
-        const remainingSeconds = seconds % 60;
-        timerElement.textContent = `Tempo de execução: ${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
+        if (!isPaused) {
+            elapsedSeconds++;
+            const minutes = Math.floor(elapsedSeconds / 60);
+            const remainingSeconds = elapsedSeconds % 60;
+            timerElement.textContent = `Tempo de execução: ${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
+        }
     }, 1000);
 }
 
 function stopTimer() {
     clearInterval(window.timerInterval);
-    document.getElementById('gherkin-timer').textContent = 'Tempo de execução: 00:00';
 }
 
 // Registro de interações com debounce
@@ -330,105 +348,83 @@ function debounce(func, wait) {
 function getCSSSelector(element) {
     if (!element || element.nodeType !== Node.ELEMENT_NODE) return null;
 
-    const uniqueAttributes = ['id', 'data-pc-section', 'role', 'class'];
-    const ignoredAttributes = ['style'];
-
-    // Função auxiliar para construir seletores baseados nos atributos
     function buildSelector(el) {
-        for (const attr of uniqueAttributes) {
+        let selector = el.tagName.toLowerCase();
+
+        // Adiciona o ID, se disponível
+        if (el.id) {
+            selector += `#${el.id}`;
+            return selector; // ID é único, não precisa de mais detalhes
+        }
+
+        // Adiciona as classes, se disponíveis
+        if (el.className) {
+            const classes = el.className
+                .split(' ')
+                .filter(cls => cls.trim() !== '')
+                .map(cls => `.${cls}`)
+                .join('');
+            selector += classes;
+        }
+
+        // Adiciona atributos específicos para maior precisão
+        const attributes = ['name', 'type', 'aria-label', 'data-pc-name'];
+        attributes.forEach(attr => {
             if (el.hasAttribute(attr)) {
-                const value = el.getAttribute(attr).trim();
-                if (value) {
-                    if (attr === 'class') {
-                        return `${el.tagName.toLowerCase()}.${value.split(' ').join('.')}`; // Usa classes como seletor
-                    }
-                    return `${el.tagName.toLowerCase()}[${attr}="${value}"]`; // Usa outros atributos únicos
-                }
+                selector += `[${attr}="${el.getAttribute(attr)}"]`;
             }
-        }
-        return el.tagName.toLowerCase(); // Usa o nome da tag como último recurso
+        });
+
+        return selector;
     }
 
-    // Gera o seletor completo, incluindo ancestrais necessários
-    let selector = buildSelector(element);
-
-    // Inclui identificadores de dois elementos ancestrais
-    let parent = element.parentElement;
-    let ancestorCount = 0;
-
-    while (parent && ancestorCount < 2) {
-        const parentSelector = buildSelector(parent);
-        if (parentSelector) {
-            selector = `${parentSelector} > ${selector}`;
-        }
-        parent = parent.parentElement;
-        ancestorCount++;
-    }
-
-    return selector;
+    // Gera o seletor apenas para o elemento clicado
+    return buildSelector(element);
 }
 
 function getAttributeBasedXPath(element) {
     if (!element || element.nodeType !== Node.ELEMENT_NODE) return null;
 
-    const uniqueAttributes = ['id', 'data-pc-section', 'role', 'class'];
+    const prioritizedAttributes = ['label', 'aria-label', 'data-pc-name', 'class'];
 
-    const buildXPath = (el, includeParent = false) => {
-        let path = el.tagName.toLowerCase();
-
-        // Adiciona condições baseadas nos atributos do elemento clicado
+    function buildXPath(el) {
         const conditions = [];
-        for (const attr of uniqueAttributes) {
+
+        for (const attr of prioritizedAttributes) {
             if (el.hasAttribute(attr)) {
                 const value = el.getAttribute(attr).trim();
                 if (value) {
                     if (attr === 'class') {
                         const classes = value.split(' ').map(cls => `contains(@class, '${cls}')`);
-                        conditions.push(...classes); // Adiciona todas as classes como condições
+                        conditions.push(...classes);
                     } else {
-                        conditions.push(`@${attr}="${value}"`); // Adiciona outros atributos únicos
+                        conditions.push(`@${attr}="${value}"`);
                     }
                 }
             }
         }
 
-        // Adiciona condição para o texto do elemento, se existir
-        const textContent = el.textContent.trim();
-        if (textContent) {
-            conditions.push(`text()='${textContent}'`);
-        }
-
-        // Constrói o XPath com as condições do elemento clicado
+        let path = `//${el.tagName.toLowerCase()}`;
         if (conditions.length > 0) {
             path += `[${conditions.join(' and ')}]`;
         }
 
-        // Adiciona atributos de 1 elemento ancestral, se necessário
-        if (includeParent && el.parentElement) {
-            const parentConditions = [];
-            for (const attr of uniqueAttributes) {
-                if (el.parentElement.hasAttribute(attr)) {
-                    const value = el.parentElement.getAttribute(attr).trim();
-                    if (value) {
-                        parentConditions.push(`@${attr}="${value}"`);
-                    }
-                }
-            }
-            const parentPath = el.parentElement.tagName.toLowerCase();
-            if (parentConditions.length > 0) {
-                return `//${parentPath}[${parentConditions.join(' and ')}]/${path}`;
-            }
-            return `//${parentPath}/${path}`;
+        return path;
+    }
+
+    // Verifica se o elemento possui um filho <span> com a classe 'p-button-label'
+    if (element.tagName.toLowerCase() === 'button') {
+        const labelSpan = element.querySelector('span.p-button-label');
+        if (labelSpan && labelSpan.textContent.trim()) {
+            return `//span[contains(@class, 'p-button-label') and text()='${labelSpan.textContent.trim()}']`;
         }
+    }
 
-        return `//${path}`;
-    };
-
-    return buildXPath(element, true); // Inclui 1 elemento ancestral
+    return buildXPath(element);
 }
 
 document.addEventListener('click', (event) => {
-    if (!isRecording) return;
+    if (!isRecording || isPaused) return; // Ignora cliques se estiver pausado
 
     try {
         // Verifica se o contexto da extensão está válido
