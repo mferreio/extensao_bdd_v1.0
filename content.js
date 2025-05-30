@@ -262,15 +262,13 @@ function renderPanelContent(panel) {
                     </optgroup>
                 </select>
                 <div id="gherkin-log" style="overflow-y: auto; height: 260px; margin-top: 10px; border: 1px solid #ccc; padding: 5px; font-size: 13px; background-color: #f9f9f9;"></div>
-                <div style="display: flex; gap: 5px; margin-top: 10px;">
-                    <button id="end-cenario" style="background-color: #dc3545; color: white; border: none; border-radius: 5px; padding: 10px 15px;">Encerrar Cenário</button>
-                    <button id="end-feature" style="background-color: #6c757d; color: white; border: none; border-radius: 5px; padding: 10px 15px;" disabled>Encerrar Feature</button>
+                <div style="display: flex; flex-wrap: nowrap; gap: 4px; margin-top: 10px; justify-content: center; align-items: center; width: 100%;">
+                    <button id="end-cenario" style="background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 0; width: 60px; height: 32px; font-size: 12px; display: flex; align-items: center; justify-content: center;">Encerrar Cenário</button>
+                    <button id="end-feature" style="background-color: #6c757d; color: white; border: none; border-radius: 4px; padding: 0; width: 60px; height: 32px; font-size: 12px; display: flex; align-items: center; justify-content: center;" disabled>Encerrar Feature</button>
+                    <button id="gherkin-export" style="background-color: #007bff; color: white; border: none; border-radius: 4px; padding: 0; width: 60px; height: 32px; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center;">Exportar</button>
+                    <button id="gherkin-pause" style="background-color: #ffc107; color: white; border: none; border-radius: 4px; padding: 0; width: 60px; height: 32px; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center;">Pausar</button>
+                    <button id="gherkin-clear" style="background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 0; width: 60px; height: 32px; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center;">Limpar</button>
                 </div>
-            </div>
-            <div style="position: absolute; bottom: 10px; right: 10px; display: flex; gap: 5px; justify-content: flex-end;">
-                <button id="gherkin-export" style="background-color: #007bff; color: white; border: none; border-radius: 5px; padding: 10px; cursor: pointer; flex: 1;">Exportar</button>
-                <button id="gherkin-pause" style="background-color: #ffc107; color: white; border: none; border-radius: 5px; padding: 10px; cursor: pointer; flex: 1;">Pausar</button>
-                <button id="gherkin-clear" style="background-color: #dc3545; color: white; border: none; border-radius: 5px; padding: 10px; cursor: pointer; flex: 1;">Limpar</button>
             </div>
         `;
     } else if (window.gherkinPanelState === 'exportar') {
@@ -359,7 +357,18 @@ function initializePanelEvents(panel) {
                 showFeedback('Informe o nome do cenário!', 'error');
                 return;
             }
-            window.currentCenario = { name, interactions: [] };
+            // Adiciona automaticamente o passo Given que o usuário acessa a URL atual
+            const url = window.location.href;
+            const givenAcessaUrl = {
+                step: 'Given',
+                acao: 'acessa_url',
+                acaoTexto: 'que o usuário acessa',
+                nomeElemento: url,
+                cssSelector: '',
+                xpath: '',
+                timestamp: Date.now()
+            };
+            window.currentCenario = { name, interactions: [givenAcessaUrl] };
             window.interactions = window.currentCenario.interactions;
             window.gherkinPanelState = 'gravando';
             window.isRecording = true;
@@ -883,13 +892,14 @@ document.addEventListener('click', (event) => {
             return;
         }
 
-        // Ignora cliques dentro do painel da extensão ou em qualquer modal da extensão
+        // Ignora cliques dentro do painel da extensão, de qualquer modal ou da área de conteúdo do painel
         if (
             !event.target ||
             event.target.closest('#gherkin-panel') ||
-            event.target.closest('#gherkin-modal')
+            event.target.closest('#gherkin-modal') ||
+            event.target.closest('.gherkin-content')
         ) {
-            //console.log('Clique ignorado: ocorreu dentro do painel ou modal da extensão.');
+            //console.log('Clique ignorado: ocorreu dentro do painel, modal ou conteúdo da extensão.');
             return;
         }
 
@@ -904,13 +914,24 @@ document.addEventListener('click', (event) => {
         let acao = actionSelect ? actionSelect.options[actionSelect.selectedIndex].text : 'Clicar';
         let acaoValue = actionSelect ? actionSelect.value : 'clica';
 
-        // Define o passo BDD
+
+        // Define o passo BDD considerando o passo especial de acesso à URL
         let step = 'Then';
+        let offset = 0;
+        if (window.interactions.length > 0 && window.interactions[0].acao === 'acessa_url') {
+            offset = 1;
+        }
         if (window.interactions.length === 0) step = 'Given';
-        else if (window.interactions.length === 1) step = 'When';
+        else if (window.interactions.length === 1 && offset === 0) step = 'When';
+        else if (window.interactions.length === 1 && offset === 1) step = 'When';
+        else if (window.interactions.length === 2 && offset === 1) step = 'Then';
 
         // Monta a mensagem do log
         const mensagem = `${step} ${acao.toLowerCase()} no ${nomeElemento}`;
+
+
+    // Reseta flag do passo Given de acesso à URL
+    window.givenAcessaUrlAdded = false;
 
         // Salva interação
         window.interactions.push({ step, acao: acaoValue, acaoTexto: acao, nomeElemento, cssSelector, xpath, timestamp: Date.now() });
@@ -928,7 +949,12 @@ function renderLogWithActions() {
         return;
     }
     window.interactions.forEach((interaction, idx) => {
-        const mensagem = `${interaction.step} ${interaction.acaoTexto.toLowerCase()} no ${interaction.nomeElemento}`;
+        let mensagem = '';
+        if (interaction.acao === 'acessa_url') {
+            mensagem = `Given que o usuário acessa ${interaction.nomeElemento}`;
+        } else {
+            mensagem = `${interaction.step} ${interaction.acaoTexto.toLowerCase()} no ${interaction.nomeElemento}`;
+        }
         const logEntry = document.createElement('div');
         logEntry.className = 'gherkin-log-entry';
         logEntry.style.marginBottom = '8px';
