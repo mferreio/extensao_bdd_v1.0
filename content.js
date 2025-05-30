@@ -563,29 +563,82 @@ function showModal(message, onYes, onNo) {
     makePanelDraggable(panel);
 }
 
-// Função para exportar features selecionadas
+// Função para exportar features selecionadas em formato Behave/Selenium
 function exportSelectedFeatures(selectedIdxs) {
-    let content = '';
+    function slugify(text) {
+        return text.toString().toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+    }
+
     selectedIdxs.forEach(idx => {
         const feature = window.gherkinFeatures[idx];
         if (!feature) return;
-        content += `Feature: ${feature.name}\n`;
+        const featureSlug = slugify(feature.name);
+        const base = `features/`;
+
+        // Arquivo .feature
+        let featureFile = `Feature: ${feature.name}\n\n`;
         feature.cenarios.forEach(cenario => {
-            content += `  Cenário: ${cenario.name}\n`;
-            cenario.interactions.forEach((interaction, i) => {
-                const step = i === 0 ? 'Quando' : 'Então';
-                content += `    ${step} o usuário clica no elemento com:\n      CSS: ${interaction.cssSelector}\n      XPath: ${interaction.xpath}\n`;
+            featureFile += `  Scenario: ${cenario.name}\n`;
+            cenario.interactions.forEach(interaction => {
+                if (interaction.acao === 'acessa_url') {
+                    featureFile += `    Given que o usuário acessa ${interaction.nomeElemento}\n`;
+                } else {
+                    featureFile += `    ${interaction.step} ${interaction.acaoTexto.toLowerCase()} no ${interaction.nomeElemento}\n`;
+                }
+            });
+            featureFile += '\n';
+        });
+        downloadFile(`${base}${featureSlug}.feature`, featureFile);
+
+        // Arquivo pages.py
+        let className = featureSlug.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('');
+        let locatorsClass = `from selenium.webdriver.common.by import By\n\nclass ${className}Locators:\n`;
+        let pageClass = `class ${className}Page:\n    def __init__(self, browser):\n        self.browser = browser\n\n`;
+        const locators = {};
+        feature.cenarios.forEach(cenario => {
+            cenario.interactions.forEach(interaction => {
+                if (interaction.cssSelector && interaction.cssSelector.length < 100) {
+                    const locName = slugify(interaction.nomeElemento).toUpperCase();
+                    if (!locators[locName]) {
+                        locators[locName] = interaction.cssSelector;
+                    }
+                }
             });
         });
-        content += '\n';
+        Object.entries(locators).forEach(([name, selector]) => {
+            locatorsClass += `    ${name} = (By.CSS_SELECTOR, '${selector}')\n`;
+        });
+        pageClass += `    def open(self, url):\n        self.browser.get(url)\n\n`;
+        pageClass += `    def click_element(self, locator):\n        self.browser.find_element(*locator).click()\n\n`;
+        pageClass += `    def fill_field(self, locator, value):\n        el = self.browser.find_element(*locator)\n        el.clear()\n        el.send_keys(value)\n\n`;
+        pageClass += `    def element_exists(self, locator):\n        return len(self.browser.find_elements(*locator)) > 0\n\n`;
+        downloadFile(`${base}pages/${featureSlug}.pages.py`, locatorsClass + '\n' + pageClass);
+
+        // Arquivo steps.py
+        let stepsFile = `from behave import given, when, then\nfrom features.pages.${featureSlug} import ${className}Page, ${className}Locators\n\n`;
+        stepsFile += `def get_page(context):\n    if not hasattr(context, 'page') or not isinstance(context.page, ${className}Page):\n        context.page = ${className}Page(context.browser)\n    return context.page\n\n`;
+        stepsFile += `@given('que o usuário acessa {url}')\ndef step_acessa_url(context, url):\n    page = get_page(context)\n    page.open(url)\n\n`;
+        stepsFile += `@when('o usuário clica no {elemento}')\ndef step_clica_no_elemento(context, elemento):\n    page = get_page(context)\n    locator = getattr(${className}Locators, elemento.upper(), None)\n    assert locator, f'Locator não encontrado: {elemento}'\n    page.click_element(locator)\n\n`;
+        stepsFile += `@when('o usuário preenche no {elemento}')\ndef step_preenche_no_elemento(context, elemento):\n    page = get_page(context)\n    locator = getattr(${className}Locators, elemento.upper(), None)\n    assert locator, f'Locator não encontrado: {elemento}'\n    page.fill_field(locator, 'VALOR_AQUI')\n\n`;
+        stepsFile += `@then('validar que existe no {elemento}')\ndef step_valida_existe(context, elemento):\n    page = get_page(context)\n    locator = getattr(${className}Locators, elemento.upper(), None)\n    assert page.element_exists(locator), f'Elemento não encontrado: {elemento}'\n\n`;
+        downloadFile(`${base}steps/${featureSlug}.steps.py`, stepsFile);
     });
-    const blob = new Blob([content], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'features_exportadas.txt';
-    a.click();
     showFeedback('Exportação realizada com sucesso!');
+
+    // Função utilitária para download de arquivos
+    function downloadFile(filename, content) {
+        const blob = new Blob([content], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename.replace(/\//g, '_'); // Substitui barras para evitar problemas no nome do arquivo
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }, 100);
+    }
 }
 
 // Verifica se `style` já foi definido para evitar duplicação
