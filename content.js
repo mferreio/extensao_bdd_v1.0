@@ -1,3 +1,42 @@
+    // Adaptação dinâmica dos parâmetros de ação
+    function updateActionParams() {
+        const actionSelect = panel.querySelector('#gherkin-action-select');
+        const paramsDiv = panel.querySelector('#gherkin-action-params');
+        if (!actionSelect || !paramsDiv) return;
+        paramsDiv.innerHTML = '';
+        if (actionSelect.value === 'espera_segundos') {
+            // Campo para segundos
+            const label = document.createElement('label');
+            label.textContent = 'Tempo de espera (segundos):';
+            label.style.fontWeight = 'bold';
+            label.style.marginBottom = '4px';
+            label.setAttribute('for', 'gherkin-wait-seconds');
+            paramsDiv.appendChild(label);
+            const input = document.createElement('input');
+            input.type = 'number';
+            input.id = 'gherkin-wait-seconds';
+            input.min = '1';
+            input.value = '1';
+            input.style.width = '100%';
+            input.style.padding = '7px';
+            input.style.borderRadius = '5px';
+            input.style.border = '1px solid #ccc';
+            input.style.fontSize = '14px';
+            input.style.marginBottom = '8px';
+            paramsDiv.appendChild(input);
+        } else if (actionSelect.value === 'preenche') {
+            // Feedback visual para o usuário saber que deve preencher um campo na página
+            const info = document.createElement('div');
+            info.textContent = 'Clique em um campo de texto na página e preencha. O valor será registrado automaticamente.';
+            info.style.background = '#fffde7';
+            info.style.color = '#bfa100';
+            info.style.padding = '7px 10px';
+            info.style.borderRadius = '5px';
+            info.style.fontSize = '13px';
+            info.style.marginBottom = '8px';
+            paramsDiv.appendChild(info);
+        }
+    }
 // Função para parar o timer
 function stopTimer() {
     if (window.timerInterval) {
@@ -81,7 +120,8 @@ function updatePanelButtons(panel, isMinimized) {
     const minimizeButton = panel.querySelector('#gherkin-minimize');
     const reopenButton = panel.querySelector('#gherkin-reopen');
     const closeButton = panel.querySelector('#gherkin-close');
-    const buttonContainer = panel.querySelector('.button-container');
+    // Corrigido: agora busca pela nova classe do container dos botões do topo
+    const buttonContainer = panel.querySelector('.button-container-top');
 
     if (isMinimized) {
         minimizeButton.style.display = 'none'; // Oculta o botão Minimizar
@@ -89,14 +129,14 @@ function updatePanelButtons(panel, isMinimized) {
         closeButton.style.display = 'flex'; // Mantém o botão Fechar visível
 
         // Ajusta a ordem dos botões ao minimizar
-        buttonContainer.style.flexDirection = 'row'; // Reabrir à esquerda, Fechar à direita
+        if (buttonContainer) buttonContainer.style.flexDirection = 'row'; // Reabrir à esquerda, Fechar à direita
     } else {
         minimizeButton.style.display = 'flex'; // Exibe o botão Minimizar
         reopenButton.style.display = 'none'; // Oculta o botão Reabrir
         closeButton.style.display = 'flex'; // Mantém o botão Fechar visível
 
         // Ajusta a ordem dos botões ao abrir ou maximizar
-        buttonContainer.style.flexDirection = 'row'; // Minimizar à esquerda, Fechar à direita
+        if (buttonContainer) buttonContainer.style.flexDirection = 'row'; // Minimizar à esquerda, Fechar à direita
     }
 }
 
@@ -127,16 +167,18 @@ function toggleMinimizePanel(panel) {
         clearButton.style.display = 'none'; // Oculta o botão Limpar
 
         // Alinha os botões "Abrir" e "Fechar" no lado direito
-        const buttonContainer = panel.querySelector('.button-container');
-        buttonContainer.style.justifyContent = 'flex-end';
-        buttonContainer.style.alignItems = 'center';
-        buttonContainer.style.gap = '5px';
+        const buttonContainer = panel.querySelector('.button-container-top');
+        if (buttonContainer) {
+            buttonContainer.style.justifyContent = 'flex-end';
+            buttonContainer.style.alignItems = 'center';
+            buttonContainer.style.gap = '5px';
+        }
     } else {
         content.style.display = 'block';
         header.style.display = 'block';
         footer.style.display = 'block';
-        panel.style.height = '600px';
-        panel.style.width = '400px';
+        panel.style.height = '700px';
+        panel.style.width = '480px';
         minimizeButton.style.display = 'flex'; // Exibe o botão Minimizar
         reopenButton.style.display = 'none'; // Oculta o botão Abrir
         closeButton.style.display = 'flex'; // Mantém o botão Fechar visível
@@ -145,10 +187,12 @@ function toggleMinimizePanel(panel) {
         clearButton.style.display = 'flex'; // Exibe o botão Limpar
 
         // Restaura o layout padrão dos botões
-        const buttonContainer = panel.querySelector('.button-container');
-        buttonContainer.style.justifyContent = 'space-between';
-        buttonContainer.style.alignItems = 'center';
-        buttonContainer.style.gap = '5px';
+        const buttonContainer = panel.querySelector('.button-container-top');
+        if (buttonContainer) {
+            buttonContainer.style.justifyContent = 'space-between';
+            buttonContainer.style.alignItems = 'center';
+            buttonContainer.style.gap = '5px';
+        }
     }
 }
 
@@ -195,13 +239,13 @@ function renderPanelContent(panel) {
     let html = '';
     // Cabeçalho fixo
     html += `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-            <h3 style="margin: 0; font-size: 18px; color: #007bff; font-weight: bold; text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);">GERADOR DE XPATH E CSS</h3>
-            <div class="button-container" style="display: flex; gap: 5px; justify-content: flex-end;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; min-height: 40px;">
+            <h3 style="margin: 0; font-size: 18px; color: #007bff; font-weight: bold; text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);">GERADOR DE TESTES AUTOMATIZADOS</h3>
+            <div class="button-container-top" style="display: flex; gap: 6px; align-items: center;">
+                <button id="gherkin-reopen" title="Reabrir" style="display: none; background-color: transparent; border: none; cursor: pointer; font-size: 14px; font-weight: bold; color: #28a745;">Abrir</button>
                 <button id="gherkin-minimize" title="Minimizar" style="background-color: transparent; border: none; cursor: pointer;">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="#ffc107" viewBox="0 0 24 24"><path d="M19 13H5v-2h14v2z"/></svg>
                 </button>
-                <button id="gherkin-reopen" title="Reabrir" style="display: none; background-color: transparent; border: none; cursor: pointer; font-size: 14px; font-weight: bold; color: #28a745;">Abrir</button>
                 <button id="gherkin-close" title="Fechar" style="background-color: transparent; border: none; cursor: pointer;">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="#dc3545" viewBox="0 0 24 24"><path d="M18.3 5.71L12 12l6.3 6.29-1.42 1.42L12 13.41l-6.29 6.3-1.42-1.42L10.59 12 4.29 5.71 5.71 4.29 12 10.59l6.29-6.3z"/></svg>
                 </button>
@@ -261,11 +305,10 @@ function renderPanelContent(panel) {
                         <option value="espera_desabilitado">Esperar que o elemento esteja desabilitado</option>
                     </optgroup>
                 </select>
-                <div id="gherkin-log" style="overflow-y: auto; height: 260px; margin-top: 10px; border: 1px solid #ccc; padding: 5px; font-size: 13px; background-color: #f9f9f9;"></div>
+                <div id="gherkin-log" style="overflow-y: auto; height: 350px; margin-top: 10px; border: 1px solid #ccc; padding: 5px; font-size: 13px; background-color: #f9f9f9;"></div>
                 <div style="display: flex; flex-wrap: nowrap; gap: 4px; margin-top: 10px; justify-content: center; align-items: center; width: 100%;">
                     <button id="end-cenario" style="background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 0; width: 60px; height: 32px; font-size: 12px; display: flex; align-items: center; justify-content: center;">Encerrar Cenário</button>
                     <button id="end-feature" style="background-color: #6c757d; color: white; border: none; border-radius: 4px; padding: 0; width: 60px; height: 32px; font-size: 12px; display: flex; align-items: center; justify-content: center;" disabled>Encerrar Feature</button>
-                    <button id="gherkin-export" style="background-color: #007bff; color: white; border: none; border-radius: 4px; padding: 0; width: 60px; height: 32px; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center;">Exportar</button>
                     <button id="gherkin-pause" style="background-color: #ffc107; color: white; border: none; border-radius: 4px; padding: 0; width: 60px; height: 32px; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center;">Pausar</button>
                     <button id="gherkin-clear" style="background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 0; width: 60px; height: 32px; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center;">Limpar</button>
                 </div>
@@ -284,7 +327,7 @@ function renderPanelContent(panel) {
             <button id="new-feature" style="background-color: #28a745; color: white; border: none; border-radius: 5px; padding: 10px 20px; margin-left: 10px;">Nova Feature</button>
         </div>`;
     }
-    html += `<p id="gherkin-footer" style="position: absolute; bottom: -20px; right: 10px; font-size: 10px; margin: 0; color: #555;">By: Matheus Ferreira de Oliveira</p>`;
+    html += `<p id="gherkin-footer" style="position: absolute; bottom: 0px; right: 10px; font-size: 10px; margin: 0; color: #555;">By: Matheus Ferreira de Oliveira</p>`;
     panel.innerHTML = html;
 }
 
@@ -296,8 +339,8 @@ function createPanel() {
     panel.style.position = 'fixed';
     panel.style.top = '10px';
     panel.style.left = '10px';
-    panel.style.width = '400px';
-    panel.style.height = '600px';
+    panel.style.width = '480px';
+    panel.style.height = '700px';
     panel.style.background = '#ffffff';
     panel.style.border = '1px solid #ccc';
     panel.style.borderRadius = '12px';
@@ -563,37 +606,86 @@ function showModal(message, onYes, onNo) {
     makePanelDraggable(panel);
 }
 
-// Função para exportar features selecionadas em formato Behave/Selenium
 function exportSelectedFeatures(selectedIdxs) {
     function slugify(text) {
         return text.toString().toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
     }
 
+    // 1. environment.py
+    const environmentPy = `"""
+Arquivo de configuração do Behave para setup e teardown do Selenium WebDriver.
+"""
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+
+def before_all(context):
+    \"\"\"Inicializa o navegador antes de todos os testes.\"\"\"
+    chrome_options = Options()
+    chrome_options.add_argument('--start-maximized')
+    # chrome_options.add_argument('--headless')  # Descomente para rodar sem interface gráfica
+    context.browser = webdriver.Chrome(options=chrome_options)
+    context.browser.implicitly_wait(10)
+
+def after_all(context):
+    \"\"\"Encerra o navegador após todos os testes.\"\"\"
+    if hasattr(context, 'browser'):
+        context.browser.quit()
+`;
+    downloadFile('environment.py', environmentPy);
+
+    // 2. requirements.txt
+    const requirements = `behave
+selenium
+webdriver-manager
+`;
+    downloadFile('requirements.txt', requirements);
+
+    // 3. Para cada feature selecionada
     selectedIdxs.forEach(idx => {
         const feature = window.gherkinFeatures[idx];
         if (!feature) return;
         const featureSlug = slugify(feature.name);
-        const base = `features/`;
+        const className = featureSlug.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('');
 
-        // Arquivo .feature
-        let featureFile = `Feature: ${feature.name}\n\n`;
+        // .feature
+        let featureFile = `# language: pt\n# Arquivo gerado automaticamente pela extensão\n\nFeature: ${feature.name}\n\n`;
+        let stepsFile = `\"\"\"\nSteps Behave para a feature ${feature.name}.\nGerado automaticamente pela extensão.\n\"\"\"\nfrom behave import given, when, then\nfrom features.pages.${featureSlug}_pages import ${className}Page, ${className}Locators\n\ndef get_page(context):\n    \"\"\"Obtém ou inicializa o Page Object da feature.\"\"\"\n    if not hasattr(context, 'page') or not isinstance(context.page, ${className}Page):\n        context.page = ${className}Page(context.browser)\n    return context.page\n\n`;
+
         feature.cenarios.forEach(cenario => {
             featureFile += `  Scenario: ${cenario.name}\n`;
             cenario.interactions.forEach(interaction => {
+                let decorator = '';
+                let stepText = '';
                 if (interaction.acao === 'acessa_url') {
-                    featureFile += `    Given que o usuário acessa ${interaction.nomeElemento}\n`;
+                    decorator = `@given('que o usuário acessa {url}')`;
+                    stepText = `Given que o usuário acessa ${interaction.nomeElemento}`;
+                    stepsFile += `${decorator}\ndef step_acessa_url(context, url):\n    \"\"\"Acessa a URL informada.\"\"\"\n    page = get_page(context)\n    page.open(url)\n\n`;
+                } else if (interaction.acao === 'clica') {
+                    decorator = `@when('o usuário clica no {elemento}')`;
+                    stepText = `When o usuário clica no ${interaction.nomeElemento}`;
+                    stepsFile += `${decorator}\ndef step_clica_no_elemento(context, elemento):\n    \"\"\"Clica no elemento especificado.\"\"\"\n    page = get_page(context)\n    locator = getattr(${className}Locators, elemento.upper(), None)\n    assert locator, f'Locator não encontrado: {elemento}'\n    page.click_element(locator)\n\n`;
+                } else if (interaction.acao === 'preenche') {
+                    decorator = `@when('o usuário preenche no {elemento}')`;
+                    stepText = `When o usuário preenche no ${interaction.nomeElemento}`;
+                    stepsFile += `${decorator}\ndef step_preenche_no_elemento(context, elemento):\n    \"\"\"Preenche o campo especificado.\"\"\"\n    page = get_page(context)\n    locator = getattr(${className}Locators, elemento.upper(), None)\n    assert locator, f'Locator não encontrado: {elemento}'\n    page.fill_field(locator, 'VALOR_AQUI')\n\n`;
+                } else if (interaction.acao === 'valida_existe') {
+                    decorator = `@then('validar que existe no {elemento}')`;
+                    stepText = `Then validar que existe no ${interaction.nomeElemento}`;
+                    stepsFile += `${decorator}\ndef step_valida_existe(context, elemento):\n    \"\"\"Valida que o elemento existe na página.\"\"\"\n    page = get_page(context)\n    locator = getattr(${className}Locators, elemento.upper(), None)\n    assert page.element_exists(locator), f'Elemento não encontrado: {elemento}'\n\n`;
                 } else {
-                    featureFile += `    ${interaction.step} ${interaction.acaoTexto.toLowerCase()} no ${interaction.nomeElemento}\n`;
+                    decorator = `@${interaction.step.toLowerCase()}('${interaction.acaoTexto.toLowerCase()} no {elemento}')`;
+                    stepText = `${interaction.step} ${interaction.acaoTexto.toLowerCase()} no ${interaction.nomeElemento}`;
+                    stepsFile += `${decorator}\ndef step_${interaction.acao}_${slugify(interaction.nomeElemento)}(context, elemento):\n    \"\"\"Step gerado automaticamente.\"\"\"\n    pass\n\n`;
                 }
+                featureFile += `    ${stepText}\n`;
             });
             featureFile += '\n';
         });
-        downloadFile(`${base}${featureSlug}.feature`, featureFile);
+        downloadFile(`${featureSlug}.feature`, featureFile);
 
-        // Arquivo pages.py
-        let className = featureSlug.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('');
-        let locatorsClass = `from selenium.webdriver.common.by import By\n\nclass ${className}Locators:\n`;
-        let pageClass = `class ${className}Page:\n    def __init__(self, browser):\n        self.browser = browser\n\n`;
+        // _pages.py
+        let locatorsClass = `\"\"\"\nLocators e Page Object para a feature ${feature.name}.\nGerado automaticamente pela extensão.\n\"\"\"\nfrom selenium.webdriver.common.by import By\n\nclass ${className}Locators:\n    \"\"\"Locators para elementos da página.\"\"\"\n`;
+        let pageClass = `\nclass ${className}Page:\n    \"\"\"Page Object para a feature ${feature.name}.\"\"\"\n    def __init__(self, browser):\n        \"\"\"Inicializa a página com o navegador.\"\"\"\n        self.browser = browser\n\n`;
         const locators = {};
         feature.cenarios.forEach(cenario => {
             cenario.interactions.forEach(interaction => {
@@ -608,22 +700,17 @@ function exportSelectedFeatures(selectedIdxs) {
         Object.entries(locators).forEach(([name, selector]) => {
             locatorsClass += `    ${name} = (By.CSS_SELECTOR, '${selector}')\n`;
         });
-        pageClass += `    def open(self, url):\n        self.browser.get(url)\n\n`;
-        pageClass += `    def click_element(self, locator):\n        self.browser.find_element(*locator).click()\n\n`;
-        pageClass += `    def fill_field(self, locator, value):\n        el = self.browser.find_element(*locator)\n        el.clear()\n        el.send_keys(value)\n\n`;
-        pageClass += `    def element_exists(self, locator):\n        return len(self.browser.find_elements(*locator)) > 0\n\n`;
-        downloadFile(`${base}pages/${featureSlug}.pages.py`, locatorsClass + '\n' + pageClass);
+        pageClass += `    def open(self, url):\n        \"\"\"Abre a URL especificada.\"\"\"\n        self.browser.get(url)\n\n`;
+        pageClass += `    def click_element(self, locator):\n        \"\"\"Clica no elemento identificado pelo locator.\"\"\"\n        self.browser.find_element(*locator).click()\n\n`;
+        pageClass += `    def fill_field(self, locator, value):\n        \"\"\"Preenche o campo identificado pelo locator com o valor fornecido.\"\"\"\n        el = self.browser.find_element(*locator)\n        el.clear()\n        el.send_keys(value)\n\n`;
+        pageClass += `    def element_exists(self, locator):\n        \"\"\"Verifica se o elemento existe na página.\"\"\"\n        return len(self.browser.find_elements(*locator)) > 0\n\n`;
+        downloadFile(`${featureSlug}_pages.py`, locatorsClass + '\\n' + pageClass);
 
-        // Arquivo steps.py
-        let stepsFile = `from behave import given, when, then\nfrom features.pages.${featureSlug} import ${className}Page, ${className}Locators\n\n`;
-        stepsFile += `def get_page(context):\n    if not hasattr(context, 'page') or not isinstance(context.page, ${className}Page):\n        context.page = ${className}Page(context.browser)\n    return context.page\n\n`;
-        stepsFile += `@given('que o usuário acessa {url}')\ndef step_acessa_url(context, url):\n    page = get_page(context)\n    page.open(url)\n\n`;
-        stepsFile += `@when('o usuário clica no {elemento}')\ndef step_clica_no_elemento(context, elemento):\n    page = get_page(context)\n    locator = getattr(${className}Locators, elemento.upper(), None)\n    assert locator, f'Locator não encontrado: {elemento}'\n    page.click_element(locator)\n\n`;
-        stepsFile += `@when('o usuário preenche no {elemento}')\ndef step_preenche_no_elemento(context, elemento):\n    page = get_page(context)\n    locator = getattr(${className}Locators, elemento.upper(), None)\n    assert locator, f'Locator não encontrado: {elemento}'\n    page.fill_field(locator, 'VALOR_AQUI')\n\n`;
-        stepsFile += `@then('validar que existe no {elemento}')\ndef step_valida_existe(context, elemento):\n    page = get_page(context)\n    locator = getattr(${className}Locators, elemento.upper(), None)\n    assert page.element_exists(locator), f'Elemento não encontrado: {elemento}'\n\n`;
-        downloadFile(`${base}steps/${featureSlug}.steps.py`, stepsFile);
+        // _steps.py
+        downloadFile(`${featureSlug}_steps.py`, stepsFile);
     });
     showFeedback('Exportação realizada com sucesso!');
+
 
     // Função utilitária para download de arquivos
     function downloadFile(filename, content) {
@@ -889,45 +976,47 @@ function getCSSSelector(element) {
     return buildSelector(element);
 }
 
-function getAttributeBasedXPath(element) {
+// Gera um XPath relativo robusto para o elemento, priorizando boas práticas
+function getRobustXPath(element) {
     if (!element || element.nodeType !== Node.ELEMENT_NODE) return null;
 
-    const prioritizedAttributes = ['label', 'aria-label', 'data-pc-name', 'class'];
+    // 1. Se tem ID único, use direto
+    if (element.id && document.querySelectorAll(`#${CSS.escape(element.id)}`).length === 1) {
+        return `//*[@id='${element.id}']`;
+    }
 
-    function buildXPath(el) {
-        const conditions = [];
+    // 2. Procura atributos únicos e estáveis
+    const attrs = ['data-testid', 'data-qa', 'name', 'aria-label', 'title'];
+    for (const attr of attrs) {
+        const val = element.getAttribute(attr);
+        if (val && document.querySelectorAll(`[${attr}='${val}']`).length === 1) {
+            return `//*[@${attr}='${val}']`;
+        }
+    }
 
-        for (const attr of prioritizedAttributes) {
-            if (el.hasAttribute(attr)) {
-                const value = el.getAttribute(attr).trim();
-                if (value) {
-                    if (attr === 'class') {
-                        const classes = value.split(' ').map(cls => `contains(@class, '${cls}')`);
-                        conditions.push(...classes);
-                    } else {
-                        conditions.push(`@${attr}="${value}"`);
-                    }
-                }
+    // 3. Caminho relativo a partir de ancestral com id/atributo único
+    let path = '';
+    let el = element;
+    while (el && el.nodeType === Node.ELEMENT_NODE && el !== document.body) {
+        let segment = el.tagName.toLowerCase();
+        // Se tem atributo único, para aqui
+        for (const attr of attrs) {
+            const val = el.getAttribute(attr);
+            if (val && document.querySelectorAll(`[${attr}='${val}']`).length === 1) {
+                path = `//*[@${attr}='${val}']${path ? '/' + path : ''}`;
+                return path;
             }
         }
-
-        let path = `//${el.tagName.toLowerCase()}`;
-        if (conditions.length > 0) {
-            path += `[${conditions.join(' and ')}]`;
+        // Se não, adiciona posição entre irmãos do mesmo tipo
+        const siblings = Array.from(el.parentNode.children).filter(e => e.tagName === el.tagName);
+        if (siblings.length > 1) {
+            const idx = siblings.indexOf(el) + 1;
+            segment += `[${idx}]`;
         }
-
-        return path;
+        path = path ? `${segment}/${path}` : segment;
+        el = el.parentNode;
     }
-
-    // Verifica se o elemento possui um filho <span> com a classe 'p-button-label'
-    if (element.tagName.toLowerCase() === 'button') {
-        const labelSpan = element.querySelector('span.p-button-label');
-        if (labelSpan && labelSpan.textContent.trim()) {
-            return `//span[contains(@class, 'p-button-label') and text()='${labelSpan.textContent.trim()}']`;
-        }
-    }
-
-    return buildXPath(element);
+    return '//' + path;
 }
 
 function isExtensionContextValid() {
@@ -935,63 +1024,116 @@ function isExtensionContextValid() {
 }
 
 // Registro de cliques
+// Controle para evitar múltiplos logs para a mesma ação
+if (typeof window.lastInputTarget === 'undefined') window.lastInputTarget = null;
+if (typeof window.inputDebounceTimeout === 'undefined') window.inputDebounceTimeout = null;
+if (typeof window.lastInputValue === 'undefined') window.lastInputValue = '';
+
+// Captura clique único
 document.addEventListener('click', (event) => {
-    if (!window.isRecording || window.isPaused) return; // Ignora cliques se estiver pausado
-
-
+    if (!window.isRecording || window.isPaused) return;
     try {
-        if (!isExtensionContextValid()) {
-            console.warn('Erro: Contexto da extensão inválido. Ignorando clique.');
-            return;
-        }
-
-        // Ignora cliques dentro do painel da extensão, de qualquer modal ou da área de conteúdo do painel
+        if (!isExtensionContextValid()) return;
         if (
             !event.target ||
             event.target.closest('#gherkin-panel') ||
             event.target.closest('#gherkin-modal') ||
             event.target.closest('.gherkin-content')
-        ) {
-            //console.log('Clique ignorado: ocorreu dentro do painel, modal ou conteúdo da extensão.');
-            return;
-        }
+        ) return;
 
+        // Se for input, não registra aqui (será tratado no input)
+        if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA' || event.target.isContentEditable) return;
+
+        // Clique normal
         const cssSelector = getCSSSelector(event.target);
-        const xpath = getAttributeBasedXPath(event.target);
-        // Extrai o texto do elemento clicado
+        const xpath = getRobustXPath(event.target);
         let nomeElemento = (event.target.innerText || event.target.value || event.target.getAttribute('aria-label') || event.target.getAttribute('name') || event.target.tagName).trim();
         if (!nomeElemento) nomeElemento = event.target.tagName;
-
-        // Obtém a ação selecionada
         const actionSelect = document.getElementById('gherkin-action-select');
         let acao = actionSelect ? actionSelect.options[actionSelect.selectedIndex].text : 'Clicar';
         let acaoValue = actionSelect ? actionSelect.value : 'clica';
 
+        // Parâmetros extras para ações específicas
+        let interactionParams = {};
+        if (acaoValue === 'espera_segundos') {
+            const waitInput = document.getElementById('gherkin-wait-seconds');
+            let tempoEspera = 1;
+            if (waitInput && waitInput.value) {
+                tempoEspera = parseInt(waitInput.value, 10);
+                if (isNaN(tempoEspera) || tempoEspera < 1) tempoEspera = 1;
+            }
+            interactionParams.tempoEspera = tempoEspera;
+        }
 
-        // Define o passo BDD considerando o passo especial de acesso à URL
+        // Evita duplicidade: só registra se não for igual à última interação
+        const last = window.interactions[window.interactions.length - 1];
+        let isDuplicate = last && last.acao === acaoValue && last.cssSelector === cssSelector && last.nomeElemento === nomeElemento;
+        if (acaoValue === 'espera_segundos' && last && last.tempoEspera !== undefined) {
+            isDuplicate = isDuplicate && last.tempoEspera === interactionParams.tempoEspera;
+        }
+        if (isDuplicate) return;
+
+        // Passo BDD
         let step = 'Then';
         let offset = 0;
-        if (window.interactions.length > 0 && window.interactions[0].acao === 'acessa_url') {
-            offset = 1;
-        }
+        if (window.interactions.length > 0 && window.interactions[0].acao === 'acessa_url') offset = 1;
         if (window.interactions.length === 0) step = 'Given';
         else if (window.interactions.length === 1 && offset === 0) step = 'When';
         else if (window.interactions.length === 1 && offset === 1) step = 'When';
         else if (window.interactions.length === 2 && offset === 1) step = 'Then';
 
-        // Monta a mensagem do log
-        const mensagem = `${step} ${acao.toLowerCase()} no ${nomeElemento}`;
-
-
-    // Reseta flag do passo Given de acesso à URL
-    window.givenAcessaUrlAdded = false;
-
-        // Salva interação
-        window.interactions.push({ step, acao: acaoValue, acaoTexto: acao, nomeElemento, cssSelector, xpath, timestamp: Date.now() });
-
-        // Atualiza o log com menu de ações
+        window.givenAcessaUrlAdded = false;
+        window.interactions.push({ step, acao: acaoValue, acaoTexto: acao, nomeElemento, cssSelector, xpath, timestamp: Date.now(), ...interactionParams });
         renderLogWithActions();
         saveInteractionsToStorage();
+    } catch (error) { console.error('Erro ao registrar clique:', error); }
+});
+
+// Captura preenchimento de input (debounced)
+function handleInputEvent(event) {
+    if (!window.isRecording || window.isPaused) return;
+    if (!event.target || !(event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA' || event.target.isContentEditable)) return;
+    if (event.target.closest('#gherkin-panel') || event.target.closest('#gherkin-modal') || event.target.closest('.gherkin-content')) return;
+
+    window.lastInputTarget = event.target;
+    window.lastInputValue = event.target.value;
+    if (window.inputDebounceTimeout) clearTimeout(window.inputDebounceTimeout);
+    window.inputDebounceTimeout = setTimeout(() => {
+        // Só registra se valor mudou e não for vazio
+        if (!window.lastInputTarget) return;
+        const value = window.lastInputTarget.value;
+        if (value === '' || value === undefined) return;
+
+        const cssSelector = getCSSSelector(window.lastInputTarget);
+        const xpath = getRobustXPath(window.lastInputTarget);
+        let nomeElemento = (window.lastInputTarget.getAttribute('aria-label') || window.lastInputTarget.getAttribute('name') || window.lastInputTarget.id || window.lastInputTarget.className || window.lastInputTarget.tagName).toString().trim();
+        if (!nomeElemento) nomeElemento = window.lastInputTarget.tagName;
+        const actionSelect = document.getElementById('gherkin-action-select');
+        let acao = 'Preencher';
+        let acaoValue = 'preenche';
+
+        // Evita duplicidade: só registra se não for igual à última interação
+        const last = window.interactions[window.interactions.length - 1];
+        if (last && last.acao === acaoValue && last.cssSelector === cssSelector && last.nomeElemento === nomeElemento && last.valorPreenchido === value) return;
+
+        // Passo BDD
+        let step = 'Then';
+        let offset = 0;
+        if (window.interactions.length > 0 && window.interactions[0].acao === 'acessa_url') offset = 1;
+        if (window.interactions.length === 0) step = 'Given';
+        else if (window.interactions.length === 1 && offset === 0) step = 'When';
+        else if (window.interactions.length === 1 && offset === 1) step = 'When';
+        else if (window.interactions.length === 2 && offset === 1) step = 'Then';
+
+        window.givenAcessaUrlAdded = false;
+        window.interactions.push({ step, acao: acaoValue, acaoTexto: acao, nomeElemento, cssSelector, xpath, valorPreenchido: value, timestamp: Date.now() });
+        renderLogWithActions();
+        saveInteractionsToStorage();
+        window.lastInputTarget = null;
+    }, 700); // Aguarda 700ms após o último input
+}
+
+document.addEventListener('input', handleInputEvent, true);
 // Função para renderizar o log com menu de ações
 function renderLogWithActions() {
     const log = document.getElementById('gherkin-log');
@@ -1001,34 +1143,114 @@ function renderLogWithActions() {
         log.innerHTML = '<p>Clique para capturar um elemento XPATH.</p>';
         return;
     }
+
+    const MAX_LOG_CHARS = 300;
     window.interactions.forEach((interaction, idx) => {
         let mensagem = '';
         if (interaction.acao === 'acessa_url') {
             mensagem = `Given que o usuário acessa ${interaction.nomeElemento}`;
+        } else if (interaction.acao === 'preenche') {
+            mensagem = `${interaction.step} ${interaction.acaoTexto.toLowerCase()} no ${interaction.nomeElemento}`;
+            if (typeof interaction.valorPreenchido !== 'undefined') {
+                mensagem += ` (valor: "${interaction.valorPreenchido}")`;
+            }
+        } else if (interaction.acao === 'espera_segundos') {
+            mensagem = `${interaction.step} ${interaction.acaoTexto.toLowerCase()} no ${interaction.nomeElemento}`;
+            if (typeof interaction.tempoEspera !== 'undefined') {
+                mensagem += ` (${interaction.tempoEspera} segundos)`;
+            }
         } else {
             mensagem = `${interaction.step} ${interaction.acaoTexto.toLowerCase()} no ${interaction.nomeElemento}`;
         }
+
+        // Se o log for muito grande, exibe apenas o início e botão para visualizar
+        const isVeryLarge = mensagem.length > MAX_LOG_CHARS;
         const logEntry = document.createElement('div');
         logEntry.className = 'gherkin-log-entry';
-        logEntry.style.marginBottom = '8px';
-        logEntry.style.padding = '8px';
-        logEntry.style.border = '1px solid #e3e3e3';
-        logEntry.style.borderRadius = '5px';
-        logEntry.style.backgroundColor = '#f1f8ff';
-        logEntry.style.fontWeight = 'bold';
-        logEntry.style.color = '#0D47A1';
-        logEntry.style.display = 'flex';
-        logEntry.style.justifyContent = 'space-between';
-        logEntry.style.alignItems = 'center';
-        // Mensagem
-        const msgSpan = document.createElement('span');
-        msgSpan.textContent = mensagem;
-        logEntry.appendChild(msgSpan);
-        // Botão/menu de ações
+        let expanded = false;
+
+        if (isVeryLarge) {
+            // Mensagem truncada
+            const msgSpan = document.createElement('span');
+            const TRUNC_SIZE = 80;
+            let preview = mensagem.slice(0, TRUNC_SIZE);
+            if (mensagem.length > TRUNC_SIZE) preview += '...';
+            msgSpan.textContent = preview;
+            msgSpan.style.color = '#dc3545';
+            msgSpan.style.flex = '1';
+            msgSpan.title = 'Clique no botão para visualizar o log completo.';
+            logEntry.appendChild(msgSpan);
+
+            // Botão para abrir modal
+            const modalBtn = document.createElement('button');
+            modalBtn.className = 'gherkin-large-log-btn';
+            modalBtn.title = 'Visualizar log completo';
+            modalBtn.style.background = 'none';
+            modalBtn.style.border = 'none';
+            modalBtn.style.cursor = 'pointer';
+            modalBtn.style.marginLeft = '6px';
+            modalBtn.style.padding = '2px';
+            modalBtn.style.display = 'flex';
+            modalBtn.style.alignItems = 'center';
+            modalBtn.setAttribute('aria-label', 'Visualizar log completo');
+            modalBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="#007bff"/><path d="M8 12l2.5 2.5L16 9" stroke="#fff" stroke-width="2" fill="none"/></svg>';
+            modalBtn.onclick = (e) => {
+                e.stopPropagation();
+                showLargeLogModal(mensagem);
+            };
+            logEntry.appendChild(modalBtn);
+        } else {
+            // Mensagem
+            const msgSpan = document.createElement('span');
+            msgSpan.textContent = mensagem;
+            msgSpan.style.flex = '1';
+            // Tooltip se o texto for truncado visualmente
+            setTimeout(() => {
+                if (msgSpan.offsetHeight < msgSpan.scrollHeight || msgSpan.offsetWidth < msgSpan.scrollWidth) {
+                    msgSpan.title = mensagem;
+                } else {
+                    msgSpan.removeAttribute('title');
+                }
+            }, 0);
+            logEntry.appendChild(msgSpan);
+
+            // Botão expandir/recolher
+            const expandBtn = document.createElement('button');
+            expandBtn.className = 'gherkin-expand-btn';
+            expandBtn.title = 'Expandir log';
+            expandBtn.style.background = 'none';
+            expandBtn.style.border = 'none';
+            expandBtn.style.cursor = 'pointer';
+            expandBtn.style.marginLeft = '6px';
+            expandBtn.style.padding = '2px';
+            expandBtn.style.display = 'flex';
+            expandBtn.style.alignItems = 'center';
+            expandBtn.setAttribute('aria-label', 'Expandir log');
+            expandBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>';
+            expandBtn.onclick = (e) => {
+                e.stopPropagation();
+                expanded = !expanded;
+                if (expanded) {
+                    logEntry.classList.add('expanded');
+                    expandBtn.title = 'Recolher log';
+                    expandBtn.setAttribute('aria-label', 'Recolher log');
+                    expandBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24"><path d="M7 14l5-5 5 5z"/></svg>';
+                } else {
+                    logEntry.classList.remove('expanded');
+                    expandBtn.title = 'Expandir log';
+                    expandBtn.setAttribute('aria-label', 'Expandir log');
+                    expandBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>';
+                }
+            };
+            logEntry.appendChild(expandBtn);
+        }
+
+        // Botão/menu de ações (ao lado do log)
         const actionMenu = document.createElement('div');
         actionMenu.className = 'gherkin-action-menu';
         actionMenu.style.position = 'relative';
-        actionMenu.style.marginLeft = '10px';
+        actionMenu.style.marginLeft = '6px';
+        actionMenu.style.display = 'inline-block';
         // Ícone de três pontos
         const menuBtn = document.createElement('button');
         menuBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>';
@@ -1121,6 +1343,72 @@ function renderLogWithActions() {
         log.appendChild(logEntry);
     });
     log.scrollTop = log.scrollHeight;
+
+    // Função para mostrar log grande em modal
+    function showLargeLogModal(texto) {
+        // Remove modal antigo se existir
+        const oldModal = document.getElementById('gherkin-modal');
+        if (oldModal) oldModal.remove();
+        const modalBg = document.createElement('div');
+        modalBg.id = 'gherkin-modal';
+        modalBg.style.position = 'fixed';
+        modalBg.style.top = '0';
+        modalBg.style.left = '0';
+        modalBg.style.width = '100vw';
+        modalBg.style.height = '100vh';
+        modalBg.style.background = 'rgba(0,0,0,0.25)';
+        modalBg.style.display = 'flex';
+        modalBg.style.alignItems = 'center';
+        modalBg.style.justifyContent = 'center';
+        modalBg.style.zIndex = '10003';
+        const modal = document.createElement('div');
+        modal.style.background = '#fff';
+        modal.style.padding = '28px 32px 22px 32px';
+        modal.style.borderRadius = '12px';
+        modal.style.boxShadow = '0 4px 24px rgba(0,0,0,0.18)';
+        modal.style.display = 'flex';
+        modal.style.flexDirection = 'column';
+        modal.style.alignItems = 'center';
+        modal.style.gap = '18px';
+        modal.style.minWidth = '320px';
+        modal.style.maxWidth = '90vw';
+        modal.style.maxHeight = '80vh';
+        // Título
+        const title = document.createElement('div');
+        title.textContent = 'Log completo';
+        title.style.fontSize = '17px';
+        title.style.color = '#0D47A1';
+        title.style.textAlign = 'center';
+        modal.appendChild(title);
+        // Texto do log
+        const logBox = document.createElement('textarea');
+        logBox.value = texto;
+        logBox.readOnly = true;
+        logBox.style.width = '100%';
+        logBox.style.height = '200px';
+        logBox.style.fontSize = '13px';
+        logBox.style.padding = '7px';
+        logBox.style.borderRadius = '5px';
+        logBox.style.border = '1px solid #ccc';
+        logBox.style.marginTop = '8px';
+        logBox.style.resize = 'vertical';
+        modal.appendChild(logBox);
+        // Botão fechar
+        const closeBtn = document.createElement('button');
+        closeBtn.textContent = 'Fechar';
+        closeBtn.style.background = '#007bff';
+        closeBtn.style.color = '#fff';
+        closeBtn.style.border = 'none';
+        closeBtn.style.borderRadius = '6px';
+        closeBtn.style.padding = '8px 22px';
+        closeBtn.style.fontSize = '15px';
+        closeBtn.style.fontWeight = 'bold';
+        closeBtn.style.cursor = 'pointer';
+        closeBtn.onclick = () => modalBg.remove();
+        modal.appendChild(closeBtn);
+        modalBg.appendChild(modal);
+        document.body.appendChild(modalBg);
+    }
 }
 
 // Modal para editar interação
@@ -1185,15 +1473,35 @@ function showEditModal(idx) {
     actionLabel.style.fontWeight = 'bold';
     actionLabel.style.marginBottom = '4px';
     modal.appendChild(actionLabel);
-    const actionSelect = document.createElement('select');
-    actionSelect.style.width = '100%';
-    actionSelect.style.padding = '7px';
-    actionSelect.style.borderRadius = '5px';
-    actionSelect.style.border = '1px solid #ccc';
-    actionSelect.style.fontSize = '14px';
-    // Opções iguais ao painel
-    actionSelect.innerHTML = document.getElementById('gherkin-action-select')?.innerHTML || '';
-    actionSelect.value = interaction.acao;
+    let actionSelect;
+    if (interaction.acao === 'acessa_url') {
+        // Para o passo inicial, exibe o valor fixo e desabilita edição
+        actionSelect = document.createElement('input');
+        actionSelect.type = 'text';
+        actionSelect.value = 'acessa_url';
+        actionSelect.disabled = true;
+        actionSelect.style.width = '100%';
+        actionSelect.style.padding = '7px';
+        actionSelect.style.borderRadius = '5px';
+        actionSelect.style.border = '1px solid #ccc';
+        actionSelect.style.fontSize = '14px';
+        actionSelect.style.background = '#f5f5f5';
+    } else {
+        actionSelect = document.createElement('select');
+        actionSelect.style.width = '100%';
+        actionSelect.style.padding = '7px';
+        actionSelect.style.borderRadius = '5px';
+        actionSelect.style.border = '1px solid #ccc';
+        actionSelect.style.fontSize = '14px';
+        // Opções iguais ao painel
+        const mainActionSelect = document.getElementById('gherkin-action-select');
+        if (mainActionSelect && mainActionSelect.innerHTML.trim()) {
+            actionSelect.innerHTML = mainActionSelect.innerHTML;
+        } else {
+            actionSelect.innerHTML = '<option value="clica">Clicar</option>';
+        }
+        actionSelect.value = interaction.acao;
+    }
     modal.appendChild(actionSelect);
     // Campo nome do elemento
     const nomeLabel = document.createElement('label');
@@ -1227,8 +1535,16 @@ function showEditModal(idx) {
     saveBtn.style.cursor = 'pointer';
     saveBtn.onclick = () => {
         interaction.step = stepSelect.value;
-        interaction.acao = actionSelect.value;
-        interaction.acaoTexto = actionSelect.options[actionSelect.selectedIndex].text;
+        if (interaction.acao === 'acessa_url') {
+            // Mantém a ação fixa
+            interaction.acao = 'acessa_url';
+            interaction.acaoTexto = 'Acessa';
+        } else {
+            interaction.acao = actionSelect.value;
+            // Protege contra opção indefinida
+            const selectedOption = actionSelect.options ? actionSelect.options[actionSelect.selectedIndex] : null;
+            interaction.acaoTexto = selectedOption ? selectedOption.text : actionSelect.value;
+        }
         interaction.nomeElemento = nomeInput.value.trim() || interaction.nomeElemento;
         saveInteractionsToStorage();
         renderLogWithActions();
@@ -1314,18 +1630,18 @@ function showXPathModal(xpath) {
     modalBg.appendChild(modal);
     document.body.appendChild(modalBg);
 }
+
+
 // Atualiza o log ao renderizar o painel em modo gravação
-const originalRenderPanelContent = renderPanelContent;
-renderPanelContent = function(panel) {
-    originalRenderPanelContent(panel);
-    if (window.gherkinPanelState === 'gravando') {
-        setTimeout(renderLogWithActions, 10);
-    }
-};
-    } catch (error) {
-        console.error('Erro ao registrar clique:', error);
-    }
-});
+if (typeof renderPanelContent !== 'undefined') {
+    const originalRenderPanelContent = renderPanelContent;
+    renderPanelContent = function(panel) {
+        originalRenderPanelContent(panel);
+        if (window.gherkinPanelState === 'gravando') {
+            setTimeout(renderLogWithActions, 10);
+        }
+    };
+}
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === 'keepAlive') {
