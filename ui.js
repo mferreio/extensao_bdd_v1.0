@@ -192,10 +192,7 @@ function renderPanelContent(panel) {
                         <option value="espera_desabilitado">Esperar que o elemento esteja desabilitado</option>
                     </optgroup>
                 </select>
-                <div style="font-size:12px;color:#0D47A1;margin-bottom:8px;">
-                    Dica: Para gravar upload de arquivo, clique em um campo de upload na página ou selecione "Upload de arquivo" acima.<br>
-                    Para cada ação, siga a orientação exibida abaixo do seletor.
-                </div>
+                <div id="gherkin-action-params"></div>
                 <div id="gherkin-log" style="overflow-y: auto; height: 350px; margin-top: 10px; border: 1px solid #ccc; padding: 5px; font-size: 13px; background-color: #f9f9f9;"></div>
                 <div style="display: flex; flex-wrap: nowrap; gap: 4px; margin-top: 10px; justify-content: center; align-items: center; width: 100%;">
                     <button id="end-cenario" style="background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 0; width: 60px; height: 32px; font-size: 12px; display: flex; align-items: center; justify-content: center;">Encerrar Cenário</button>
@@ -556,6 +553,9 @@ function showModal(message, onYes, onNo) {
 
     const yesBtn = document.createElement('button');
     yesBtn.textContent = 'Sim';
+    yesBtn.style.background = '#007bff';
+    yesBtn.style.color = '#fff';
+    yesBtn.style.border = 'none';
     yesBtn.style.background = '#007bff';
     yesBtn.style.color = '#fff';
     yesBtn.style.border = 'none';

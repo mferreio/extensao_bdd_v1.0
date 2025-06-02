@@ -1,6 +1,17 @@
 // Importa funções utilitárias e de UI
-import { slugify, downloadFile, showFeedback, debounce, getCSSSelector, getRobustXPath, isExtensionContextValid } from './utils.js';
-import { showLoginModal, updateActionParams, makePanelDraggable, clearLog, showModal, renderLogWithActions, showEditModal, showXPathModal, createPanel, renderPanelContent, exportProjectZip, initializePanelEvents } from './ui.js';
+import { slugify, downloadFile, showFeedback, debounce, getCSSSelector, isExtensionContextValid } from './utils.js';
+import {
+    showLoginModal,
+    updateActionParams,
+    makePanelDraggable,
+    showModal,
+    renderLogWithActions,
+    showEditModal,
+    showXPathModal,
+    createPanel,
+    renderPanelContent,
+    initializePanelEvents
+} from './ui.js';
 import { getConfig } from './config.js';
 
 // Variáveis globais para controle de múltiplas features/cenários e estado do painel
@@ -14,75 +25,428 @@ if (typeof window.timerInterval === 'undefined') window.timerInterval = null;
 if (typeof window.elapsedSeconds === 'undefined') window.elapsedSeconds = 0;
 if (!window.interactions) window.interactions = [];
 
-// Função para parar o timer
-function stopTimer() {
-    if (window.timerInterval) {
-        clearInterval(window.timerInterval);
-        window.timerInterval = null;
-    }
-    const timerElement = document.getElementById('gherkin-timer');
-    if (timerElement) {
-        timerElement.textContent = 'Tempo de execução: 00:00';
-    }
-}
-
-// Função para iniciar o timer
-function startTimer() {
-    stopTimer();
-    window.elapsedSeconds = window.elapsedSeconds || 0;
-    const timerElement = document.getElementById('gherkin-timer');
-    function updateTimer() {
-        window.elapsedSeconds++;
-        if (timerElement) {
-            const min = String(Math.floor(window.elapsedSeconds / 60)).padStart(2, '0');
-            const sec = String(window.elapsedSeconds % 60).padStart(2, '0');
-            timerElement.textContent = `Tempo de execução: ${min}:${sec}`;
-        }
-    }
-    window.timerInterval = setInterval(updateTimer, 1000);
-    updateTimer();
-}
-
-// Função para alternar entre pausa e gravação
-function togglePause() {
-    const pauseButton = document.getElementById('gherkin-pause');
-    window.isPaused = !window.isPaused;
-    if (window.isPaused) {
-        pauseButton.textContent = 'Continuar';
-        pauseButton.style.backgroundColor = '#28a745';
-        document.getElementById('gherkin-status').textContent = 'Status: Pausado';
-        stopTimer();
-    } else {
-        pauseButton.textContent = 'Pausar';
-        pauseButton.style.backgroundColor = '#ffc107';
-        document.getElementById('gherkin-status').textContent = 'Status: Gravando';
-        startTimer();
-    }
-}
-
-// Função para alternar entre temas claro e escuro
-function toggleTheme() {
-    const panel = document.getElementById('gherkin-panel');
-    const isDarkMode = panel.classList.toggle('dark-theme');
-    chrome.storage.local.set({ theme: isDarkMode ? 'dark' : 'light' });
-}
-
-// Função para aplicar o tema salvo
-function applySavedTheme() {
-    chrome.storage.local.get('theme', (data) => {
-        const panel = document.getElementById('gherkin-panel');
-        if (data.theme === 'dark') {
-            panel.classList.add('dark-theme');
-        } else {
-            panel.classList.remove('dark-theme');
-        }
-    });
-}
+// Remova funções duplicadas já presentes em ui.js:
+// - stopTimer
+// - startTimer
+// - togglePause
+// - toggleTheme
+// - applySavedTheme
+// - getRobustXPath
+// - saveInteractionsToStorage
 
 // Inicialização do painel e variáveis globais
 if (!window.panel) {
     window.panel = createPanel();
     renderPanelContent(window.panel);
+
+    // --- INJEÇÃO DE CSS MODERNO E RESPONSIVO ---
+    const style = document.createElement('style');
+    style.id = 'gherkin-panel-modern-style';
+    style.innerHTML = `
+    #gherkin-panel, .gherkin-panel {
+        font-family: 'Segoe UI', Arial, sans-serif !important;
+        background: #fff;
+        color: #222;
+        border-radius: 12px;
+        box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+        max-width: 480px;
+        min-width: 320px;
+        width: 96vw;
+        min-height: 320px;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        z-index: 2147483647;
+    }
+    .gherkin-panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: #f7faff;
+        border-bottom: 1px solid #e0e6ed;
+        padding: 18px 20px 12px 20px;
+        font-size: 1.25rem;
+        font-weight: bold;
+        color: #0070f3;
+        letter-spacing: 0.01em;
+        user-select: none;
+    }
+    .gherkin-panel-header .gherkin-panel-title {
+        font-size: 1.18rem;
+        font-weight: 700;
+        letter-spacing: 0.01em;
+    }
+    .gherkin-panel-header .gherkin-panel-actions {
+        display: flex;
+        gap: 8px;
+    }
+    .gherkin-panel-header button, .gherkin-panel-header .gherkin-close, .gherkin-panel-header .gherkin-minimize {
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 1.2rem;
+        padding: 2px 6px;
+        color: #e74c3c;
+        transition: color 0.2s;
+    }
+    .gherkin-panel-header .gherkin-minimize { color: #f1c40f; }
+    .gherkin-panel-header .gherkin-close:hover { color: #c0392b; }
+    .gherkin-panel-header .gherkin-minimize:hover { color: #b7950b; }
+
+    .gherkin-panel-content {
+        flex: 1 1 auto;
+        padding: 24px 24px 12px 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        background: #fff;
+        overflow-y: auto;
+    }
+    .gherkin-panel-content h2, .gherkin-panel-content h3 {
+        margin: 0 0 8px 0;
+        font-weight: 600;
+        color: #0070f3;
+    }
+    .gherkin-panel-content label {
+        font-weight: 500;
+        margin-bottom: 4px;
+        display: block;
+        color: #222;
+    }
+    .gherkin-panel-content input[type="text"], .gherkin-panel-content input[type="number"], .gherkin-panel-content textarea, .gherkin-panel-content select {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1.5px solid #e0e6ed;
+        border-radius: 6px;
+        font-size: 1rem;
+        margin-bottom: 10px;
+        background: #f9fbfd;
+        transition: border-color 0.2s;
+    }
+    .gherkin-panel-content input:focus, .gherkin-panel-content textarea:focus, .gherkin-panel-content select:focus {
+        outline: none;
+        border-color: #0070f3;
+        background: #fff;
+    }
+    .gherkin-panel-content input[aria-invalid="true"], .gherkin-panel-content textarea[aria-invalid="true"] {
+        border-color: #e74c3c;
+        background: #fff6f6;
+    }
+    .gherkin-panel-content .gherkin-actions-row {
+        display: flex;
+        gap: 12px;
+        margin: 12px 0 0 0;
+        flex-wrap: wrap;
+    }
+    .gherkin-panel-content button, .gherkin-panel-content .gherkin-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 10px 18px;
+        border: none;
+        border-radius: 6px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+        box-shadow: 0 2px 8px rgba(0,112,243,0.04);
+        margin-bottom: 0;
+        outline: none;
+    }
+    .gherkin-panel-content .gherkin-btn-primary {
+        background: #0070f3;
+        color: #fff;
+    }
+    .gherkin-panel-content .gherkin-btn-primary:hover, .gherkin-panel-content .gherkin-btn-primary:focus {
+        background: #005bb5;
+    }
+    .gherkin-panel-content .gherkin-btn-success {
+        background: #28a745;
+        color: #fff;
+    }
+    .gherkin-panel-content .gherkin-btn-success:hover, .gherkin-panel-content .gherkin-btn-success:focus {
+        background: #218838;
+    }
+    .gherkin-panel-content .gherkin-btn-danger {
+        background: #e74c3c;
+        color: #fff;
+    }
+    .gherkin-panel-content .gherkin-btn-danger:hover, .gherkin-panel-content .gherkin-btn-danger:focus {
+        background: #c0392b;
+    }
+    .gherkin-panel-content .gherkin-btn-warning {
+        background: #ffc107;
+        color: #222;
+    }
+    .gherkin-panel-content .gherkin-btn-warning:hover, .gherkin-panel-content .gherkin-btn-warning:focus {
+        background: #e0a800;
+    }
+    .gherkin-panel-content .gherkin-btn[disabled], .gherkin-panel-content button[disabled] {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+    .gherkin-panel-content .gherkin-checkbox-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+    .gherkin-panel-content .gherkin-checkbox-list label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 400;
+        font-size: 1rem;
+        color: #222;
+        cursor: pointer;
+    }
+    .gherkin-panel-content .gherkin-checkbox-list input[type="checkbox"] {
+        accent-color: #0070f3;
+        width: 18px;
+        height: 18px;
+    }
+    .gherkin-panel-content .gherkin-feedback {
+        margin: 8px 0;
+        padding: 10px 14px;
+        border-radius: 6px;
+        font-size: 1rem;
+        font-weight: 500;
+        background: #eafaf1;
+        color: #218838;
+        border: 1.5px solid #28a745;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 40px;
+        transition: background 0.2s, color 0.2s;
+    }
+    .gherkin-panel-content .gherkin-feedback.error {
+        background: #fff6f6;
+        color: #e74c3c;
+        border-color: #e74c3c;
+    }
+    .gherkin-panel-content .gherkin-feedback.info {
+        background: #f7faff;
+        color: #0070f3;
+        border-color: #0070f3;
+    }
+    .gherkin-panel-content .gherkin-feedback .gherkin-feedback-icon {
+        font-size: 1.3em;
+        display: inline-block;
+        vertical-align: middle;
+    }
+    .gherkin-panel-content .gherkin-tip {
+        background: #f7faff;
+        border-left: 4px solid #0070f3;
+        padding: 10px 16px;
+        border-radius: 6px;
+        color: #0070f3;
+        font-size: 0.98rem;
+        margin-bottom: 8px;
+        margin-top: 0;
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    .gherkin-panel-content .gherkin-tip .gherkin-tip-icon {
+        font-size: 1.2em;
+        margin-right: 4px;
+        color: #0070f3;
+    }
+    .gherkin-panel-content .gherkin-summary {
+        background: #f9fbfd;
+        border: 1.5px solid #e0e6ed;
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin-bottom: 10px;
+        font-size: 0.98rem;
+        color: #222;
+        max-height: 180px;
+        overflow-y: auto;
+    }
+    .gherkin-panel-content .gherkin-summary-title {
+        font-weight: 600;
+        color: #0070f3;
+        margin-bottom: 6px;
+        font-size: 1.05rem;
+    }
+    .gherkin-panel-content .gherkin-summary-list {
+        list-style: disc inside;
+        margin: 0;
+        padding: 0 0 0 10px;
+    }
+    .gherkin-panel-content .gherkin-summary-list li {
+        margin-bottom: 2px;
+        font-size: 0.97rem;
+    }
+    .gherkin-panel-content .gherkin-footer {
+        text-align: right;
+        font-size: 0.92rem;
+        color: #888;
+        margin-top: 10px;
+        margin-bottom: 2px;
+    }
+    /* Dropdown de ações (três pontos) */
+    .gherkin-action-dropdown {
+        position: absolute !important;
+        min-width: 170px;
+        background: #fff;
+        border-radius: 10px;
+        box-shadow: 0 8px 32px rgba(0,112,243,0.13), 0 1.5px 6px rgba(0,0,0,0.07);
+        border: 1.5px solid #e0e6ed;
+        z-index: 2147483646 !important;
+        padding: 8px 0;
+        display: none;
+        flex-direction: column;
+        animation: fadeInDropdown 0.18s;
+        /* Novo: ajuste para garantir que o dropdown nunca fique fora da janela */
+        right: auto !important;
+        left: 0 !important;
+        top: 36px !important;
+        max-width: 90vw;
+        max-height: 320px;
+        overflow-y: auto;
+    }
+    .gherkin-action-dropdown.open {
+        display: flex !important;
+    }
+    .gherkin-action-dropdown button,
+    .gherkin-action-dropdown .gherkin-action-item {
+        background: none;
+        border: none;
+        width: 100%;
+        text-align: left;
+        padding: 10px 18px;
+        font-size: 1rem;
+        color: #222;
+        cursor: pointer;
+        transition: background 0.18s, color 0.18s;
+        border-radius: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .gherkin-action-dropdown button:hover,
+    .gherkin-action-dropdown .gherkin-action-item:hover {
+        background: #f7faff;
+        color: #0070f3;
+    }
+    .gherkin-action-dropdown .gherkin-action-separator {
+        height: 1px;
+        background: #e0e6ed;
+        margin: 4px 0;
+        border: none;
+    }
+    @keyframes fadeInDropdown {
+        from { opacity: 0; transform: translateY(-8px);}
+        to { opacity: 1; transform: translateY(0);}
+    }
+
+    /* Painel de logs aprimorado */
+    .gherkin-log-panel {
+        background: #f9fbfd;
+        border-radius: 10px;
+        border: 1.5px solid #e0e6ed;
+        padding: 12px 0 6px 0;
+        margin-bottom: 10px;
+        max-height: 260px;
+        overflow-y: auto;
+        box-shadow: 0 2px 8px rgba(0,112,243,0.04);
+        font-size: 0.98rem;
+        scrollbar-width: thin;
+        scrollbar-color: #0070f3 #f9fbfd;
+    }
+    .gherkin-log-panel::-webkit-scrollbar {
+        width: 8px;
+        background: #f9fbfd;
+    }
+    .gherkin-log-panel::-webkit-scrollbar-thumb {
+        background: #e0e6ed;
+        border-radius: 6px;
+    }
+    .gherkin-log-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+    .gherkin-log-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 10px 18px 10px 16px;
+        border-bottom: 1px solid #e0e6ed;
+        background: transparent;
+        transition: background 0.15s;
+        position: relative;
+    }
+    .gherkin-log-item:last-child {
+        border-bottom: none;
+    }
+    .gherkin-log-item:hover {
+        background: #f7faff;
+    }
+    .gherkin-log-icon {
+        font-size: 1.25em;
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background: #eaf6ff;
+        color: #0070f3;
+        flex-shrink: 0;
+    }
+    .gherkin-log-item[data-action="preenche"] .gherkin-log-icon { background: #f6f9e8; color: #28a745; }
+    .gherkin-log-item[data-action="upload"] .gherkin-log-icon { background: #fff6e6; color: #f39c12; }
+    .gherkin-log-item[data-action="login"] .gherkin-log-icon { background: #f6e8f9; color: #8e44ad; }
+    .gherkin-log-item[data-action="clica"] .gherkin-log-icon { background: #eafaf1; color: #218838; }
+    .gherkin-log-item[data-action="espera"] .gherkin-log-icon { background: #fff6f6; color: #e74c3c; }
+    .gherkin-log-item[data-action="espera_elemento"] .gherkin-log-icon { background: #f7faff; color: #0070f3; }
+    .gherkin-log-item[data-action="acessa_url"] .gherkin-log-icon { background: #eaf6ff; color: #0070f3; }
+    .gherkin-log-item[data-action="seleciona"] .gherkin-log-icon { background: #f6f9e8; color: #218838; }
+    .gherkin-log-item[data-action="espera_nao_existe"] .gherkin-log-icon { background: #fff6f6; color: #e74c3c; }
+    .gherkin-log-content {
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+    .gherkin-log-title {
+        font-weight: 600;
+        color: #222;
+        font-size: 1.01em;
+        margin-bottom: 2px;
+    }
+    .gherkin-log-desc {
+        color: #555;
+        font-size: 0.97em;
+        margin-bottom: 0;
+    }
+    .gherkin-log-meta {
+        color: #888;
+        font-size: 0.93em;
+        margin-top: 2px;
+    }
+    /* Ajuste para dropdown não sair da tela */
+    .gherkin-action-dropdown {
+        max-height: 320px;
+        overflow-y: auto;
+    }
+    @media (max-width: 600px) {
+        .gherkin-action-dropdown {
+            left: 0 !important;
+            right: auto !important;
+            max-width: 96vw;
+        }
+        .gherkin-log-panel {
+            max-height: 40vw;
+        }
+    }
+    `;
+    document.head.appendChild(style);
 }
 if (typeof window.lastInputTarget === 'undefined') window.lastInputTarget = null;
 if (typeof window.inputDebounceTimeout === 'undefined') window.inputDebounceTimeout = null;
@@ -90,14 +454,18 @@ if (typeof window.lastInputValue === 'undefined') window.lastInputValue = '';
 
 // Inicializa eventos do painel
 setTimeout(() => {
-    // Use apenas a função importada do ui.js
     initializePanelEvents(window.panel);
-    applySavedTheme();
-    // Removido: makePanelDraggable(window.panel);
     // Adiciona arrasto apenas na barra superior
     const header = window.panel.querySelector('.gherkin-panel-header');
     if (header) {
         makePanelDraggable(window.panel, header);
+    }
+    // Removido: lógica de dica de upload duplicada
+    // Garante que updateActionParams seja chamado ao trocar ação
+    const actionSelect = document.getElementById('gherkin-action-select');
+    if (actionSelect && typeof updateActionParams === 'function') {
+        actionSelect.addEventListener('change', () => updateActionParams(window.panel));
+        updateActionParams(window.panel);
     }
 }, 100);
 
@@ -139,7 +507,6 @@ document.addEventListener('click', (event) => {
                             timestamp: Date.now()
                         });
                         renderLogWithActions();
-                        saveInteractionsToStorage();
                     });
                 });
             } else {
@@ -233,7 +600,6 @@ document.addEventListener('click', (event) => {
                     timestamp: Date.now()
                 });
                 renderLogWithActions();
-                saveInteractionsToStorage();
             });
             return;
         }
@@ -259,7 +625,6 @@ document.addEventListener('click', (event) => {
         window.givenAcessaUrlAdded = false;
         window.interactions.push({ step, acao: acaoValue, acaoTexto: acao, nomeElemento, cssSelector, xpath, timestamp: Date.now(), ...interactionParams });
         renderLogWithActions();
-        saveInteractionsToStorage();
     } catch (error) { console.error('Erro ao registrar clique:', error); }
 });
 
@@ -317,13 +682,6 @@ if (typeof renderPanelContent !== 'undefined') {
             makePanelDraggable(panel, header);
         }
     };
-}
-
-// Função para salvar interações no storage local
-function saveInteractionsToStorage() {
-    try {
-        chrome.storage.local.set({ gherkinInteractions: window.interactions });
-    } catch (e) {}
 }
 
 // Função para exportar README.md para cada feature/cenário
@@ -750,7 +1108,7 @@ def after_step(context, step):
 def after_all(context):
     try:
         if hasattr(context, "driver"):
-            context.driver.quit()
+            context.driver.quit();
             logging.info("Driver finalizado com sucesso.")
     except Exception as e:
         logging.error(f"Erro ao finalizar o driver: {e}")
@@ -787,3 +1145,80 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
         }
     });
 }
+
+// --- Substitua a função getRobustXPath por esta implementação robusta ---
+function getRobustXPath(element) {
+    if (!element || element.nodeType !== 1) return '';
+
+    // Se o elemento tem um id único, use
+    if (element.id && document.querySelectorAll(`#${CSS.escape(element.id)}`).length === 1) {
+        return `//*[@id="${element.id}"]`;
+    }
+
+    // Se o elemento tem um name único, use
+    if (element.name && document.querySelectorAll(`[name="${element.name}"]`).length === 1) {
+        return `//*[@name="${element.name}"]`;
+    }
+
+    // Função auxiliar para escapar valores de atributos
+    function escapeXpathString(str) {
+        if (str.indexOf('"') === -1) {
+            return '"' + str + '"';
+        }
+        if (str.indexOf("'") === -1) {
+            return "'" + str + "'";
+        }
+        return 'concat("' + str.replace(/"/g, '", \'"\', "') + '")';
+    }
+
+    // Gera expressão de atributos relevantes
+    function getAttrExpr(el) {
+        const attrs = [];
+        if (el.getAttribute('type')) attrs.push(`@type=${escapeXpathString(el.getAttribute('type'))}`);
+        if (el.getAttribute('role')) attrs.push(`@role=${escapeXpathString(el.getAttribute('role'))}`);
+        if (el.getAttribute('aria-label')) attrs.push(`@aria-label=${escapeXpathString(el.getAttribute('aria-label'))}`);
+        if (el.getAttribute('placeholder')) attrs.push(`@placeholder=${escapeXpathString(el.getAttribute('placeholder'))}`);
+        if (el.getAttribute('data-testid')) attrs.push(`@data-testid=${escapeXpathString(el.getAttribute('data-testid'))}`);
+        if (el.className && typeof el.className === 'string') {
+            const classList = el.className.trim().split(/\s+/).filter(Boolean);
+            if (classList.length === 1) attrs.push(`contains(concat(' ',normalize-space(@class),' '), ' ${classList[0]} ')`);
+        }
+        return attrs.length ? '[' + attrs.join(' and ') + ']' : '';
+    }
+
+    // Caminho relativo, subindo até body ou html
+    let path = '';
+    let current = element;
+    while (current && current.nodeType === 1 && current !== document.body && current !== document.documentElement) {
+        let tag = current.tagName.toLowerCase();
+        let attrExpr = getAttrExpr(current);
+
+        // Se o elemento é único pelo conjunto de atributos, use
+        if (attrExpr) {
+            const testXpath = '//' + tag + attrExpr;
+            try {
+                const result = document.evaluate(testXpath, document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+                if (result.snapshotLength === 1) {
+                    path = '/' + tag + attrExpr + path;
+                    break;
+                }
+            } catch (e) {}
+        }
+
+        // Se não for único, tenta sem atributos, mas sem usar índices se possível
+        let siblings = Array.from(current.parentNode ? current.parentNode.children : []);
+        let sameTagSiblings = siblings.filter(sib => sib.tagName === current.tagName);
+        if (sameTagSiblings.length === 1) {
+            path = '/' + tag + path;
+        } else {
+            // Só usa índice se necessário
+            let idx = sameTagSiblings.indexOf(current) + 1;
+            path = '/' + tag + `[${idx}]` + path;
+        }
+        current = current.parentNode;
+    }
+    // Caminho final, sempre relativo ao body/html
+    return '.' + path;
+}
+
+// --- Fim da nova função getRobustXPath ---
