@@ -509,6 +509,9 @@ function exportSelectedFeatures(selectedIdxs) {
     });
 }
 
+// Torna exportSelectedFeatures disponível globalmente para o ui.js
+window.exportSelectedFeatures = exportSelectedFeatures;
+
 // Mantém o Service Worker ativo
 if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {

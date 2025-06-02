@@ -1479,6 +1479,40 @@ function initializePanelEvents(panel) {
             });
         };
     }
+
+    // Exportar Selecionadas (painel de exportação)
+    const exportSelectedBtn = panel.querySelector('#export-selected');
+    if (exportSelectedBtn) {
+        exportSelectedBtn.onclick = () => {
+            const form = panel.querySelector('#export-form');
+            if (!form) {
+                showFeedback('Formulário de exportação não encontrado!', 'error');
+                return;
+            }
+            const selected = Array.from(form.querySelectorAll('input[type="checkbox"]:checked')).map(cb => parseInt(cb.value, 10));
+            if (selected.length === 0) {
+                showFeedback('Selecione ao menos uma feature!', 'error');
+                return;
+            }
+            if (typeof exportSelectedFeatures === 'function') {
+                exportSelectedFeatures(selected);
+            } else if (window.exportSelectedFeatures) {
+                window.exportSelectedFeatures(selected);
+            }
+        };
+    }
+
+    // Nova Feature (painel de exportação)
+    const newFeatureBtn = panel.querySelector('#new-feature');
+    if (newFeatureBtn) {
+        newFeatureBtn.onclick = () => {
+            window.currentFeature = null;
+            window.currentCenario = null;
+            window.gherkinPanelState = 'feature';
+            renderPanelContent(panel);
+            setTimeout(() => initializePanelEvents(panel), 100);
+        };
+    }
 }
 
 export {
