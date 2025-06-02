@@ -3,10 +3,16 @@
     "name": "Gherkin Generator",
     "version": "1.0",
     "description": "Gera Xpath e CSS_selectors com base na navegação do usuário.",
-    "permissions": ["activeTab", "scripting", "downloads", "storage", "background"],
+    "permissions": ["activeTab", "scripting", "downloads", "storage"],
     "background": {
         "service_worker": "background.js"
     },
+    "content_scripts": [
+        {
+            "matches": ["<all_urls>"],
+            "js": ["dist/bundle.js"]
+        }
+    ],
     "action": {
         "default_icon": "icon.png"
     }
