@@ -469,6 +469,19 @@ setTimeout(() => {
     }
 }, 100);
 
+// Função utilitária para validar se um elemento pode ser preenchido
+function isFillableElement(el) {
+    if (!el) return false;
+    if (el.tagName === 'INPUT') {
+        // Apenas tipos que aceitam texto
+        const type = (el.type || '').toLowerCase();
+        return ['text', 'email', 'password', 'search', 'tel', 'url', 'number', 'date', 'datetime-local', 'month', 'time', 'week'].includes(type);
+    }
+    if (el.tagName === 'TEXTAREA') return true;
+    if (el.isContentEditable) return true;
+    return false;
+}
+
 // Captura clique único
 document.addEventListener('click', (event) => {
     if (!window.isRecording || window.isPaused) return;
@@ -553,6 +566,13 @@ document.addEventListener('click', (event) => {
         const actionSelect = document.getElementById('gherkin-action-select');
         let acao = actionSelect ? actionSelect.options[actionSelect.selectedIndex].text : 'Clicar';
         let acaoValue = actionSelect ? actionSelect.value : 'clica';
+
+        // Validação para ação "Preencher"
+        if (acaoValue === 'preenche' && !isFillableElement(event.target)) {
+            showFeedback('A ação "Preencher" só pode ser usada em campos editáveis como input, textarea ou elementos contenteditable.', 'error');
+            return;
+        }
+
         // Parâmetros extras para ações específicas
         let interactionParams = {};
         if (acaoValue === 'espera_segundos') {
@@ -628,30 +648,32 @@ document.addEventListener('click', (event) => {
     } catch (error) { console.error('Erro ao registrar clique:', error); }
 });
 
-// Captura preenchimento de input (debounced)
 function handleInputEvent(event) {
-    if (!window.isRecording || window.isPaused) return;
-    if (!event.target || !(event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA' || event.target.isContentEditable)) return;
-    if (event.target.closest('#gherkin-panel') || event.target.closest('#gherkin-modal') || event.target.closest('.gherkin-content')) return;
-    window.lastInputTarget = event.target;
-    window.lastInputValue = event.target.value;
-    if (window.inputDebounceTimeout) clearTimeout(window.inputDebounceTimeout);
-    window.inputDebounceTimeout = setTimeout(() => {
-        // Só registra se valor mudou e não for vazio
-        if (!window.lastInputTarget) return;
-        const value = window.lastInputTarget.value;
-        if (value === '' || value === undefined) return;
-        const cssSelector = getCSSSelector(window.lastInputTarget);
-        const xpath = getRobustXPath(window.lastInputTarget);
-        let nomeElemento = (window.lastInputTarget.getAttribute('aria-label') || window.lastInputTarget.getAttribute('name') || window.lastInputTarget.id || window.lastInputTarget.className || window.lastInputTarget.tagName).toString().trim();
-        if (!nomeElemento) nomeElemento = window.lastInputTarget.tagName;
+    // Protege contra variáveis não definidas
+    try {
+        if (!window.isRecording || window.isPaused) return;
+        if (!isExtensionContextValid()) return;
+        if (
+            !event.target ||
+            event.target.closest('#gherkin-panel') ||
+            event.target.closest('#gherkin-modal') ||
+            event.target.closest('.gherkin-content')
+        ) return;
+
+        // Só registra para campos editáveis
+        if (!isFillableElement(event.target)) return;
+
+        // Recupera valores necessários de forma segura
+        const cssSelector = getCSSSelector(event.target);
+        const xpath = typeof getRobustXPath === 'function' ? getRobustXPath(event.target) : '';
+        let nomeElemento = (event.target.getAttribute('aria-label') || event.target.getAttribute('name') || event.target.id || event.target.className || event.target.tagName).toString().trim();
+        if (!nomeElemento) nomeElemento = event.target.tagName;
         const actionSelect = document.getElementById('gherkin-action-select');
-        let acao = 'Preencher';
-        let acaoValue = 'preenche';
-        // Evita duplicidade: só registra se não for igual à última interação
-        const last = window.interactions[window.interactions.length - 1];
-        if (last && last.acao === acaoValue && last.cssSelector === cssSelector && last.nomeElemento === nomeElemento && last.valorPreenchido === value) return;
-        // Passo BDD
+        let acao = actionSelect ? actionSelect.options[actionSelect.selectedIndex].text : 'Preencher';
+        let acaoValue = actionSelect ? actionSelect.value : 'preenche';
+        let value = event.target.value || (event.target.textContent ? event.target.textContent.trim() : '');
+
+        // Define o step de acordo com a posição
         let step = 'Then';
         let offset = 0;
         if (window.interactions.length > 0 && window.interactions[0].acao === 'acessa_url') offset = 1;
@@ -659,13 +681,35 @@ function handleInputEvent(event) {
         else if (window.interactions.length === 1 && offset === 0) step = 'When';
         else if (window.interactions.length === 1 && offset === 1) step = 'When';
         else if (window.interactions.length === 2 && offset === 1) step = 'Then';
-        window.givenAcessaUrlAdded = false;
-        window.interactions.push({ step, acao: acaoValue, acaoTexto: acao, nomeElemento, cssSelector, xpath, valorPreenchido: value, timestamp: Date.now() });
-        renderLogWithActions();
-        saveInteractionsToStorage();
-        window.lastInputTarget = null;
-    }, 700);
+
+        // Debounce para evitar duplicidade
+        if (window.inputDebounceTimeout) clearTimeout(window.inputDebounceTimeout);
+        window.inputDebounceTimeout = setTimeout(() => {
+            const last = window.interactions[window.interactions.length - 1];
+            const now = Date.now();
+            if (
+                last &&
+                last.acao === acaoValue &&
+                last.cssSelector === cssSelector &&
+                last.nomeElemento === nomeElemento &&
+                last.valorPreenchido === value &&
+                now - last.timestamp < 1000
+            ) {
+                return;
+            }
+            window.interactions.push({
+                step, acao: acaoValue, acaoTexto: acao, nomeElemento, cssSelector, xpath,
+                valorPreenchido: value, timestamp: now
+            });
+            renderLogWithActions();
+            if (typeof saveInteractionsToStorage === 'function') saveInteractionsToStorage();
+            window.lastInputTarget = null;
+        }, 700);
+    } catch (err) {
+        console.error('Erro no handleInputEvent:', err);
+    }
 }
+document.removeEventListener('input', handleInputEvent, true); // Evita múltiplos binds
 document.addEventListener('input', handleInputEvent, true);
 
 // Atualiza o log ao renderizar o painel em modo gravação
@@ -1089,9 +1133,10 @@ def before_all(context):
     except WebDriverException as e:
         logging.error(f"Erro ao iniciar o driver: {e}")
         raise
-    except Exception as e:
+    except Exception as e {
         logging.error(f"Erro inesperado: {e}")
         raise
+    }
 
 def after_step(context, step):
     if step.status == "failed":
@@ -1222,3 +1267,178 @@ function getRobustXPath(element) {
 }
 
 // --- Fim da nova função getRobustXPath ---
+
+// --- Substituição da função renderLogWithActions para exibir colunas customizadas para "preencher" ---
+window.renderLogWithActions = function() {
+    const logPanel = document.getElementById('gherkin-log-panel');
+    if (!logPanel) return;
+    logPanel.innerHTML = '';
+
+    // Cria lista de logs
+    const ul = document.createElement('ul');
+    ul.className = 'gherkin-log-list';
+
+    window.interactions.forEach((interaction) => {
+        const li = document.createElement('li');
+        li.className = 'gherkin-log-item';
+        li.dataset.action = interaction.acao || '';
+
+        if (interaction.acao === 'preenche') {
+            // Layout especial para "Preencher": Gherkin | Ação | Elemento | Valor preenchido
+            li.style.alignItems = 'center';
+            li.style.gap = '0';
+
+            // Gherkin
+            const gherkin = document.createElement('span');
+            gherkin.style.flex = '0 0 70px';
+            gherkin.style.fontWeight = 'bold';
+            gherkin.style.color = '#0070f3';
+            gherkin.innerText = interaction.step || '';
+            li.appendChild(gherkin);
+
+            // Ícone + Ação
+            const action = document.createElement('span');
+            action.style.flex = '0 0 110px';
+            action.style.display = 'inline-flex';
+            action.style.alignItems = 'center';
+            action.innerHTML = `<span class="gherkin-log-icon" style="margin-right:6px;">📝</span>${interaction.acaoTexto || 'Preencher'}`;
+            li.appendChild(action);
+
+            // Elemento (nome do campo)
+            const elemento = document.createElement('span');
+            elemento.style.flex = '0 0 120px';
+            elemento.style.fontWeight = '500';
+            elemento.style.background = '#f7faff';
+            elemento.style.borderRadius = '5px';
+            elemento.style.padding = '2px 10px';
+            elemento.style.margin = '0 8px 0 0';
+            elemento.style.color = '#222';
+            elemento.style.fontSize = '0.97em';
+            elemento.innerText = interaction.nomeElemento || '';
+            li.appendChild(elemento);
+
+            // "o valor"
+            const labelValor = document.createElement('span');
+            labelValor.style.flex = '0 0 auto';
+            labelValor.style.color = '#555';
+            labelValor.style.fontSize = '0.97em';
+            labelValor.style.marginRight = '4px';
+            labelValor.innerText = 'o valor';
+            li.appendChild(labelValor);
+
+            // Valor preenchido
+            const valor = document.createElement('span');
+            valor.style.flex = '1';
+            valor.style.fontWeight = 'bold';
+            valor.style.background = '#fff';
+            valor.style.border = '1.5px solid #e0e6ed';
+            valor.style.borderRadius = '5px';
+            valor.style.padding = '2px 10px';
+            valor.style.color = '#222';
+            valor.style.fontSize = '0.97em';
+            valor.style.wordBreak = 'break-all';
+            valor.innerText = typeof interaction.valorPreenchido !== 'undefined' ? interaction.valorPreenchido : '';
+            li.appendChild(valor);
+        } else {
+            // Log padrão para outras ações
+            // Ícone
+            const icon = document.createElement('span');
+            icon.className = 'gherkin-log-icon';
+            icon.innerText = (() => {
+                switch (interaction.acao) {
+                    case 'preenche': return '📝';
+                    case 'upload': return '📤';
+                    case 'login': return '🔑';
+                    case 'clica': return '🖱️';
+                    case 'espera': return '⏳';
+                    case 'espera_elemento': return '👁️';
+                    case 'acessa_url': return '🌐';
+                    case 'seleciona': return '✅';
+                    case 'espera_nao_existe': return '🚫';
+                    default: return '🔹';
+                }
+            })();
+            li.appendChild(icon);
+
+            // Conteúdo
+            const content = document.createElement('div');
+            content.className = 'gherkin-log-content';
+
+            // Título
+            const title = document.createElement('div');
+            title.className = 'gherkin-log-title';
+            title.innerText = `${interaction.step || ''} ${interaction.acaoTexto || interaction.acao || ''}`;
+            content.appendChild(title);
+
+            // Descrição
+            const desc = document.createElement('div');
+            desc.className = 'gherkin-log-desc';
+            desc.innerText = interaction.nomeElemento || '';
+            content.appendChild(desc);
+
+            // Valor preenchido (apenas se existir, para manter compatibilidade)
+            if (typeof interaction.valorPreenchido !== 'undefined' && interaction.acao !== 'preenche') {
+                const meta = document.createElement('div');
+                meta.className = 'gherkin-log-meta';
+                meta.innerText = `Valor: "${interaction.valorPreenchido}"`;
+                content.appendChild(meta);
+            }
+
+            li.appendChild(content);
+        }
+
+        ul.appendChild(li);
+    });
+
+    logPanel.appendChild(ul);
+};
+
+// --- Adaptação para permitir edição do "Valor preenchido" no modal de edição de interação ---
+// Supondo que showEditModal é responsável por exibir o modal de edição de interação
+window.showEditModal = function(interaction, idx) {
+    // ...existing code to create modal...
+
+    // Campo Passo BDD
+    // ...existing code...
+
+    // Campo Ação
+    // ...existing code...
+
+    // Campo Nome do elemento
+    // ...existing code...
+
+    // Adiciona campo "Valor preenchido" apenas para ação "preenche"
+    let valorPreenchidoInput = null;
+    if (interaction.acao === 'preenche') {
+        const valorLabel = document.createElement('label');
+        valorLabel.innerText = 'Valor preenchido:';
+        valorLabel.setAttribute('for', 'gherkin-edit-valor-preenchido');
+        valorLabel.style.marginTop = '8px';
+
+        valorPreenchidoInput = document.createElement('input');
+        valorPreenchidoInput.type = 'text';
+        valorPreenchidoInput.id = 'gherkin-edit-valor-preenchido';
+        valorPreenchidoInput.value = typeof interaction.valorPreenchido !== 'undefined' ? interaction.valorPreenchido : '';
+        valorPreenchidoInput.style.marginBottom = '12px';
+        valorPreenchidoInput.autocomplete = 'off';
+
+        // Adiciona ao modal
+        modalContent.appendChild(valorLabel);
+        modalContent.appendChild(valorPreenchidoInput);
+    }
+
+    // ...existing code for Salvar/Cancelar...
+
+    saveBtn.onclick = function() {
+        // ...existing code to coletar outros campos...
+
+        // Coleta o valor preenchido se for ação "preenche"
+        if (interaction.acao === 'preenche' && valorPreenchidoInput) {
+            interaction.valorPreenchido = valorPreenchidoInput.value;
+        }
+
+        // ...existing code to salvar interação e fechar modal...
+    };
+
+    // ...existing code...
+};

@@ -655,14 +655,17 @@ function renderLogWithActions() {
     if (!log) return;
     log.innerHTML = '';
 
-    // Ajusta o container principal do painel de log para flexbox coluna e altura total
+    // Ajusta o container principal do painel de log para altura fixa e rolagem vertical
     log.style.display = 'flex';
     log.style.flexDirection = 'column';
-    log.style.height = '78%';
-    log.style.minHeight = '220px'; // previne colapso em telas pequenas
+    log.style.height = '350px'; // altura fixa (ajuste conforme necessário)
+    log.style.maxHeight = '350px';
+    log.style.minHeight = '220px';
     log.style.background = '#f9f9f9';
     log.style.padding = '0';
     log.style.margin = '0';
+    log.style.overflowY = 'auto'; // rolagem vertical sempre
+    log.style.overflowX = 'hidden';
 
     // Barra de busca e filtros
     const searchDiv = document.createElement('div');
@@ -754,7 +757,7 @@ function renderLogWithActions() {
     tableWrap.style.overflowX = 'auto';
     tableWrap.style.overflowY = 'auto';
     tableWrap.style.width = '100%';
-    tableWrap.style.minHeight = '0'; // importante para flexbox
+    tableWrap.style.minHeight = '0';
     tableWrap.style.background = '#fff';
     tableWrap.tabIndex = 0;
 
@@ -889,7 +892,13 @@ function renderLogWithActions() {
 
     renderRows();
     tableWrap.appendChild(table);
+    log.appendChild(searchDiv);
     log.appendChild(tableWrap);
+
+    // Sempre rola para o final ao adicionar novo log
+    setTimeout(() => {
+        log.scrollTop = log.scrollHeight;
+    }, 0);
 
     // Estilo responsivo e barra de rolagem horizontal fixa e customizada
     if (!document.getElementById('gherkin-log-table-style')) {
