@@ -503,6 +503,52 @@ function exportSelectedFeatures(selectedIdxs) {
 
             const filename = `README_${feature.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.md`;
             downloadFile(filename, readme);
+
+            // Gera pages.py
+            const pagesPy = `# pages.py gerado automaticamente para a feature "${feature.name}"
+
+class Page:
+    def __init__(self, driver):
+        self.driver = driver
+
+    # Adicione aqui os métodos de página necessários para "${feature.name}"
+    # Exemplo:
+    # def acessar_pagina(self):
+    #     self.driver.get("URL_DA_PAGINA")
+`;
+            downloadFile(`pages_${feature.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.py`, pagesPy);
+
+            // Gera steps.py
+            const stepsPy = `# steps.py gerado automaticamente para a feature "${feature.name}"
+from behave import given, when, then
+from selenium import webdriver
+
+@given('que o usuário acessa {url}')
+def step_acessa_url(context, url):
+    context.driver.get(url)
+
+# Adicione aqui os steps necessários para "${feature.name}"
+`;
+            downloadFile(`steps_${feature.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.py`, stepsPy);
+
+            // Gera environment.py
+            const environmentPy = `# environment.py gerado automaticamente para a feature "${feature.name}"
+from selenium import webdriver
+
+def before_all(context):
+    context.driver = webdriver.Chrome()
+
+def after_all(context):
+    context.driver.quit()
+`;
+            downloadFile(`environment_${feature.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.py`, environmentPy);
+
+            // Gera requirements.txt
+            const requirementsTxt = `# requirements.txt gerado automaticamente
+selenium
+behave
+`;
+            downloadFile(`requirements_${feature.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.txt`, requirementsTxt);
         });
 
         showFeedback('Exportação realizada com sucesso!');
