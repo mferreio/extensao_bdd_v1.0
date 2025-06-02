@@ -1,16 +1,14 @@
 // Importa funções utilitárias e de UI
 import { slugify, downloadFile, showFeedback, debounce, getCSSSelector, isExtensionContextValid } from './utils.js';
 import {
-    showLoginModal,
     updateActionParams,
     makePanelDraggable,
-    showModal,
     renderLogWithActions,
-    showEditModal,
-    showXPathModal,
     createPanel,
     renderPanelContent,
-    initializePanelEvents
+    initializePanelEvents,
+    showEditModal,
+    showXPathModal,
 } from './ui.js';
 import { getConfig } from './config.js';
 
@@ -469,13 +467,20 @@ setTimeout(() => {
     }
 }, 100);
 
-// Função utilitária para validar se um elemento pode ser preenchido
+// Função utilitária para validar se um elemento pode ser preenchido (agora cobre PrimeNG, inputmode, role, classes customizadas)
 function isFillableElement(el) {
     if (!el) return false;
     if (el.tagName === 'INPUT') {
-        // Apenas tipos que aceitam texto
+        // Tipos tradicionais
         const type = (el.type || '').toLowerCase();
-        return ['text', 'email', 'password', 'search', 'tel', 'url', 'number', 'date', 'datetime-local', 'month', 'time', 'week'].includes(type);
+        if (['text', 'email', 'password', 'search', 'tel', 'url', 'number', 'date', 'datetime-local', 'month', 'time', 'week'].includes(type)) return true;
+        // PrimeNG/Custom: inputmode="decimal" ou "numeric"
+        if (el.getAttribute('inputmode') && ['decimal', 'numeric'].includes(el.getAttribute('inputmode'))) return true;
+        // PrimeNG/Custom: role="spinbutton"
+        if (el.getAttribute('role') === 'spinbutton') return true;
+        // PrimeNG/Custom: classe p-inputtext ou p-inputnumber-input
+        const classList = (el.className || '').split(/\s+/);
+        if (classList.includes('p-inputtext') || classList.includes('p-inputnumber-input')) return true;
     }
     if (el.tagName === 'TEXTAREA') return true;
     if (el.isContentEditable) return true;
@@ -564,6 +569,7 @@ document.addEventListener('click', (event) => {
         let nomeElemento = (event.target.innerText || event.target.value || event.target.getAttribute('aria-label') || event.target.getAttribute('name') || event.target.tagName).trim();
         if (!nomeElemento) nomeElemento = event.target.tagName;
         const actionSelect = document.getElementById('gherkin-action-select');
+        // Capture acao e acaoValue em variáveis auxiliares para uso posterior
         let acao = actionSelect ? actionSelect.options[actionSelect.selectedIndex].text : 'Clicar';
         let acaoValue = actionSelect ? actionSelect.value : 'clica';
 
@@ -648,19 +654,35 @@ document.addEventListener('click', (event) => {
     } catch (error) { console.error('Erro ao registrar clique:', error); }
 });
 
+// Garante que saveInteractionsToStorage está disponível no escopo global
+if (typeof window.saveInteractionsToStorage !== 'function') {
+    // Tenta importar da ui.js se não estiver disponível
+    if (typeof saveInteractionsToStorage === 'function') {
+        window.saveInteractionsToStorage = saveInteractionsToStorage;
+    } else {
+        // Fallback: função dummy para evitar erro
+        window.saveInteractionsToStorage = function() {};
+    }
+}
+
 function handleInputEvent(event) {
     // Protege contra variáveis não definidas
+
     try {
         if (!window.isRecording || window.isPaused) return;
         if (!isExtensionContextValid()) return;
+        // Ignora eventos de input de campos que não são de passo/teste (ex: nome da feature)
         if (
             !event.target ||
             event.target.closest('#gherkin-panel') ||
             event.target.closest('#gherkin-modal') ||
-            event.target.closest('.gherkin-content')
+            event.target.closest('.gherkin-content') ||
+            event.target.id === 'gherkin-feature-name' ||
+            (event.target.classList && event.target.classList.contains('gherkin-feature-name')) ||
+            (event.target.closest && event.target.closest('.gherkin-feature-name'))
         ) return;
 
-        // Só registra para campos editáveis
+        // Usa nova versão de isFillableElement para inputs customizados
         if (!isFillableElement(event.target)) return;
 
         // Recupera valores necessários de forma segura
@@ -669,9 +691,26 @@ function handleInputEvent(event) {
         let nomeElemento = (event.target.getAttribute('aria-label') || event.target.getAttribute('name') || event.target.id || event.target.className || event.target.tagName).toString().trim();
         if (!nomeElemento) nomeElemento = event.target.tagName;
         const actionSelect = document.getElementById('gherkin-action-select');
-        let acao = actionSelect ? actionSelect.options[actionSelect.selectedIndex].text : 'Preencher';
-        let acaoValue = actionSelect ? actionSelect.value : 'preenche';
-        let value = event.target.value || (event.target.textContent ? event.target.textContent.trim() : '');
+        // Capture acao e acaoValue em variáveis auxiliares para uso posterior
+        let acao = 'Preencher';
+        let acaoValue = 'preenche';
+        if (actionSelect && actionSelect.selectedIndex >= 0) {
+            acao = actionSelect.options[actionSelect.selectedIndex].text;
+            acaoValue = actionSelect.value;
+        }
+        // Proteção extra: se acaoValue ainda estiver indefinido/null, define como 'preenche'
+        if (!acaoValue) {
+            console.error('[Extensão BDD] acaoValue ficou indefinido! Forçando para "preenche". actionSelect:', actionSelect);
+            acaoValue = 'preenche';
+        }
+
+        // Captura valor corretamente para qualquer input, inclusive PrimeNG
+        let value = '';
+        if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
+            value = event.target.value;
+        } else if (event.target.isContentEditable) {
+            value = event.target.innerText || event.target.textContent || '';
+        }
 
         // Define o step de acordo com a posição
         let step = 'Then';
@@ -684,27 +723,50 @@ function handleInputEvent(event) {
 
         // Debounce para evitar duplicidade
         if (window.inputDebounceTimeout) clearTimeout(window.inputDebounceTimeout);
-        window.inputDebounceTimeout = setTimeout(() => {
-            const last = window.interactions[window.interactions.length - 1];
-            const now = Date.now();
-            if (
-                last &&
-                last.acao === acaoValue &&
-                last.cssSelector === cssSelector &&
-                last.nomeElemento === nomeElemento &&
-                last.valorPreenchido === value &&
-                now - last.timestamp < 1000
-            ) {
-                return;
+        // Capture acaoValue e acao em variáveis auxiliares para uso dentro do setTimeout (garante closure correta)
+        const acaoValueTimeout = acaoValue;
+        const acaoTimeout = acao;
+        const cssSelectorTimeout = cssSelector;
+        const nomeElementoTimeout = nomeElemento;
+        const valueTimeout = value;
+        const stepTimeout = step;
+        const xpathTimeout = xpath;
+        window.inputDebounceTimeout = setTimeout(function() {
+            try {
+                // Use apenas as variáveis capturadas, nunca acaoValue direto!
+                if (!acaoValueTimeout) {
+                    console.error('[Extensão BDD] acaoValueTimeout indefinido dentro do setTimeout!');
+                    return;
+                }
+                const last = window.interactions[window.interactions.length - 1];
+                const now = Date.now();
+                if (
+                    last &&
+                    last.acao === acaoValueTimeout &&
+                    last.cssSelector === cssSelectorTimeout &&
+                    last.nomeElemento === nomeElementoTimeout &&
+                    last.valorPreenchido === valueTimeout &&
+                    now - last.timestamp < 1000
+                ) {
+                    return;
+                }
+                window.interactions.push({
+                    step: stepTimeout,
+                    acao: acaoValueTimeout,
+                    acaoTexto: acaoTimeout,
+                    nomeElemento: nomeElementoTimeout,
+                    cssSelector: cssSelectorTimeout,
+                    xpath: xpathTimeout,
+                    valorPreenchido: valueTimeout,
+                    timestamp: now
+                });
+                renderLogWithActions();
+                if (typeof window.saveInteractionsToStorage === 'function') window.saveInteractionsToStorage();
+                window.lastInputTarget = null;
+            } catch (err) {
+                console.error('[Extensão BDD] Erro dentro do setTimeout do handleInputEvent:', err);
             }
-            window.interactions.push({
-                step, acao: acaoValue, acaoTexto: acao, nomeElemento, cssSelector, xpath,
-                valorPreenchido: value, timestamp: now
-            });
-            renderLogWithActions();
-            if (typeof saveInteractionsToStorage === 'function') saveInteractionsToStorage();
-            window.lastInputTarget = null;
-        }, 700);
+        }, 300);
     } catch (err) {
         console.error('Erro no handleInputEvent:', err);
     }
@@ -788,6 +850,7 @@ function exportReadmeForFeatures(selectedIdxs) {
 
 // Função para exportar features selecionadas e README.md juntos
 function exportSelectedFeatures(selectedIdxs) {
+    showSpinner('Exportando arquivos...');
     getConfig((config) => {
         // Gera o texto da feature/cenário usando os mesmos templates do log
         let exportText = '';
@@ -1155,8 +1218,9 @@ def after_all(context):
         if hasattr(context, "driver"):
             context.driver.quit();
             logging.info("Driver finalizado com sucesso.")
-    except Exception as e:
+    } catch (Exception e) {
         logging.error(f"Erro ao finalizar o driver: {e}")
+    }
 `;
 
             downloadFile(`environment_${feature.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.py`, environmentPy);
@@ -1175,6 +1239,8 @@ requests
             downloadFile(`requirements_${feature.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.txt`, requirementsTxt);
         });
 
+        // Ao final da exportação:
+        hideSpinner();
         showFeedback('Exportação realizada com sucesso!');
     });
 }

@@ -23,29 +23,33 @@ function downloadFile(filename, content) {
 }
 
 function showFeedback(message, type = 'success') {
+    // Remove feedback antigo se existir
+    const old = document.querySelector('.feedback');
+    if (old) old.remove();
     const feedback = document.createElement('div');
-    feedback.textContent = message;
-    feedback.style.position = 'fixed';
-    feedback.style.bottom = '20px';
-    feedback.style.left = '50%';
-    feedback.style.transform = 'translateX(-50%)';
-    feedback.style.padding = '10px 20px';
+    feedback.className = 'feedback';
+    feedback.setAttribute('role', 'alert');
+    feedback.setAttribute('aria-live', 'assertive');
     feedback.style.backgroundColor = type === 'success' ? '#28a745' : '#dc3545';
     feedback.style.color = '#fff';
-    feedback.style.borderRadius = '5px';
-    feedback.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)';
-    feedback.style.zIndex = '10001';
-    feedback.style.fontSize = '14px';
-    feedback.style.fontWeight = 'bold';
-    feedback.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-    feedback.style.opacity = '1';
-    feedback.style.animation = 'fadeInOut 3s ease';
+    feedback.innerHTML = `<span>${message}</span>
+        <button class="gherkin-feedback-close" aria-label="Fechar feedback" tabindex="0">&times;</button>`;
     document.body.appendChild(feedback);
-
+    // Fechar manualmente
+    feedback.querySelector('.gherkin-feedback-close').onclick = () => feedback.remove();
+    // Fechar com ESC
+    function escListener(e) {
+        if (e.key === 'Escape') {
+            feedback.remove();
+            document.removeEventListener('keydown', escListener);
+        }
+    }
+    document.addEventListener('keydown', escListener);
+    // Fechar automático após 4s
     setTimeout(() => {
-        feedback.style.opacity = '0';
-        setTimeout(() => feedback.remove(), 300);
-    }, 3000);
+        if (feedback.parentNode) feedback.remove();
+        document.removeEventListener('keydown', escListener);
+    }, 4000);
 }
 
 function debounce(func, wait) {

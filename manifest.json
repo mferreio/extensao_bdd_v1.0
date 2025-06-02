@@ -1,6 +1,6 @@
 {
     "manifest_version": 3,
-    "name": "Gherkin Generator",
+    "name": "Assistente automatizador",
     "version": "1.0",
     "description": "Gera Xpath e CSS_selectors com base na navegação do usuário.",
     "permissions": ["activeTab", "scripting", "downloads", "storage"],
