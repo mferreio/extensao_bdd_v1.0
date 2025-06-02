@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Configurações BDD</title>
+    <style>
+        body { font-family: Roboto, Arial, sans-serif; background: #f9f9f9; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.08); padding: 32px; }
+        h2 { color: #0D47A1; }
+        label { font-weight: bold; display: block; margin-top: 18px; }
+        input, textarea { width: 100%; padding: 8px; border-radius: 5px; border: 1px solid #ccc; font-size: 15px; margin-top: 4px; }
+        button { background: #007bff; color: #fff; border: none; border-radius: 6px; padding: 10px 22px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 18px; }
+        button:hover { background: #0D47A1; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Configurações da Extensão BDD</h2>
+        <form id="config-form">
+            <label for="nomePadraoFeature">Nome padrão para Feature:</label>
+            <input type="text" id="nomePadraoFeature" name="nomePadraoFeature" />
+
+            <label for="nomePadraoCenario">Nome padrão para Cenário:</label>
+            <input type="text" id="nomePadraoCenario" name="nomePadraoCenario" />
+
+            <label for="templateStep">Template de Step (JSON):</label>
+            <textarea id="templateStep" name="templateStep" rows="4"></textarea>
+
+            <label for="templateUpload">Template de Upload:</label>
+            <input type="text" id="templateUpload" name="templateUpload" />
+
+            <label for="templateLogin">Template de Login:</label>
+            <input type="text" id="templateLogin" name="templateLogin" />
+
+            <label for="templateEspera">Template de Espera:</label>
+            <input type="text" id="templateEspera" name="templateEspera" />
+
+            <button type="submit">Salvar Configurações</button>
+        </form>
+        <div id="config-feedback" style="margin-top:18px;"></div>
+    </div>
+    <script src="options.js"></script>
+</body>
+</html>

@@ -1,6 +1,7 @@
 // Importa funções utilitárias e de UI
 import { slugify, downloadFile, showFeedback, debounce, getCSSSelector, getRobustXPath, isExtensionContextValid } from './utils.js';
 import { showLoginModal, updateActionParams, makePanelDraggable, clearLog, showModal, renderLogWithActions, showEditModal, showXPathModal, createPanel, renderPanelContent } from './ui.js';
+import { getConfig } from './config.js';
 
 // Variáveis globais para controle de múltiplas features/cenários e estado do painel
 if (!window.gherkinFeatures) window.gherkinFeatures = [];
@@ -77,22 +78,6 @@ function applySavedTheme() {
         }
     });
 }
-
-// Inicialização do painel e variáveis globais
-if (!window.panel) {
-    window.panel = createPanel();
-    renderPanelContent(window.panel);
-}
-if (typeof window.lastInputTarget === 'undefined') window.lastInputTarget = null;
-if (typeof window.inputDebounceTimeout === 'undefined') window.inputDebounceTimeout = null;
-if (typeof window.lastInputValue === 'undefined') window.lastInputValue = '';
-
-// Inicializa eventos do painel
-setTimeout(() => {
-    initializePanelEvents(window.panel);
-    applySavedTheme();
-    makePanelDraggable(window.panel);
-}, 100);
 
 // Função para inicializar eventos dos botões e inputs do painel
 function initializePanelEvents(panel) {
@@ -188,6 +173,27 @@ function initializePanelEvents(panel) {
     }
 }
 
+// Inicialização do painel e variáveis globais
+if (!window.panel) {
+    window.panel = createPanel();
+    renderPanelContent(window.panel);
+}
+if (typeof window.lastInputTarget === 'undefined') window.lastInputTarget = null;
+if (typeof window.inputDebounceTimeout === 'undefined') window.inputDebounceTimeout = null;
+if (typeof window.lastInputValue === 'undefined') window.lastInputValue = '';
+
+// Inicializa eventos do painel
+setTimeout(() => {
+    initializePanelEvents(window.panel);
+    applySavedTheme();
+    // Removido: makePanelDraggable(window.panel);
+    // Adiciona arrasto apenas na barra superior
+    const header = window.panel.querySelector('.gherkin-panel-header');
+    if (header) {
+        makePanelDraggable(window.panel, header);
+    }
+}, 100);
+
 // Captura clique único
 document.addEventListener('click', (event) => {
     if (!window.isRecording || window.isPaused) return;
@@ -199,9 +205,73 @@ document.addEventListener('click', (event) => {
             event.target.closest('#gherkin-modal') ||
             event.target.closest('.gherkin-content')
         ) return;
-        // Se for input, não registra aqui (será tratado no input)
-        if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA' || event.target.isContentEditable) return;
-        // Clique normal
+
+        // Se for input file, abre modal para upload de exemplo
+        if (event.target.tagName === 'INPUT' && event.target.type === 'file') {
+            const cssSelector = getCSSSelector(event.target);
+            const xpath = getRobustXPath(event.target);
+            let nomeElemento = (event.target.getAttribute('aria-label') || event.target.getAttribute('name') || event.target.id || event.target.className || event.target.tagName).toString().trim();
+            if (!nomeElemento) nomeElemento = event.target.tagName;
+            if (typeof window.showUploadModal === 'function') {
+                window.showUploadModal(nomeElemento, cssSelector, xpath, (nomeArquivo) => {
+                    if (!nomeArquivo) return;
+                    getConfig((config) => {
+                        const template = config.templateUpload || 'When faz upload do arquivo "{arquivo}" no campo {elemento}';
+                        const stepText = template
+                            .replace('{arquivo}', nomeArquivo)
+                            .replace('{elemento}', nomeElemento);
+                        window.interactions.push({
+                            step: 'When',
+                            acao: 'upload',
+                            acaoTexto: 'Upload de arquivo',
+                            nomeElemento,
+                            cssSelector,
+                            xpath,
+                            nomeArquivo,
+                            stepText,
+                            timestamp: Date.now()
+                        });
+                        renderLogWithActions();
+                        saveInteractionsToStorage();
+                    });
+                });
+            } else {
+                showFeedback('Função de upload não disponível!', 'error');
+            }
+            return;
+        }
+        // Se for input comum/textarea/contentEditable, não registra aqui (será tratado no input)
+        if ((event.target.tagName === 'INPUT' && event.target.type !== 'file') || event.target.tagName === 'TEXTAREA' || event.target.isContentEditable) return;
+
+        // Detecta campos de login
+        const isLoginField = (el) => {
+            const type = el.getAttribute('type') || '';
+            const name = (el.getAttribute('name') || '').toLowerCase();
+            const id = (el.id || '').toLowerCase();
+            return (
+                type === 'password' ||
+                name.includes('senha') || name.includes('password') ||
+                id.includes('senha') || id.includes('password')
+            );
+        };
+        // Se o elemento clicado for um botão de login ou submit próximo de campos de login
+        let isLoginAction = false;
+        if (event.target.tagName === 'BUTTON' || event.target.type === 'submit') {
+            // Procura campos de input próximos
+            const form = event.target.closest('form');
+            if (form) {
+                const inputs = form.querySelectorAll('input');
+                let hasUser = false, hasPass = false;
+                inputs.forEach(input => {
+                    const type = input.getAttribute('type') || '';
+                    const name = (input.getAttribute('name') || '').toLowerCase();
+                    if (type === 'password' || name.includes('senha') || name.includes('password')) hasPass = true;
+                    if (type === 'text' || type === 'email' || name.includes('user') || name.includes('email')) hasUser = true;
+                });
+                if (hasUser && hasPass) isLoginAction = true;
+            }
+        }
+
         const cssSelector = getCSSSelector(event.target);
         const xpath = getRobustXPath(event.target);
         let nomeElemento = (event.target.innerText || event.target.value || event.target.getAttribute('aria-label') || event.target.getAttribute('name') || event.target.tagName).trim();
@@ -220,11 +290,55 @@ document.addEventListener('click', (event) => {
             }
             interactionParams.tempoEspera = tempoEspera;
         }
+        // Espera inteligente: se o usuário escolher "espera_elemento", registra o seletor
+        if (acaoValue === 'espera_elemento') {
+            interactionParams.esperaSeletor = cssSelector;
+        }
+
+        // Marcação de login
+        if (acaoValue === 'login' || isLoginAction) {
+            // Não salva credenciais, apenas registra o step
+            let userField = '';
+            let passField = '';
+            const form = event.target.closest('form');
+            if (form) {
+                const inputs = form.querySelectorAll('input');
+                inputs.forEach(input => {
+                    const type = input.getAttribute('type') || '';
+                    const name = (input.getAttribute('name') || '').toLowerCase();
+                    if (!userField && (type === 'text' || type === 'email' || name.includes('user') || name.includes('email'))) userField = getCSSSelector(input);
+                    if (!passField && (type === 'password' || name.includes('senha') || name.includes('password'))) passField = getCSSSelector(input);
+                });
+            }
+            getConfig((config) => {
+                const template = config.templateLogin || 'Given que o usuário faz login com usuário "<usuario>" e senha "<senha>"';
+                const stepText = template;
+                window.interactions.push({
+                    step: 'Given',
+                    acao: 'login',
+                    acaoTexto: 'Login',
+                    nomeElemento: 'login',
+                    userField,
+                    passField,
+                    cssSelector,
+                    xpath,
+                    stepText,
+                    timestamp: Date.now()
+                });
+                renderLogWithActions();
+                saveInteractionsToStorage();
+            });
+            return;
+        }
+
         // Evita duplicidade: só registra se não for igual à última interação
         const last = window.interactions[window.interactions.length - 1];
         let isDuplicate = last && last.acao === acaoValue && last.cssSelector === cssSelector && last.nomeElemento === nomeElemento;
         if (acaoValue === 'espera_segundos' && last && last.tempoEspera !== undefined) {
             isDuplicate = isDuplicate && last.tempoEspera === interactionParams.tempoEspera;
+        }
+        if (acaoValue === 'espera_elemento' && last && last.esperaSeletor) {
+            isDuplicate = isDuplicate && last.esperaSeletor === interactionParams.esperaSeletor;
         }
         if (isDuplicate) return;
         // Passo BDD
@@ -290,6 +404,11 @@ if (typeof renderPanelContent !== 'undefined') {
         if (window.gherkinPanelState === 'gravando') {
             setTimeout(renderLogWithActions, 10);
         }
+        // Garante que o arrasto seja aplicado após renderização
+        const header = panel.querySelector('.gherkin-panel-header');
+        if (header) {
+            makePanelDraggable(panel, header);
+        }
     };
 }
 
@@ -302,7 +421,81 @@ function saveInteractionsToStorage() {
 
 // Função para exportar features selecionadas (dummy, pode ser expandida)
 function exportSelectedFeatures(selectedIdxs) {
-    showFeedback('Exportação realizada com sucesso!');
+    getConfig((config) => {
+        // Gera o texto da feature/cenário usando os mesmos templates do log
+        let exportText = '';
+        if (!window.gherkinFeatures || !Array.isArray(window.gherkinFeatures)) {
+            showFeedback('Nenhuma feature para exportar!', 'error');
+            return;
+        }
+        const featuresToExport = window.gherkinFeatures.filter((_, idx) => selectedIdxs.includes(idx));
+        if (featuresToExport.length === 0) {
+            showFeedback('Selecione ao menos uma feature!', 'error');
+            return;
+        }
+        featuresToExport.forEach((feature) => {
+            exportText += `Feature: ${feature.name}\n`;
+            (feature.cenarios || []).forEach((cenario) => {
+                exportText += `  Scenario: ${cenario.name}\n`;
+                (cenario.interactions || []).forEach((interaction) => {
+                    let mensagem = '';
+                    if (interaction.stepText) {
+                        mensagem = interaction.stepText;
+                    } else if (interaction.acao === 'acessa_url') {
+                        const tpl = (config.templateStep && config.templateStep.Given) || 'Given que o usuário acessa {url}';
+                        mensagem = tpl.replace('{url}', interaction.nomeElemento || 'URL');
+                    } else if (interaction.acao === 'login') {
+                        mensagem = config.templateLogin || 'Given que o usuário faz login com usuário "<usuario>" e senha "<senha>"';
+                    } else if (interaction.acao === 'upload') {
+                        let tpl = config.templateUpload || '{step} faz upload do arquivo "{arquivo}" no campo {elemento}';
+                        mensagem = tpl
+                            .replace('{step}', interaction.step || 'When')
+                            .replace('{arquivo}', interaction.nomeArquivo || 'ARQUIVO_EXEMPLO')
+                            .replace('{elemento}', interaction.nomeElemento || 'CAMPO_UPLOAD');
+                    } else if (interaction.acao === 'preenche') {
+                        let tpl = (config.templateStep && config.templateStep[interaction.step]) || `${interaction.step} ${interaction.acaoTexto ? interaction.acaoTexto.toLowerCase() : 'preenche'} no {elemento}`;
+                        mensagem = tpl.replace('{acao}', interaction.acaoTexto ? interaction.acaoTexto.toLowerCase() : 'preenche')
+                            .replace('{elemento}', interaction.nomeElemento || 'ELEMENTO');
+                        if (typeof interaction.valorPreenchido !== 'undefined') {
+                            mensagem += ` (valor: "${interaction.valorPreenchido}")`;
+                        }
+                    } else if (interaction.acao === 'espera_segundos') {
+                        let tpl = (config.templateStep && config.templateStep[interaction.step]) || `${interaction.step} ${interaction.acaoTexto ? interaction.acaoTexto.toLowerCase() : 'espera'} no {elemento}`;
+                        mensagem = tpl.replace('{acao}', interaction.acaoTexto ? interaction.acaoTexto.toLowerCase() : 'espera')
+                            .replace('{elemento}', interaction.nomeElemento || 'ELEMENTO');
+                        if (typeof interaction.tempoEspera !== 'undefined') {
+                            mensagem += ` (${interaction.tempoEspera} segundos)`;
+                        }
+                    } else if (interaction.acao === 'espera_elemento') {
+                        let tpl = config.templateEspera || '{step} espera o elemento aparecer: {seletor}';
+                        mensagem = tpl
+                            .replace('{step}', interaction.step || 'When')
+                            .replace('{seletor}', interaction.esperaSeletor || interaction.cssSelector || 'SELETOR_ELEMENTO');
+                    } else {
+                        let tpl = (config.templateStep && config.templateStep[interaction.step]) || `${interaction.step} ${interaction.acaoTexto ? interaction.acaoTexto.toLowerCase() : ''} no {elemento}`;
+                        mensagem = tpl.replace('{acao}', interaction.acaoTexto ? interaction.acaoTexto.toLowerCase() : '')
+                            .replace('{elemento}', interaction.nomeElemento || 'ELEMENTO');
+                    }
+                    exportText += `    ${mensagem}\n`;
+                });
+                exportText += '\n';
+            });
+            exportText += '\n';
+        });
+        // Faz download do arquivo
+        const blob = new Blob([exportText], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'features_exportadas.feature';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }, 100);
+        showFeedback('Exportação realizada com sucesso!');
+    });
 }
 
 // Mantém o Service Worker ativo
