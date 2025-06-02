@@ -4,7 +4,12 @@ function slugify(text) {
 }
 
 function downloadFile(filename, content) {
-    const blob = new Blob([content], { type: 'text/plain' });
+    let blob;
+    if (content instanceof Blob) {
+        blob = content;
+    } else {
+        blob = new Blob([content], { type: 'text/plain' });
+    }
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;

@@ -1,6 +1,6 @@
 // Importa funções utilitárias e de UI
 import { slugify, downloadFile, showFeedback, debounce, getCSSSelector, getRobustXPath, isExtensionContextValid } from './utils.js';
-import { showLoginModal, updateActionParams, makePanelDraggable, clearLog, showModal, renderLogWithActions, showEditModal, showXPathModal, createPanel, renderPanelContent } from './ui.js';
+import { showLoginModal, updateActionParams, makePanelDraggable, clearLog, showModal, renderLogWithActions, showEditModal, showXPathModal, createPanel, renderPanelContent, exportProjectZip, initializePanelEvents } from './ui.js';
 import { getConfig } from './config.js';
 
 // Variáveis globais para controle de múltiplas features/cenários e estado do painel
@@ -79,100 +79,6 @@ function applySavedTheme() {
     });
 }
 
-// Função para inicializar eventos dos botões e inputs do painel
-function initializePanelEvents(panel) {
-    // Botões do cabeçalho
-    const minimizeButton = panel.querySelector('#gherkin-minimize');
-    const reopenButton = panel.querySelector('#gherkin-reopen');
-    const closeButton = panel.querySelector('#gherkin-close');
-    if (minimizeButton) minimizeButton.onclick = () => toggleMinimizePanel(panel);
-    if (reopenButton) reopenButton.onclick = () => toggleMinimizePanel(panel);
-    if (closeButton) closeButton.onclick = () => {
-        panel.style.opacity = '0';
-        setTimeout(() => panel.remove(), 300);
-        window.panel = null;
-    };
-    // Etapa 1: Iniciar Feature
-    const startFeatureBtn = panel.querySelector('#start-feature');
-    if (startFeatureBtn) {
-        startFeatureBtn.onclick = () => {
-            const input = panel.querySelector('#feature-name');
-            const name = input.value.trim();
-            if (!name) {
-                showFeedback('Informe o nome da feature!', 'error');
-                return;
-            }
-            window.currentFeature = { name, cenarios: [] };
-            window.currentCenario = null;
-            window.gherkinPanelState = 'cenario';
-            renderPanelContent(panel);
-            setTimeout(() => initializePanelEvents(panel), 100);
-        };
-    }
-    // Etapa 2: Iniciar Cenário
-    const startCenarioBtn = panel.querySelector('#start-cenario');
-    if (startCenarioBtn) {
-        startCenarioBtn.onclick = () => {
-            const input = panel.querySelector('#cenario-name');
-            const name = input.value.trim();
-            if (!name) {
-                showFeedback('Informe o nome do cenário!', 'error');
-                return;
-            }
-            // Adiciona automaticamente o passo Given que o usuário acessa a URL atual
-            const url = window.location.href;
-            const givenAcessaUrl = {
-                step: 'Given',
-                acao: 'acessa_url',
-                acaoTexto: 'que o usuário acessa',
-                nomeElemento: url,
-                cssSelector: '',
-                xpath: '',
-                timestamp: Date.now()
-            };
-            window.currentCenario = { name, interactions: [givenAcessaUrl] };
-            window.interactions = window.currentCenario.interactions;
-            window.gherkinPanelState = 'gravando';
-            window.isRecording = true;
-            window.isPaused = false;
-            window.elapsedSeconds = 0;
-            renderPanelContent(panel);
-            setTimeout(() => initializePanelEvents(panel), 100);
-            startTimer();
-        };
-    }
-    // Etapa 3: Gravação
-    const endCenarioBtn = panel.querySelector('#end-cenario');
-    if (endCenarioBtn) {
-        endCenarioBtn.onclick = () => {
-            window.isRecording = false;
-            window.isPaused = false;
-            stopTimer();
-            // Salva o cenário na feature
-            if (window.currentFeature && window.currentCenario) {
-                window.currentFeature.cenarios.push(window.currentCenario);
-            }
-            // Pergunta se deseja cadastrar novo cenário
-            showModal('Deseja cadastrar um novo cenário?', () => {
-                // SIM: volta para tela de nome do cenário
-                window.currentCenario = null;
-                window.interactions = [];
-                window.gherkinPanelState = 'cenario';
-                renderPanelContent(panel);
-                setTimeout(() => initializePanelEvents(panel), 100);
-            }, () => {
-                // NÃO: habilita botão de encerrar feature
-                const endFeatureBtn = panel.querySelector('#end-feature');
-                if (endFeatureBtn) {
-                    endFeatureBtn.disabled = false;
-                    endFeatureBtn.style.backgroundColor = '#dc3545';
-                }
-                showFeedback('Cenário encerrado! Você pode encerrar a feature.', 'success');
-            });
-        };
-    }
-}
-
 // Inicialização do painel e variáveis globais
 if (!window.panel) {
     window.panel = createPanel();
@@ -184,6 +90,7 @@ if (typeof window.lastInputValue === 'undefined') window.lastInputValue = '';
 
 // Inicializa eventos do painel
 setTimeout(() => {
+    // Use apenas a função importada do ui.js
     initializePanelEvents(window.panel);
     applySavedTheme();
     // Removido: makePanelDraggable(window.panel);
@@ -419,7 +326,65 @@ function saveInteractionsToStorage() {
     } catch (e) {}
 }
 
-// Função para exportar features selecionadas (dummy, pode ser expandida)
+// Função para exportar README.md para cada feature/cenário
+function exportReadmeForFeatures(selectedIdxs) {
+    getConfig((config) => {
+        if (!window.gherkinFeatures || !Array.isArray(window.gherkinFeatures)) {
+            showFeedback('Nenhuma feature para exportar!', 'error');
+            return;
+        }
+        const featuresToExport = window.gherkinFeatures.filter((_, idx) => selectedIdxs.includes(idx));
+        if (featuresToExport.length === 0) {
+            showFeedback('Selecione ao menos uma feature!', 'error');
+            return;
+        }
+        featuresToExport.forEach((feature, fIdx) => {
+            let readme = `# Feature: ${feature.name}\n\n`;
+            readme += `## Descrição do fluxo\n`;
+            readme += `Esta feature cobre o(s) seguinte(s) cenário(s):\n\n`;
+            (feature.cenarios || []).forEach((cenario, cIdx) => {
+                readme += `### Cenário: ${cenario.name}\n`;
+                readme += `**Fluxo resumido:**\n`;
+                (cenario.interactions || []).forEach((interaction, iIdx) => {
+                    let step = interaction.step || '';
+                    let acao = interaction.acaoTexto || interaction.acao || '';
+                    let elemento = interaction.nomeElemento || '';
+                    let valor = interaction.valorPreenchido ? ` (valor: "${interaction.valorPreenchido}")` : '';
+                    let extra = '';
+                    if (interaction.acao === 'upload' && interaction.nomeArquivo) {
+                        extra = ` (arquivo: ${interaction.nomeArquivo})`;
+                    }
+                    readme += `- ${step} ${acao} em "${elemento}"${valor}${extra}\n`;
+                });
+                readme += '\n';
+            });
+
+            readme += `## Pré-requisitos\n`;
+            readme += `- Navegador Google Chrome com extensão Selenium WebDriver instalada (ou ambiente Python/Selenium configurado)\n`;
+            readme += `- Acesso ao ambiente de testes\n\n`;
+
+            readme += `## Exemplo de execução (Python + Selenium)\n`;
+            readme += '```python\n';
+            readme += '# Exemplo básico de inicialização do Selenium\n';
+            readme += 'from selenium import webdriver\nfrom selenium.webdriver.common.by import By\n\n';
+            readme += 'driver = webdriver.Chrome()\n';
+            readme += 'driver.get("URL_DO_SISTEMA")\n';
+            readme += '# ...seguir os passos do cenário conforme descrito acima...\n';
+            readme += '```\n\n';
+
+            readme += `## Observações\n`;
+            readme += `- Adapte os seletores e valores conforme necessário para o seu ambiente.\n`;
+            readme += `- Prints das telas podem ser adicionados manualmente após a execução dos testes.\n`;
+
+            // Gera arquivo README para cada feature
+            const filename = `README_${feature.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.md`;
+            downloadFile(filename, readme);
+        });
+        showFeedback('README.md exportado(s) com sucesso!');
+    });
+}
+
+// Função para exportar features selecionadas e README.md juntos
 function exportSelectedFeatures(selectedIdxs) {
     getConfig((config) => {
         // Gera o texto da feature/cenário usando os mesmos templates do log
@@ -433,6 +398,8 @@ function exportSelectedFeatures(selectedIdxs) {
             showFeedback('Selecione ao menos uma feature!', 'error');
             return;
         }
+
+        // Exporta arquivo .feature único
         featuresToExport.forEach((feature) => {
             exportText += `Feature: ${feature.name}\n`;
             (feature.cenarios || []).forEach((cenario) => {
@@ -482,7 +449,7 @@ function exportSelectedFeatures(selectedIdxs) {
             });
             exportText += '\n';
         });
-        // Faz download do arquivo
+        // Faz download do arquivo .feature
         const blob = new Blob([exportText], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -494,6 +461,50 @@ function exportSelectedFeatures(selectedIdxs) {
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
         }, 100);
+
+        // Exporta README.md para cada feature selecionada
+        featuresToExport.forEach((feature) => {
+            let readme = `# Feature: ${feature.name}\n\n`;
+            readme += `## Descrição do fluxo\n`;
+            readme += `Esta feature cobre o(s) seguinte(s) cenário(s):\n\n`;
+            (feature.cenarios || []).forEach((cenario) => {
+                readme += `### Cenário: ${cenario.name}\n`;
+                readme += `**Fluxo resumido:**\n`;
+                (cenario.interactions || []).forEach((interaction) => {
+                    let step = interaction.step || '';
+                    let acao = interaction.acaoTexto || interaction.acao || '';
+                    let elemento = interaction.nomeElemento || '';
+                    let valor = interaction.valorPreenchido ? ` (valor: "${interaction.valorPreenchido}")` : '';
+                    let extra = '';
+                    if (interaction.acao === 'upload' && interaction.nomeArquivo) {
+                        extra = ` (arquivo: ${interaction.nomeArquivo})`;
+                    }
+                    readme += `- ${step} ${acao} em "${elemento}"${valor}${extra}\n`;
+                });
+                readme += '\n';
+            });
+
+            readme += `## Pré-requisitos\n`;
+            readme += `- Navegador Google Chrome com extensão Selenium WebDriver instalada (ou ambiente Python/Selenium configurado)\n`;
+            readme += `- Acesso ao ambiente de testes\n\n`;
+
+            readme += `## Exemplo de execução (Python + Selenium)\n`;
+            readme += '```python\n';
+            readme += '# Exemplo básico de inicialização do Selenium\n';
+            readme += 'from selenium import webdriver\nfrom selenium.webdriver.common.by import By\n\n';
+            readme += 'driver = webdriver.Chrome()\n';
+            readme += 'driver.get("URL_DO_SISTEMA")\n';
+            readme += '# ...seguir os passos do cenário conforme descrito acima...\n';
+            readme += '```\n\n';
+
+            readme += `## Observações\n`;
+            readme += `- Adapte os seletores e valores conforme necessário para o seu ambiente.\n`;
+            readme += `- Prints das telas podem ser adicionados manualmente após a execução dos testes.\n`;
+
+            const filename = `README_${feature.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.md`;
+            downloadFile(filename, readme);
+        });
+
         showFeedback('Exportação realizada com sucesso!');
     });
 }

@@ -631,7 +631,7 @@ function renderLogWithActions() {
                     mensagem += ` (valor: "${interaction.valorPreenchido}")`;
                 }
             } else if (interaction.acao === 'espera_segundos') {
-                let tpl = (config.templateStep && config.templateStep[interaction.step]) || `${interaction.step} ${interaction.acaoTexto ? interaction.acaoTexto.toLowerCase() : ''} no {elemento}`;
+                let tpl = (config.templateStep && config.templateStep[interaction.step]) || `${interaction.step} ${interaction.acaoTexto ? interaction.acaoTexto.toLowerCase() : 'espera'} no {elemento}`;
                 mensagem = tpl.replace('{acao}', interaction.acaoTexto ? interaction.acaoTexto.toLowerCase() : 'espera')
                     .replace('{elemento}', interaction.nomeElemento || 'ELEMENTO');
                 if (typeof interaction.tempoEspera !== 'undefined') {
@@ -902,7 +902,7 @@ function renderLogWithActions() {
     }
 }
 
-    // Função para exibir modal com exemplo Selenium
+// Função para exibir modal com exemplo Selenium
 function showSeleniumExampleModal(interaction) {
     // Remove modal antigo se existir
     const oldModal = document.getElementById('gherkin-modal');
@@ -1020,7 +1020,7 @@ driver.find_element(By.CSS_SELECTOR, '${interaction.cssSelector || 'SELETOR_INPU
     document.body.appendChild(modalBg);
 }
 
-    // Função para mostrar log grande em modal
+// Função para mostrar log grande em modal
 function showLargeLogModal(texto) {
     // Remove modal antigo se existir
     const oldModal = document.getElementById('gherkin-modal');
@@ -1332,6 +1332,155 @@ function showXPathModal(xpath) {
     document.body.appendChild(modalBg);
 }
 
+// Função para inicializar eventos do painel (deve ser chamada após renderPanelContent)
+function initializePanelEvents(panel) {
+    // Botões do cabeçalho
+    const minimizeButton = panel.querySelector('#gherkin-minimize');
+    const reopenButton = panel.querySelector('#gherkin-reopen');
+    const closeButton = panel.querySelector('#gherkin-close');
+    if (minimizeButton) minimizeButton.onclick = () => toggleMinimizePanel(panel);
+    if (reopenButton) reopenButton.onclick = () => toggleMinimizePanel(panel);
+    if (closeButton) closeButton.onclick = () => {
+        panel.style.opacity = '0';
+        setTimeout(() => panel.remove(), 300);
+        window.panel = null;
+    };
+
+    // Iniciar Feature
+    const startFeatureBtn = panel.querySelector('#start-feature');
+    if (startFeatureBtn) {
+        startFeatureBtn.onclick = () => {
+            const input = panel.querySelector('#feature-name');
+            const name = input.value.trim();
+            if (!name) {
+                showFeedback('Informe o nome da feature!', 'error');
+                return;
+            }
+            window.currentFeature = { name, cenarios: [] };
+            window.currentCenario = null;
+            window.gherkinPanelState = 'cenario';
+            renderPanelContent(panel);
+            setTimeout(() => initializePanelEvents(panel), 100);
+        };
+    }
+
+    // Iniciar Cenário
+    const startCenarioBtn = panel.querySelector('#start-cenario');
+    if (startCenarioBtn) {
+        startCenarioBtn.onclick = () => {
+            const input = panel.querySelector('#cenario-name');
+            const name = input.value.trim();
+            if (!name) {
+                showFeedback('Informe o nome do cenário!', 'error');
+                return;
+            }
+            // Adiciona automaticamente o passo Given que o usuário acessa a URL atual
+            const url = window.location.href;
+            const givenAcessaUrl = {
+                step: 'Given',
+                acao: 'acessa_url',
+                acaoTexto: 'que o usuário acessa',
+                nomeElemento: url,
+                cssSelector: '',
+                xpath: '',
+                timestamp: Date.now()
+            };
+            window.currentCenario = { name, interactions: [givenAcessaUrl] };
+            window.interactions = window.currentCenario.interactions;
+            window.gherkinPanelState = 'gravando';
+            window.isRecording = true;
+            window.isPaused = false;
+            window.elapsedSeconds = 0;
+            renderPanelContent(panel);
+            setTimeout(() => initializePanelEvents(panel), 100);
+            if (typeof startTimer === 'function') startTimer();
+        };
+    }
+
+    // Encerrar Cenário
+    const endCenarioBtn = panel.querySelector('#end-cenario');
+    if (endCenarioBtn) {
+        endCenarioBtn.onclick = () => {
+            window.isRecording = false;
+            window.isPaused = false;
+            if (typeof stopTimer === 'function') stopTimer();
+            // Salva o cenário na feature
+            if (window.currentFeature && window.currentCenario) {
+                window.currentFeature.cenarios.push(window.currentCenario);
+            }
+            // Pergunta se deseja cadastrar novo cenário
+            showModal('Deseja cadastrar um novo cenário?', () => {
+                // SIM: volta para tela de nome do cenário
+                window.currentCenario = null;
+                window.interactions = [];
+                window.gherkinPanelState = 'cenario';
+                renderPanelContent(panel);
+                setTimeout(() => initializePanelEvents(panel), 100);
+            }, () => {
+                // NÃO: habilita botão de encerrar feature
+                const endFeatureBtn = panel.querySelector('#end-feature');
+                if (endFeatureBtn) {
+                    endFeatureBtn.disabled = false;
+                    endFeatureBtn.style.backgroundColor = '#dc3545';
+                }
+                showFeedback('Cenário encerrado! Você pode encerrar a feature.', 'success');
+            });
+        };
+    }
+
+    // Exportar Projeto
+    const exportProjectBtn = panel.querySelector('#export-project');
+    if (exportProjectBtn) {
+        exportProjectBtn.onclick = async () => {
+            const form = panel.querySelector('#export-form');
+            const selected = Array.from(form.querySelectorAll('input[type="checkbox"]:checked')).map(cb => parseInt(cb.value, 10));
+            if (selected.length === 0) {
+                showFeedback('Selecione ao menos uma feature!', 'error');
+                return;
+            }
+            if (typeof exportSelectedFeatures === 'function') {
+                exportSelectedFeatures(selected);
+            }
+        };
+    }
+
+    // Encerrar Feature (já estava implementado)
+    const endFeatureBtn = panel.querySelector('#end-feature');
+    if (endFeatureBtn) {
+        endFeatureBtn.onclick = () => {
+            showModal('Deseja cadastrar uma nova feature?', () => {
+                if (window.currentFeature && window.currentFeature.cenarios && window.currentFeature.cenarios.length > 0) {
+                    window.gherkinFeatures = window.gherkinFeatures || [];
+                    window.gherkinFeatures.push(window.currentFeature);
+                    showFeedback('Feature salva com sucesso!', 'success');
+                } else {
+                    showFeedback('Adicione pelo menos um cenário!', 'error');
+                    return;
+                }
+                window.currentFeature = null;
+                window.currentCenario = null;
+                window.gherkinPanelState = 'feature';
+                renderPanelContent(panel);
+                setTimeout(() => initializePanelEvents(panel), 100);
+            }, () => {
+                if (window.currentFeature && window.currentFeature.cenarios && window.currentFeature.cenarios.length > 0) {
+                    window.gherkinFeatures = window.gherkinFeatures || [];
+                    window.gherkinFeatures.push(window.currentFeature);
+                    showFeedback('Feature salva com sucesso!', 'success');
+                } else {
+                    showFeedback('Adicione pelo menos um cenário!', 'error');
+                    return;
+                }
+                window.currentFeature = null;
+                window.currentCenario = null;
+                window.gherkinPanelState = 'exportar';
+                renderPanelContent(panel);
+                setTimeout(() => initializePanelEvents(panel), 100);
+            });
+        };
+    }
+}
+
 export {
     renderPanelContent,
     createPanel,
@@ -1342,5 +1491,6 @@ export {
     showModal,
     renderLogWithActions,
     showEditModal,
-    showXPathModal
+    showXPathModal,
+    initializePanelEvents // exporta a função para uso externo
 };
