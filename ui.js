@@ -1188,6 +1188,7 @@ function renderLogWithActions() {
             <th style="min-width:60px;">Gherkin</th>
             <th style="min-width:80px;">Ação</th>
             <th style="min-width:120px;">Elemento</th>
+            <th style="min-width:100px;">Valor</th>
             <th style="min-width:40px;">Detalhes</th>
             <th style="min-width:40px;">Ações</th>
         </tr>
@@ -1245,6 +1246,19 @@ function renderLogWithActions() {
             tdElem.textContent = i.nomeElemento || '';
             tdElem.style.fontFamily = 'inherit';
             tr.appendChild(tdElem);
+
+            // Valor preenchido (nova coluna)
+            const tdValor = document.createElement('td');
+            if (i.acao === 'preenche') {
+                tdValor.textContent = i.valorPreenchido || '';
+            } else if (i.acao === 'upload') {
+                tdValor.textContent = i.nomeArquivo || '';
+            } else if (i.acao === 'login') {
+                tdValor.textContent = i.valorPreenchido || '';
+            } else {
+                tdValor.textContent = '';
+            }
+            tr.appendChild(tdValor);
 
             // Detalhes expansíveis
             const tdDet = document.createElement('td');
@@ -1663,6 +1677,26 @@ function showEditModal(idx) {
         fileInput.style.fontSize = '14px';
         modal.appendChild(fileInput);
     }
+    // Campo valor preenchido (apenas para ação preenche)
+    let valorPreenchidoInput = null;
+    if (interaction.acao === 'preenche') {
+        const valorLabel = document.createElement('label');
+        valorLabel.textContent = 'Valor preenchido:';
+        valorLabel.style.fontWeight = 'bold';
+        valorLabel.style.marginBottom = '4px';
+        modal.appendChild(valorLabel);
+        valorPreenchidoInput = document.createElement('input');
+        valorPreenchidoInput.type = 'text';
+        valorPreenchidoInput.value = typeof interaction.valorPreenchido !== 'undefined' ? interaction.valorPreenchido : '';
+        valorPreenchidoInput.style.width = '100%';
+        valorPreenchidoInput.style.padding = '7px';
+        valorPreenchidoInput.style.borderRadius = '5px';
+        valorPreenchidoInput.style.border = '1px solid #ccc';
+        valorPreenchidoInput.style.fontSize = '14px';
+        valorPreenchidoInput.style.marginBottom = '12px';
+        valorPreenchidoInput.autocomplete = 'off';
+        modal.appendChild(valorPreenchidoInput);
+    }
     // Botões
     const btns = document.createElement('div');
     btns.style.display = 'flex';
@@ -1691,8 +1725,11 @@ function showEditModal(idx) {
             interaction.acaoTexto = selectedOption ? selectedOption.text : actionSelect.value;
         }
         interaction.nomeElemento = nomeInput.value.trim() || interaction.nomeElemento;
-        if ( interaction.acao === 'upload' && fileInput) {
+        if (interaction.acao === 'upload' && fileInput) {
             interaction.nomeArquivo = fileInput.value.trim() || interaction.nomeArquivo;
+        }
+        if (interaction.acao === 'preenche' && valorPreenchidoInput) {
+            interaction.valorPreenchido = valorPreenchidoInput.value;
         }
         saveInteractionsToStorage();
         renderLogWithActions();
