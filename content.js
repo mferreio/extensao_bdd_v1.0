@@ -678,14 +678,19 @@ document.addEventListener('click', (event) => {
             return;
         }
 
-        // Evita duplicidade: só registra se não for igual à última interação
+        // Evita duplicidade: só bloqueia se todos os dados relevantes forem idênticos
         const last = window.interactions[window.interactions.length - 1];
-        let isDuplicate = last && last.acao === acaoValue && last.cssSelector === cssSelector && last.nomeElemento === nomeElemento;
-        if (acaoValue === 'espera_segundos' && last && last.tempoEspera !== undefined) {
-            isDuplicate = isDuplicate && last.tempoEspera === interactionParams.tempoEspera;
-        }
-        if (acaoValue === 'espera_elemento' && last && last.esperaSeletor) {
-            isDuplicate = isDuplicate && last.esperaSeletor === interactionParams.esperaSeletor;
+        let isDuplicate = false;
+        if (acaoValue === 'preenche') {
+            isDuplicate = last && last.acao === acaoValue && last.cssSelector === cssSelector && last.nomeElemento === nomeElemento && last.valorPreenchido === valorPreenchido && last.xpath === xpath;
+        } else {
+            isDuplicate = last && last.acao === acaoValue && last.cssSelector === cssSelector && last.nomeElemento === nomeElemento;
+            if (acaoValue === 'espera_segundos' && last && last.tempoEspera !== undefined) {
+                isDuplicate = isDuplicate && last.tempoEspera === interactionParams.tempoEspera;
+            }
+            if (acaoValue === 'espera_elemento' && last && last.esperaSeletor) {
+                isDuplicate = isDuplicate && last.esperaSeletor === interactionParams.esperaSeletor;
+            }
         }
         if (isDuplicate) return;
         // Passo BDD
