@@ -1038,48 +1038,36 @@ function exportSelectedFeatures(selectedIdxs) {
             }
             const featureSlug = slugify(feature.name, false);
             let featureText = `Feature: ${feature.name}\n`;
-            (feature.cenarios || []).forEach((cenario) => {
+            (feature.cenarios || []).forEach((cenario, cIdx) => {
                 featureText += `  Scenario: ${cenario.name}\n`;
-                (cenario.interactions || []).forEach((interaction) => {
-                    let mensagem = '';
-                    if (interaction.stepText) {
-                        mensagem = interaction.stepText;
-                    } else if (interaction.acao === 'acessa_url') {
-                        const tpl = (config.templateStep && config.templateStep.Given) || 'Given que o usuário acessa {url}';
-                        mensagem = tpl.replace('{url}', interaction.nomeElemento || 'URL');
-                    } else if (interaction.acao === 'login') {
-                        mensagem = config.templateLogin || 'Given que o usuário faz login com usuário "<usuario>" e senha "<senha>"';
-                    } else if (interaction.acao === 'upload') {
-                        let tpl = config.templateUpload || '{step} faz upload do arquivo "{arquivo}" no campo {elemento}';
-                        mensagem = tpl
-                            .replace('{step}', interaction.step || 'When')
-                            .replace('{arquivo}', interaction.nomeArquivo || 'ARQUIVO_EXEMPLO')
-                            .replace('{elemento}', interaction.nomeElemento || 'CAMPO_UPLOAD');
+                (cenario.interactions || []).forEach((interaction, iIdx) => {
+                    let frase = '';
+                    let step = interaction.step || 'When';
+                    // Garante que o passo Given de acesso à página inicial seja padronizado
+                    if (step === 'Given' && interaction.acao === 'acessa_url' && interaction.nomeElemento && interaction.nomeElemento.startsWith('http')) {
+                        frase = `que o usuário acessa a página \"${interaction.nomeElemento}\"`;
+                    } else if (interaction.stepText) {
+                        frase = interaction.stepText;
                     } else if (interaction.acao === 'preenche') {
-                        let tpl = (config.templateStep && config.templateStep[interaction.step]) || `${interaction.step} ${interaction.acaoTexto ? interaction.acaoTexto.toLowerCase() : 'preenche'} no {elemento}`;
-                        mensagem = tpl.replace('{acao}', interaction.acaoTexto ? interaction.acaoTexto.toLowerCase() : 'preenche')
-                            .replace('{elemento}', interaction.nomeElemento || 'ELEMENTO');
-                        if (typeof interaction.valorPreenchido !== 'undefined') {
-                            mensagem += ` (valor: "${interaction.valorPreenchido}")`;
-                        }
-                    } else if (interaction.acao === 'espera_segundos') {
-                        let tpl = (config.templateStep && config.templateStep[interaction.step]) || `${interaction.step} ${interaction.acaoTexto ? interaction.acaoTexto.toLowerCase() : 'espera'} no {elemento}`;
-                        mensagem = tpl.replace('{acao}', interaction.acaoTexto ? interaction.acaoTexto.toLowerCase() : 'espera')
-                            .replace('{elemento}', interaction.nomeElemento || 'ELEMENTO');
-                        if (typeof interaction.tempoEspera !== 'undefined') {
-                            mensagem += ` (${interaction.tempoEspera} segundos)`;
-                        }
+                        let valor = (interaction.valorPreenchido !== undefined && interaction.valorPreenchido !== null && interaction.valorPreenchido !== '') ? interaction.valorPreenchido : '<valor>';
+                        frase = `o usuário preenche o campo ${interaction.nomeElemento ? '"' + interaction.nomeElemento + '"' : ''} com "${valor}"`;
+                    } else if (interaction.acao === 'clica') {
+                        frase = `o usuário clica no elemento ${interaction.nomeElemento ? '"' + interaction.nomeElemento + '"' : ''}`;
+                    } else if (interaction.acao === 'upload') {
+                        let arquivo = (interaction.nomeArquivo !== undefined && interaction.nomeArquivo !== null && interaction.nomeArquivo !== '') ? interaction.nomeArquivo : '<arquivo>';
+                        frase = `o usuário faz upload do arquivo "${arquivo}" no campo ${interaction.nomeElemento ? '"' + interaction.nomeElemento + '"' : ''}`;
                     } else if (interaction.acao === 'espera_elemento') {
-                        let tpl = config.templateEspera || '{step} espera o elemento aparecer: {seletor}';
-                        mensagem = tpl
-                            .replace('{step}', interaction.step || 'When')
-                            .replace('{seletor}', interaction.esperaSeletor || interaction.cssSelector || 'SELETOR_ELEMENTO');
+                        frase = `o usuário espera o elemento ${interaction.nomeElemento ? '"' + interaction.nomeElemento + '"' : ''} aparecer`;
+                    } else if (interaction.acao === 'espera_segundos') {
+                        frase = `o usuário espera ${interaction.tempoEspera || '<segundos>'} segundos`;
+                    } else if (interaction.acao && interaction.acao.toLowerCase().includes('valida')) {
+                        frase = `o usuário valida que existe o elemento ${interaction.nomeElemento ? '"' + interaction.nomeElemento + '"' : ''}`;
                     } else {
-                        let tpl = (config.templateStep && config.templateStep[interaction.step]) || `${interaction.step} ${interaction.acaoTexto ? interaction.acaoTexto.toLowerCase() : ''} no {elemento}`;
-                        mensagem = tpl.replace('{acao}', interaction.acaoTexto ? interaction.acaoTexto.toLowerCase() : '')
-                            .replace('{elemento}', interaction.nomeElemento || 'ELEMENTO');
+                        frase = `${interaction.acaoTexto || interaction.acao || 'ação'} no elemento ${interaction.nomeElemento ? '"' + interaction.nomeElemento + '"' : ''}`;
                     }
-                    featureText += `    ${mensagem}\n`;
+                    // Primeira letra maiúscula para Given, When, Then
+                    let stepLabel = step.charAt(0).toUpperCase() + step.slice(1).toLowerCase();
+                    featureText += `    ${stepLabel} ${frase}\n`;
                 });
                 featureText += '\n';
             });
@@ -1164,7 +1152,8 @@ Esta feature cobre o(s) seguinte(s) cenário(s):\n
             });
 
             // --- pages.py com docstrings, comentários e tratamento de exceções ---
-            const pagesPy = `# pages.py gerado automaticamente para a feature "${feature.name}"
+            const featureSlug = slugify(feature.name, false);
+            const pagesPy = `# ${featureSlug}_pages.py gerado automaticamente para a feature "${feature.name}"
 # -*- coding: utf-8 -*-
 """
 Page Object Model (POM) para a feature "${feature.name}".
@@ -1279,10 +1268,20 @@ class Page${slugify(feature.name, true)}:
             print(f"[ERRO] Timeout ao esperar desaparecimento do elemento {locator}: {e}")
             raise
 
+    def validar_existencia(self, locator):
+        """
+        Valida se o elemento identificado pelo locator existe na página.
+        """
+        try:
+            self.driver.find_element(*locator)
+            return True
+        except NoSuchElementException:
+            return False
+
     # Adicione outros métodos genéricos conforme necessário
 `;
 
-            downloadFile(`${feature.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_pages.py`, pagesPy);
+            downloadFile(`${featureSlug}_pages.py`, pagesPy);
 
 
 
@@ -1300,10 +1299,10 @@ class Page${slugify(feature.name, true)}:
             let stepsPy = `# ${feature.name}_steps.py gerado automaticamente\n`;
             stepsPy += `# -*- coding: utf-8 -*-\n"""\nArquivo de steps do Behave para a feature "${feature.name}".\nUtiliza Page Object Model e locators definidos em pages.py.\n"""\n\n`;
             stepsPy += `from behave import given, when, then\n`;
-            stepsPy += `from pages_${feature.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()} import Page${slugify(feature.name, true)}, Locators${slugify(feature.name, true)}\n\n`;
+            stepsPy += `from pages.${feature.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_pages import Page${slugify(feature.name, true)}, Locators${slugify(feature.name, true)}\n\n`;
 
             // Step para inicializar o Page Object
-            stepsPy += `@given('que o usuário acessa a página inicial')\ndef step_acessa_pagina_inicial(context):\n    context.page = Page${slugify(feature.name, true)}(context.driver)\n    context.page.acessar_url('URL_DO_SISTEMA')\n\n`;
+            stepsPy += `@given('que o usuário acessa a página "{url}"')\ndef step_acessa_pagina_inicial(context, url):\n    context.page = Page${slugify(feature.name, true)}(context.driver)\n    context.page.acessar_url(url)\n\n`;
 
             // Gerar steps dinamicamente para cada interação
             let usedLocators = new Set();
@@ -1339,6 +1338,8 @@ class Page${slugify(feature.name, true)}:
                         frase = `o usuário espera o elemento ${interaction.nomeElemento ? '"' + interaction.nomeElemento + '"' : ''} aparecer`;
                     } else if (interaction.acao === 'espera_segundos') {
                         frase = `o usuário espera ${interaction.tempoEspera || '<segundos>'} segundos`;
+                    } else if (interaction.acao && interaction.acao.toLowerCase().includes('valida')) {
+                        frase = `o usuário valida que existe o elemento ${interaction.nomeElemento ? '"' + interaction.nomeElemento + '"' : ''}`;
                     } else {
                         frase = `${interaction.acaoTexto || interaction.acao || 'ação'} no elemento ${interaction.nomeElemento ? '"' + interaction.nomeElemento + '"' : ''}`;
                     }
@@ -1351,7 +1352,7 @@ class Page${slugify(feature.name, true)}:
                     // Nome da função
                     funcName = `step_${interaction.acao}_${locatorName}_${cIdx}_${iIdx}`;
 
-                    // Parâmetros
+                    // Parâmetros e corpo
                     if (interaction.acao === 'preenche') {
                         params = 'context, valor';
                         body = `    context.page.preencher(Locators${slugify(feature.name, true)}.${locatorName}, valor)`;
@@ -1368,6 +1369,9 @@ class Page${slugify(feature.name, true)}:
                     } else if (interaction.acao === 'clica') {
                         params = 'context';
                         body = `    context.page.clicar(Locators${slugify(feature.name, true)}.${locatorName})`;
+                    } else if (interaction.acao && interaction.acao.toLowerCase().includes('valida')) {
+                        params = 'context';
+                        body = `    assert context.page.validar_existencia(Locators${slugify(feature.name, true)}.${locatorName})\n`;
                     } else {
                         params = 'context';
                         body = `    # Implemente a ação '${interaction.acaoTexto || interaction.acao}' para o locator '${locatorName}'`;
