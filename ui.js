@@ -576,7 +576,6 @@ function showUploadModal(nomeElemento, cssSelector, xpath, callback) {
     modal.appendChild(btns);
     modalBg.appendChild(modal);
     document.body.appendChild(modalBg);
-    setupModalAccessibility(modalBg, 'input[type="text"]');
 }
 // Função para criar o painel e renderizar o conteúdo inicial
 function createPanel() {
@@ -817,7 +816,6 @@ function showLoginModal() {
     modal.appendChild(btns);
     modalBg.appendChild(modal);
     document.body.appendChild(modalBg);
-    setupModalAccessibility(modalBg, 'input[type="text"]');
 }
 
 // Adaptação dinâmica dos parâmetros de ação
@@ -1083,7 +1081,6 @@ function showModal(message, onYes, onNo) {
     modal.appendChild(btns);
     modalBg.appendChild(modal);
     document.body.appendChild(modalBg);
-    setupModalAccessibility(modalBg, 'button');
 }
 
 // Ícones e cores para cada ação
@@ -1243,7 +1240,14 @@ function renderLogWithActions() {
 
             // Elemento
             const tdElem = document.createElement('td');
-            tdElem.textContent = i.nomeElemento || '';
+            // Exibe apenas o texto visível se estiver presente no nomeElemento (separado por |)
+            if (i.nomeElemento && i.nomeElemento.includes('|')) {
+                const partes = i.nomeElemento.split('|');
+                // Mostra o texto do elemento (após o pipe)
+                tdElem.textContent = partes[1].trim();
+            } else {
+                tdElem.textContent = i.nomeElemento || '';
+            }
             tdElem.style.fontFamily = 'inherit';
             tr.appendChild(tdElem);
 
