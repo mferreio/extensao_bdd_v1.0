@@ -693,18 +693,25 @@ document.addEventListener('click', (event) => {
             }
         }
         if (isDuplicate) return;
-        // Passo BDD
-        let step = 'Then';
-        let offset = 0;
-        if (window.interactions.length > 0 && window.interactions[0].acao === 'acessa_url') offset = 1;
-        if (window.interactions.length === 0) step = 'Given';
-        else if (window.interactions.length === 1 && offset === 0) step = 'When';
-        else if (window.interactions.length === 1 && offset === 1) step = 'When';
-        else if (window.interactions.length === 2 && offset === 1) step = 'Then';
+        // Passo BDD conforme regra: Given (primeiro), When (meio), Then (último)
+        let step = 'When';
+        let total = window.interactions.length;
+        // O próximo passo será o último?
+        // Se não há nenhum passo, é Given
+        if (total === 0) {
+            step = 'Given';
+        } else {
+            // O passo atual será o último? (considera que o push ainda não foi feito)
+            // Se já existe pelo menos 1 passo, e este será o último (após push), então é Then
+            // Só é Then se o usuário clicar em "Encerrar Cenário" ou similar, então ajusta depois
+            // Aqui, por padrão, todos os passos exceto o primeiro são When
+            step = 'When';
+        }
         window.givenAcessaUrlAdded = false;
-        // Se for ação preenche, registre o valor preenchido corretamente
+        // Adiciona a interação normalmente
+        let interactionObj;
         if (acaoValue === 'preenche') {
-            window.interactions.push({
+            interactionObj = {
                 step,
                 acao: acaoValue,
                 acaoTexto: acao,
@@ -714,9 +721,24 @@ document.addEventListener('click', (event) => {
                 valorPreenchido,
                 timestamp: Date.now(),
                 ...interactionParams
-            });
+            };
         } else {
-            window.interactions.push({ step, acao: acaoValue, acaoTexto: acao, nomeElemento, cssSelector, xpath, timestamp: Date.now(), ...interactionParams });
+            interactionObj = { step, acao: acaoValue, acaoTexto: acao, nomeElemento, cssSelector, xpath, timestamp: Date.now(), ...interactionParams };
+        }
+        window.interactions.push(interactionObj);
+
+        // Após adicionar, ajustar os steps conforme regra:
+        // 1º = Given, último = Then, intermediários = When
+        if (window.interactions.length > 0) {
+            window.interactions[0].step = 'Given';
+            if (window.interactions.length > 2) {
+                for (let i = 1; i < window.interactions.length - 1; i++) {
+                    window.interactions[i].step = 'When';
+                }
+            }
+            if (window.interactions.length > 1) {
+                window.interactions[window.interactions.length - 1].step = 'Then';
+            }
         }
         renderLogWithActions();
     } catch (error) { console.error('Erro ao registrar clique:', error); }
