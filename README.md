@@ -36,4 +36,4 @@ O **Gherkin Generator** é uma extensão para o navegador que permite gravar int
 4. Abra um Pull Request.
 
 ## Licença
-Este projeto está licenciado sob a [MIT License](LICENSE).
+Este projeto foi produzido por Matheus Ferreira de Oliveira.

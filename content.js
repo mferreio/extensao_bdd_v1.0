@@ -1219,21 +1219,19 @@ class Page${slugify(feature.name, true)}:
         """
         Preenche o campo identificado pelo locator com o valor informado.
         """
-        try {
+        try:
             el = self.driver.find_element(*locator)
             el.clear()
             el.send_keys(valor)
-        } catch (NoSuchElementException e) {
+        except NoSuchElementException as e:
             print(f"[ERRO] Elemento {locator} não encontrado: {e}")
             raise
-        } catch (ElementNotInteractableException e) {
+        except ElementNotInteractableException as e:
             print(f"[ERRO] Elemento {locator} não interagível: {e}")
             raise
-        } catch (Exception e) {
+        except Exception as e:
             print(f"[ERRO] Erro inesperado ao preencher {locator}: {e}")
             raise
-        }
-    }
 
     def selecionar(self, locator, valor):
         """
@@ -1253,10 +1251,9 @@ class Page${slugify(feature.name, true)}:
         """
         try:
             self.driver.find_element(*locator).send_keys(caminho_arquivo)
-        except (NoSuchElementException, ElementNotInteractableException) as e {
+        except (NoSuchElementException, ElementNotInteractableException) as e:
             print(f"[ERRO] Falha ao fazer upload do arquivo '{caminho_arquivo}' em {locator}: {e}")
             raise
-        }
 
     def esperar_elemento(self, locator, timeout=10):
         """
@@ -1285,39 +1282,104 @@ class Page${slugify(feature.name, true)}:
     # Adicione outros métodos genéricos conforme necessário
 `;
 
-            downloadFile(`pages_${feature.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.py`, pagesPy);
+            downloadFile(`${feature.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_pages.py`, pagesPy);
 
 
-            // --- steps.py gerado automaticamente ---
-            const stepsPy = `# steps.py gerado automaticamente para a feature "${feature.name}"
-# -*- coding: utf-8 -*-
-"""
-Arquivo de steps do Behave para a feature "${feature.name}".
-Utiliza Page Object Model e locators definidos em pages.py.
-"""
 
-from behave import given, when, then
-from pages_${feature.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()} import Page${slugify(feature.name, true)}, Locators${slugify(feature.name, true)}
+            // --- steps.py gerado automaticamente e dinamicamente ---
+            function getLocatorName(interaction) {
+                // Mesmo padrão do locatorSet
+                let locatorName = '';
+                if (interaction.nomeElemento) {
+                    locatorName = interaction.nomeElemento.split('|')[0].trim().replace(/[^a-zA-Z0-9_]/g, '_').replace(/^_+|_+$/g, '');
+                }
+                if (!locatorName) locatorName = 'ELEMENTO_' + Math.random().toString(36).substring(2, 8);
+                return locatorName;
+            }
 
-@given('que o usuário acessa a página inicial')
-def step_acessa_pagina_inicial(context):
-    context.page = Page${slugify(feature.name, true)}(context.driver)
-    context.page.acessar_url('URL_DO_SISTEMA')
+            let stepsPy = `# ${feature.name}_steps.py gerado automaticamente\n`;
+            stepsPy += `# -*- coding: utf-8 -*-\n"""\nArquivo de steps do Behave para a feature "${feature.name}".\nUtiliza Page Object Model e locators definidos em pages.py.\n"""\n\n`;
+            stepsPy += `from behave import given, when, then\n`;
+            stepsPy += `from pages_${feature.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()} import Page${slugify(feature.name, true)}, Locators${slugify(feature.name, true)}\n\n`;
 
-# Exemplo de step para clicar em um elemento
-@when('o usuário clica no elemento')
-def step_clica_elemento(context):
-    context.page.clicar(Locators${slugify(feature.name, true)}.ELEMENTO_EXEMPLO)
+            // Step para inicializar o Page Object
+            stepsPy += `@given('que o usuário acessa a página inicial')\ndef step_acessa_pagina_inicial(context):\n    context.page = Page${slugify(feature.name, true)}(context.driver)\n    context.page.acessar_url('URL_DO_SISTEMA')\n\n`;
 
-# Exemplo de step para preencher um campo
-@when('o usuário preenche o campo com "<valor>"')
-def step_preenche_campo(context, valor):
-    context.page.preencher(Locators${slugify(feature.name, true)}.ELEMENTO_EXEMPLO, valor)
+            // Gerar steps dinamicamente para cada interação
+            let usedLocators = new Set();
+            (feature.cenarios || []).forEach((cenario, cIdx) => {
+                (cenario.interactions || []).forEach((interaction, iIdx) => {
+                    let locatorName = getLocatorName(interaction);
+                    // Garante que o nome do locator é igual ao do pages.py
+                    if (!locatorSet.has(locatorName)) {
+                        // Se não existe, pula (não foi gerado no pages.py)
+                        return;
+                    }
+                    // Evita steps duplicados para o mesmo locator/ação/frase
+                    const stepKey = `${interaction.acao}|${locatorName}|${interaction.stepText || ''}|${interaction.nomeElemento || ''}`;
+                    if (usedLocators.has(stepKey)) return;
+                    usedLocators.add(stepKey);
 
-# Adicione outros steps conforme necessário, usando os métodos e locators definidos em pages.py
-`;
+                    // Gera o decorator e função conforme a ação
+                    let decorator = '';
+                    let funcName = '';
+                    let body = '';
+                    let frase = '';
+                    let params = '';
+                    if (interaction.stepText) {
+                        // Usa a frase exata do .feature se existir
+                        frase = interaction.stepText;
+                    } else if (interaction.acao === 'preenche') {
+                        frase = `o usuário preenche o campo ${interaction.nomeElemento ? '"' + interaction.nomeElemento + '"' : ''} com "<valor>"`;
+                    } else if (interaction.acao === 'clica') {
+                        frase = `o usuário clica no elemento ${interaction.nomeElemento ? '"' + interaction.nomeElemento + '"' : ''}`;
+                    } else if (interaction.acao === 'upload') {
+                        frase = `o usuário faz upload do arquivo "<arquivo>" no campo ${interaction.nomeElemento ? '"' + interaction.nomeElemento + '"' : ''}`;
+                    } else if (interaction.acao === 'espera_elemento') {
+                        frase = `o usuário espera o elemento ${interaction.nomeElemento ? '"' + interaction.nomeElemento + '"' : ''} aparecer`;
+                    } else if (interaction.acao === 'espera_segundos') {
+                        frase = `o usuário espera ${interaction.tempoEspera || '<segundos>'} segundos`;
+                    } else {
+                        frase = `${interaction.acaoTexto || interaction.acao || 'ação'} no elemento ${interaction.nomeElemento ? '"' + interaction.nomeElemento + '"' : ''}`;
+                    }
 
-            downloadFile(`steps_${feature.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.py`, stepsPy);
+                    // Define o decorator
+                    if (interaction.step === 'Given') decorator = '@given';
+                    else if (interaction.step === 'Then') decorator = '@then';
+                    else decorator = '@when';
+
+                    // Nome da função
+                    funcName = `step_${interaction.acao}_${locatorName}_${cIdx}_${iIdx}`;
+
+                    // Parâmetros
+                    if (interaction.acao === 'preenche') {
+                        params = 'context, valor';
+                        body = `    context.page.preencher(Locators${slugify(feature.name, true)}.${locatorName}, valor)`;
+                    } else if (interaction.acao === 'upload') {
+                        params = 'context, arquivo';
+                        body = `    context.page.upload_arquivo(Locators${slugify(feature.name, true)}.${locatorName}, arquivo)`;
+                    } else if (interaction.acao === 'espera_segundos') {
+                        params = 'context';
+                        let tempo = interaction.tempoEspera || 1;
+                        body = `    import time\n    time.sleep(${tempo})`;
+                    } else if (interaction.acao === 'espera_elemento') {
+                        params = 'context';
+                        body = `    context.page.esperar_elemento(Locators${slugify(feature.name, true)}.${locatorName})`;
+                    } else if (interaction.acao === 'clica') {
+                        params = 'context';
+                        body = `    context.page.clicar(Locators${slugify(feature.name, true)}.${locatorName})`;
+                    } else {
+                        params = 'context';
+                        body = `    # Implemente a ação '${interaction.acaoTexto || interaction.acao}' para o locator '${locatorName}'`;
+                    }
+
+                    stepsPy += `${decorator}('${frase}')\ndef ${funcName}(${params}):\n${body}\n\n`;
+                });
+            });
+
+            stepsPy += `# Adicione outros steps conforme necessário, usando os métodos e locators definidos em pages.py\n`;
+
+            downloadFile(`${feature.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_steps.py`, stepsPy);
 
             // --- environment.py com docstrings e comentários ---
             const environmentPy = `# environment.py gerado automaticamente para a feature "${feature.name}"
@@ -1367,46 +1429,41 @@ def before_all(context):
         else:
             raise ValueError(f"Navegador não suportado: {browser}")
         logging.info(f"Driver iniciado com sucesso ({browser})")
-    except WebDriverException as e {
+    except WebDriverException as e:
         logging.error(f"Erro ao iniciar o driver: {e}")
         raise
-    } catch (Exception e) {
+    except Exception as e:
         logging.error(f"Erro inesperado: {e}")
         raise
-    }
 
 def after_step(context, step):
     """
     Tira screenshot em caso de falha no step.
     """
     if step.status == "failed":
-        try {
+        try:
             screenshots_dir = os.path.join(os.getcwd(), "screenshots")
             os.makedirs(screenshots_dir, exist_ok=True)
             filename = f"{step.name.replace(' ', '_')}.png"
             filepath = os.path.join(screenshots_dir, filename)
             context.driver.save_screenshot(filepath)
             logging.error(f"Step falhou. Screenshot salvo em: {filepath}")
-        } catch (Exception e) {
+        except Exception as e:
             logging.error(f"Erro ao salvar screenshot: {e}")
-        }
-    }
 
 def after_all(context):
     """
     Finaliza o driver após todos os testes.
     """
-    try {
-        if hasattr(context, "driver") {
+    try:
+        if hasattr(context, "driver"):
             context.driver.quit()
             logging.info("Driver finalizado com sucesso.")
-        }
-    } catch (Exception e) {
+    except Exception as e:
         logging.error(f"Erro ao finalizar o driver: {e}")
-    }
 `;
 
-            downloadFile(`environment_${feature.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.py`, environmentPy);
+            downloadFile(`environment.py`, environmentPy);
 
             // Gera requirements.txt mais completo
             const requirementsTxt = `# requirements.txt gerado automaticamente
