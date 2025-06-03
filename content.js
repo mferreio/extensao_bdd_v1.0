@@ -470,10 +470,23 @@ setTimeout(() => {
 // Função utilitária para validar se um elemento pode ser preenchido (agora cobre PrimeNG, inputmode, role, classes customizadas)
 function isFillableElement(el) {
     if (!el) return false;
+    // Caso especial: PrimeNG p-inputnumber (componente customizado)
+    if (
+        el.tagName === 'P-INPUTNUMBER' ||
+        (el.classList && (
+            el.classList.contains('p-inputnumber') ||
+            el.classList.contains('p-inputnumber-input') ||
+            el.classList.contains('p-inputwrapper')
+        ))
+    ) {
+        return true;
+    }
     if (el.tagName === 'INPUT') {
         // Tipos tradicionais
         const type = (el.type || '').toLowerCase();
-        if (['text', 'email', 'password', 'search', 'tel', 'url', 'number', 'date', 'datetime-local', 'month', 'time', 'week'].includes(type)) return true;
+        if ([
+            'text', 'email', 'password', 'search', 'tel', 'url', 'number', 'date', 'datetime-local', 'month', 'time', 'week'
+        ].includes(type)) return true;
         // PrimeNG/Custom: inputmode="decimal" ou "numeric"
         if (el.getAttribute('inputmode') && ['decimal', 'numeric'].includes(el.getAttribute('inputmode'))) return true;
         // PrimeNG/Custom: role="spinbutton"
@@ -683,8 +696,7 @@ function handleInputEvent(event) {
             (event.target.closest && event.target.closest('.gherkin-feature-name'))
         ) return;
 
-        // Usa nova versão de isFillableElement para inputs customizados
-        if (!isFillableElement(event.target)) return;
+
 
         const actionSelect = document.getElementById('gherkin-action-select');
         let acaoValue = 'preenche';
@@ -696,19 +708,33 @@ function handleInputEvent(event) {
         if (acaoValue === 'preenche') {
             // Remove qualquer listener antigo para evitar múltiplos binds
             event.target.removeEventListener('blur', window.__gherkinPreencheBlurHandler, true);
+            // Se for um p-inputnumber, também adiciona o handler no próprio componente
+            if (event.target.closest && event.target.closest('p-inputnumber')) {
+                const pInputNumber = event.target.closest('p-inputnumber');
+                pInputNumber.removeEventListener('blur', window.__gherkinPreencheBlurHandler, true);
+            }
             window.__gherkinPreencheBlurHandler = function(ev) {
                 if (!window.isRecording || window.isPaused) return;
                 if (!isExtensionContextValid()) return;
-                // Recupera valores necessários de forma segura
-                const cssSelector = getCSSSelector(ev.target);
-                const xpath = typeof getRobustXPath === 'function' ? getRobustXPath(ev.target) : '';
-                let nomeElemento = (ev.target.getAttribute('aria-label') || ev.target.getAttribute('name') || ev.target.id || ev.target.className || ev.target.tagName).toString().trim();
-                if (!nomeElemento) nomeElemento = ev.target.tagName;
+                // Determina o elemento alvo para registro
+                let target = ev.target;
+                let isPInputNumber = false;
+                // Se for p-inputnumber, busca o input interno
+                if (target.tagName === 'P-INPUTNUMBER' || (target.classList && target.classList.contains('p-inputnumber'))) {
+                    isPInputNumber = true;
+                    // Busca o input interno
+                    const input = target.querySelector('input.p-inputnumber-input, input.p-inputtext');
+                    if (input) target = input;
+                }
+                const cssSelector = getCSSSelector(target);
+                const xpath = typeof getRobustXPath === 'function' ? getRobustXPath(target) : '';
+                let nomeElemento = (target.getAttribute('aria-label') || target.getAttribute('name') || target.id || target.className || target.tagName).toString().trim();
+                if (!nomeElemento) nomeElemento = target.tagName;
                 let value = '';
-                if (ev.target.tagName === 'INPUT' || ev.target.tagName === 'TEXTAREA') {
-                    value = ev.target.value;
-                } else if (ev.target.isContentEditable) {
-                    value = ev.target.innerText || ev.target.textContent || '';
+                if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+                    value = target.value;
+                } else if (target.isContentEditable) {
+                    value = target.innerText || target.textContent || '';
                 }
                 // Define o step de acordo com a posição
                 let step = 'Then';
@@ -743,6 +769,11 @@ function handleInputEvent(event) {
                 if (typeof window.saveInteractionsToStorage === 'function') window.saveInteractionsToStorage();
             };
             event.target.addEventListener('blur', window.__gherkinPreencheBlurHandler, true);
+            // Se for p-inputnumber, adiciona o blur também no componente pai
+            if (event.target.closest && event.target.closest('p-inputnumber')) {
+                const pInputNumber = event.target.closest('p-inputnumber');
+                pInputNumber.addEventListener('blur', window.__gherkinPreencheBlurHandler, true);
+            }
             return;
         }
 
