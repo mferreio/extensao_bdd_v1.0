@@ -610,7 +610,7 @@ function renderPanelContent(panel) {
     let html = '';
     html += `
         <div class="gherkin-panel-header">
-            <h3>GERADOR DE TESTES AUTOMATIZADOS</h3>
+            <h3>GERADOR DE TESTES AUTOMATIZADOS EM PYTHON</h3>
             <div class="button-container-top">
                 <button id="gherkin-reopen" title="Reabrir" style="display: none;">Abrir</button>
                 <button id="gherkin-minimize" title="Minimizar">
@@ -2244,10 +2244,10 @@ function initializePanelEvents(panel) {
                 showFeedback('Selecione ao menos uma feature!', 'error');
                 return;
             }
-            if (typeof exportSelectedFeatures === 'function') {
-                exportSelectedFeatures(selected);
-            } else if (window.exportSelectedFeatures) {
+            if (window.exportSelectedFeatures && typeof window.exportSelectedFeatures === 'function') {
                 window.exportSelectedFeatures(selected);
+            } else {
+                showFeedback('Função de exportação não encontrada! Recarregue a página.', 'error');
             }
         };
     }

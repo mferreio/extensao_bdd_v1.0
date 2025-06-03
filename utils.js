@@ -134,4 +134,55 @@ function isExtensionContextValid() {
     return typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id;
 }
 
+// Spinner global seguro
+function showSpinner(message = 'Processando...') {
+    // Evita múltiplos spinners
+    if (document.getElementById('gherkin-spinner-modal')) return;
+    const modalBg = document.createElement('div');
+    modalBg.id = 'gherkin-spinner-modal';
+    modalBg.style.position = 'fixed';
+    modalBg.style.top = '0';
+    modalBg.style.left = '0';
+    modalBg.style.width = '100vw';
+    modalBg.style.height = '100vh';
+    modalBg.style.background = 'rgba(0,0,0,0.18)';
+    modalBg.style.display = 'flex';
+    modalBg.style.alignItems = 'center';
+    modalBg.style.justifyContent = 'center';
+    modalBg.style.zIndex = '2147483647';
+    const modal = document.createElement('div');
+    modal.style.background = '#fff';
+    modal.style.padding = '28px 32px 22px 32px';
+    modal.style.borderRadius = '12px';
+    modal.style.boxShadow = '0 4px 24px rgba(0,0,0,0.18)';
+    modal.style.display = 'flex';
+    modal.style.flexDirection = 'column';
+    modal.style.alignItems = 'center';
+    modal.style.gap = '18px';
+    modal.style.minWidth = '220px';
+    // Spinner
+    const spinner = document.createElement('div');
+    spinner.className = 'gherkin-spinner';
+    spinner.style.marginBottom = '12px';
+    modal.appendChild(spinner);
+    // Mensagem
+    const msg = document.createElement('div');
+    msg.textContent = message;
+    msg.style.fontSize = '16px';
+    msg.style.color = '#0D47A1';
+    msg.style.textAlign = 'center';
+    modal.appendChild(msg);
+    modalBg.appendChild(modal);
+    document.body.appendChild(modalBg);
+}
+
+function hideSpinner() {
+    const modal = document.getElementById('gherkin-spinner-modal');
+    if (modal) modal.remove();
+}
+
+// Garante que as funções estejam disponíveis globalmente
+window.showSpinner = showSpinner;
+window.hideSpinner = hideSpinner;
+
 export { slugify, downloadFile, showFeedback, debounce, getCSSSelector, getRobustXPath, isExtensionContextValid };
