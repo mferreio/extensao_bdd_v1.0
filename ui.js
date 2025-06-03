@@ -2244,6 +2244,7 @@ function initializePanelEvents(panel) {
                 showFeedback('Selecione ao menos uma feature!', 'error');
                 return;
             }
+            // Garante chamada global e feedback de erro
             if (window.exportSelectedFeatures && typeof window.exportSelectedFeatures === 'function') {
                 window.exportSelectedFeatures(selected);
             } else {

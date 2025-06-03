@@ -783,7 +783,7 @@ function handleInputEvent(event) {
 
         // Só registra ação "preenche" no blur ou change, não no input
         if (acaoValue === 'preenche') {
-            // Handler único para blur e change
+            // Handler único para blur, change e keydown(Tab)
             if (!window.__gherkinPreencheBlurChangeHandler) {
                 window.__gherkinPreencheBlurChangeHandler = function(ev) {
                     if (!window.isRecording || window.isPaused) return;
@@ -797,10 +797,42 @@ function handleInputEvent(event) {
                         const input = target.querySelector('input.p-inputnumber-input, input.p-inputtext');
                         if (input) target = input;
                     }
+                    // Se for keydown, só registra se for Tab
+                    if (ev.type === 'keydown' && ev.key !== 'Tab') return;
                     const cssSelector = getCSSSelector(target);
                     const xpath = typeof getRobustXPath === 'function' ? getRobustXPath(target) : '';
-                    let nomeElemento = (target.getAttribute('aria-label') || target.getAttribute('name') || target.id || target.className || target.tagName).toString().trim();
-                    if (!nomeElemento) nomeElemento = target.tagName;
+                    // Busca nome amigável do elemento
+                    let nomeElemento = '';
+                    if (target.getAttribute('aria-label')) {
+                        nomeElemento = target.getAttribute('aria-label');
+                    } else if (target.getAttribute('placeholder')) {
+                        nomeElemento = target.getAttribute('placeholder');
+                    } else if (target.getAttribute('name')) {
+                        nomeElemento = target.getAttribute('name');
+                    } else if (target.id) {
+                        // Tenta buscar label associado via for
+                        const label = document.querySelector('label[for="' + target.id + '"]');
+                        if (label && label.textContent) {
+                            nomeElemento = label.textContent.trim();
+                        } else {
+                            nomeElemento = target.id;
+                        }
+                    } else if (target.closest) {
+                        // Tenta buscar label pai
+                        const labelParent = target.closest('label');
+                        if (labelParent && labelParent.textContent) {
+                            nomeElemento = labelParent.textContent.trim();
+                        } else if (target.className) {
+                            nomeElemento = target.className;
+                        } else {
+                            nomeElemento = target.tagName;
+                        }
+                    } else if (target.className) {
+                        nomeElemento = target.className;
+                    } else {
+                        nomeElemento = target.tagName;
+                    }
+                    nomeElemento = (nomeElemento || '').toString().trim();
                     let value = '';
                     if (typeof target.value !== 'undefined') {
                         value = target.value;
@@ -842,23 +874,38 @@ function handleInputEvent(event) {
                     if (typeof window.saveInteractionsToStorage === 'function') window.saveInteractionsToStorage();
                 };
             }
+            // Handler para keydown(Tab)
+            if (!window.__gherkinPreencheKeydownHandler) {
+                window.__gherkinPreencheKeydownHandler = function(ev) {
+                    if (ev.key === 'Tab') {
+                        // Aguarda o valor ser atualizado após o Tab (blur)
+                        setTimeout(() => {
+                            window.__gherkinPreencheBlurChangeHandler(ev);
+                        }, 0);
+                    }
+                };
+            }
             // Remove listeners antigos para evitar múltiplos binds
             event.target.removeEventListener('blur', window.__gherkinPreencheBlurChangeHandler, true);
             event.target.removeEventListener('change', window.__gherkinPreencheBlurChangeHandler, true);
+            event.target.removeEventListener('keydown', window.__gherkinPreencheKeydownHandler, true);
             // Se for um p-inputnumber, também remove do componente pai
             if (event.target.closest && event.target.closest('p-inputnumber')) {
                 const pInputNumber = event.target.closest('p-inputnumber');
                 pInputNumber.removeEventListener('blur', window.__gherkinPreencheBlurChangeHandler, true);
                 pInputNumber.removeEventListener('change', window.__gherkinPreencheBlurChangeHandler, true);
+                pInputNumber.removeEventListener('keydown', window.__gherkinPreencheKeydownHandler, true);
             }
-            // Adiciona listeners para blur e change
+            // Adiciona listeners para blur, change e keydown(Tab)
             event.target.addEventListener('blur', window.__gherkinPreencheBlurChangeHandler, true);
             event.target.addEventListener('change', window.__gherkinPreencheBlurChangeHandler, true);
+            event.target.addEventListener('keydown', window.__gherkinPreencheKeydownHandler, true);
             // Se for p-inputnumber, adiciona também no componente pai
             if (event.target.closest && event.target.closest('p-inputnumber')) {
                 const pInputNumber = event.target.closest('p-inputnumber');
                 pInputNumber.addEventListener('blur', window.__gherkinPreencheBlurChangeHandler, true);
                 pInputNumber.addEventListener('change', window.__gherkinPreencheBlurChangeHandler, true);
+                pInputNumber.addEventListener('keydown', window.__gherkinPreencheKeydownHandler, true);
             }
             return;
         }
@@ -961,11 +1008,23 @@ function exportSelectedFeatures(selectedIdxs) {
             return;
         }
 
-        // Exporta arquivo .feature único
+
+        // Exporta um arquivo .feature por feature
         featuresToExport.forEach((feature) => {
-            exportText += `Feature: ${feature.name}\n`;
+            // Função slugify local para garantir consistência
+            function slugify(str, upperCamel) {
+                let s = (str || '').normalize('NFD').replace(/[^\w\s-]/g, '').replace(/[\s_-]+/g, '_').replace(/^_+|_+$/g, '');
+                if (upperCamel) {
+                    s = s.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('');
+                } else {
+                    s = s.toLowerCase();
+                }
+                return s;
+            }
+            const featureSlug = slugify(feature.name, false);
+            let featureText = `Feature: ${feature.name}\n`;
             (feature.cenarios || []).forEach((cenario) => {
-                exportText += `  Scenario: ${cenario.name}\n`;
+                featureText += `  Scenario: ${cenario.name}\n`;
                 (cenario.interactions || []).forEach((interaction) => {
                     let mensagem = '';
                     if (interaction.stepText) {
@@ -1005,24 +1064,13 @@ function exportSelectedFeatures(selectedIdxs) {
                         mensagem = tpl.replace('{acao}', interaction.acaoTexto ? interaction.acaoTexto.toLowerCase() : '')
                             .replace('{elemento}', interaction.nomeElemento || 'ELEMENTO');
                     }
-                    exportText += `    ${mensagem}\n`;
+                    featureText += `    ${mensagem}\n`;
                 });
-                exportText += '\n';
+                featureText += '\n';
             });
-            exportText += '\n';
+            const featureFilename = `${featureSlug}.feature`;
+            downloadFile(featureFilename, featureText);
         });
-        // Faz download do arquivo .feature
-        const blob = new Blob([exportText], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'features_exportadas.feature';
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => {
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }, 100);
 
         // Exporta README.md, pages.py, steps.py, environment.py, requirements.txt para cada feature selecionada
         featuresToExport.forEach((feature) => {
@@ -1143,8 +1191,10 @@ ${pageClass}
             // --- Geração de steps.py (Behave) ---
             // Gera steps parametrizados e funções que refletem os steps do .feature
             let stepsPy = `# steps.py gerado automaticamente para a feature "${feature.name}"
+
+
 from behave import given, when, then
-from pages_${feature.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()} import Page${slugify(feature.name, true)}, Locators${slugify(feature.name, true)}
+from pages.pages_${featureSlug} import Page${slugify(feature.name, true)}, Locators${slugify(feature.name, true)}
 
 def get_page(context):
     if not hasattr(context, 'page'):
