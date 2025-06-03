@@ -781,78 +781,84 @@ function handleInputEvent(event) {
             acaoValue = actionSelect.value;
         }
 
-        // Só registra ação "preenche" no blur, não no input
+        // Só registra ação "preenche" no blur ou change, não no input
         if (acaoValue === 'preenche') {
-            // Remove qualquer listener antigo para evitar múltiplos binds
-            event.target.removeEventListener('blur', window.__gherkinPreencheBlurHandler, true);
-            // Se for um p-inputnumber, também adiciona o handler no próprio componente
-            if (event.target.closest && event.target.closest('p-inputnumber')) {
-                const pInputNumber = event.target.closest('p-inputnumber');
-                pInputNumber.removeEventListener('blur', window.__gherkinPreencheBlurHandler, true);
+            // Handler único para blur e change
+            if (!window.__gherkinPreencheBlurChangeHandler) {
+                window.__gherkinPreencheBlurChangeHandler = function(ev) {
+                    if (!window.isRecording || window.isPaused) return;
+                    if (!isExtensionContextValid()) return;
+                    // Determina o elemento alvo para registro
+                    let target = ev.target;
+                    let isPInputNumber = false;
+                    // Se for p-inputnumber, busca o input interno
+                    if (target.tagName === 'P-INPUTNUMBER' || (target.classList && target.classList.contains('p-inputnumber'))) {
+                        isPInputNumber = true;
+                        const input = target.querySelector('input.p-inputnumber-input, input.p-inputtext');
+                        if (input) target = input;
+                    }
+                    const cssSelector = getCSSSelector(target);
+                    const xpath = typeof getRobustXPath === 'function' ? getRobustXPath(target) : '';
+                    let nomeElemento = (target.getAttribute('aria-label') || target.getAttribute('name') || target.id || target.className || target.tagName).toString().trim();
+                    if (!nomeElemento) nomeElemento = target.tagName;
+                    let value = '';
+                    if (typeof target.value !== 'undefined') {
+                        value = target.value;
+                    } else if (typeof target.innerText !== 'undefined') {
+                        value = target.innerText;
+                    } else if (typeof target.textContent !== 'undefined') {
+                        value = target.textContent;
+                    }
+                    // Define o step de acordo com a posição
+                    let step = 'Then';
+                    let offset = 0;
+                    if (window.interactions.length > 0 && window.interactions[0].acao === 'acessa_url') offset = 1;
+                    if (window.interactions.length === 0) step = 'Given';
+                    else if (window.interactions.length === 1 && offset === 0) step = 'When';
+                    else if (window.interactions.length === 1 && offset === 1) step = 'When';
+                    else if (window.interactions.length === 2 && offset === 1) step = 'Then';
+                    // Evita duplicidade
+                    const last = window.interactions[window.interactions.length - 1];
+                    if (
+                        last &&
+                        last.acao === 'preenche' &&
+                        last.cssSelector === cssSelector &&
+                        last.nomeElemento === nomeElemento &&
+                        last.valorPreenchido === value
+                    ) {
+                        return;
+                    }
+                    window.interactions.push({
+                        step,
+                        acao: 'preenche',
+                        acaoTexto: 'Preencher',
+                        nomeElemento,
+                        cssSelector,
+                        xpath,
+                        valorPreenchido: value,
+                        timestamp: Date.now()
+                    });
+                    renderLogWithActions();
+                    if (typeof window.saveInteractionsToStorage === 'function') window.saveInteractionsToStorage();
+                };
             }
-            window.__gherkinPreencheBlurHandler = function(ev) {
-                if (!window.isRecording || window.isPaused) return;
-                if (!isExtensionContextValid()) return;
-                // Determina o elemento alvo para registro
-                let target = ev.target;
-                let isPInputNumber = false;
-                // Se for p-inputnumber, busca o input interno
-                if (target.tagName === 'P-INPUTNUMBER' || (target.classList && target.classList.contains('p-inputnumber'))) {
-                    isPInputNumber = true;
-                    // Busca o input interno
-                    const input = target.querySelector('input.p-inputnumber-input, input.p-inputtext');
-                    if (input) target = input;
-                }
-                const cssSelector = getCSSSelector(target);
-                const xpath = typeof getRobustXPath === 'function' ? getRobustXPath(target) : '';
-                let nomeElemento = (target.getAttribute('aria-label') || target.getAttribute('name') || target.id || target.className || target.tagName).toString().trim();
-                if (!nomeElemento) nomeElemento = target.tagName;
-                let value = '';
-                // Permite qualquer elemento: tenta pegar value, innerText ou textContent
-                if (typeof target.value !== 'undefined') {
-                    value = target.value;
-                } else if (typeof target.innerText !== 'undefined') {
-                    value = target.innerText;
-                } else if (typeof target.textContent !== 'undefined') {
-                    value = target.textContent;
-                }
-                // Define o step de acordo com a posição
-                let step = 'Then';
-                let offset = 0;
-                if (window.interactions.length > 0 && window.interactions[0].acao === 'acessa_url') offset = 1;
-                if (window.interactions.length === 0) step = 'Given';
-                else if (window.interactions.length === 1 && offset === 0) step = 'When';
-                else if (window.interactions.length === 1 && offset === 1) step = 'When';
-                else if (window.interactions.length === 2 && offset === 1) step = 'Then';
-                // Evita duplicidade
-                const last = window.interactions[window.interactions.length - 1];
-                if (
-                    last &&
-                    last.acao === 'preenche' &&
-                    last.cssSelector === cssSelector &&
-                    last.nomeElemento === nomeElemento &&
-                    last.valorPreenchido === value
-                ) {
-                    return;
-                }
-                window.interactions.push({
-                    step,
-                    acao: 'preenche',
-                    acaoTexto: 'Preencher',
-                    nomeElemento,
-                    cssSelector,
-                    xpath,
-                    valorPreenchido: value,
-                    timestamp: Date.now()
-                });
-                renderLogWithActions();
-                if (typeof window.saveInteractionsToStorage === 'function') window.saveInteractionsToStorage();
-            };
-            event.target.addEventListener('blur', window.__gherkinPreencheBlurHandler, true);
-            // Se for p-inputnumber, adiciona o blur também no componente pai
+            // Remove listeners antigos para evitar múltiplos binds
+            event.target.removeEventListener('blur', window.__gherkinPreencheBlurChangeHandler, true);
+            event.target.removeEventListener('change', window.__gherkinPreencheBlurChangeHandler, true);
+            // Se for um p-inputnumber, também remove do componente pai
             if (event.target.closest && event.target.closest('p-inputnumber')) {
                 const pInputNumber = event.target.closest('p-inputnumber');
-                pInputNumber.addEventListener('blur', window.__gherkinPreencheBlurHandler, true);
+                pInputNumber.removeEventListener('blur', window.__gherkinPreencheBlurChangeHandler, true);
+                pInputNumber.removeEventListener('change', window.__gherkinPreencheBlurChangeHandler, true);
+            }
+            // Adiciona listeners para blur e change
+            event.target.addEventListener('blur', window.__gherkinPreencheBlurChangeHandler, true);
+            event.target.addEventListener('change', window.__gherkinPreencheBlurChangeHandler, true);
+            // Se for p-inputnumber, adiciona também no componente pai
+            if (event.target.closest && event.target.closest('p-inputnumber')) {
+                const pInputNumber = event.target.closest('p-inputnumber');
+                pInputNumber.addEventListener('blur', window.__gherkinPreencheBlurChangeHandler, true);
+                pInputNumber.addEventListener('change', window.__gherkinPreencheBlurChangeHandler, true);
             }
             return;
         }
