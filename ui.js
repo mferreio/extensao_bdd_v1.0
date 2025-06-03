@@ -1150,19 +1150,27 @@ function renderLogWithActions() {
     if (!log) return;
     log.innerHTML = '';
 
-    // Wrapper da tabela: flex-grow para ocupar o espaço restante, rolagem horizontal sempre visível
+    // Wrapper da tabela: ocupa todo o espaço disponível do log
     const tableWrap = document.createElement('div');
-    tableWrap.style.flex = '1 1 0%';
+    tableWrap.style.flex = '1 1 auto';
     tableWrap.style.display = 'flex';
     tableWrap.style.flexDirection = 'column';
-    tableWrap.style.overflowX = 'auto';
-    tableWrap.style.overflowY = 'auto';
+    tableWrap.style.overflow = 'hidden';
     tableWrap.style.width = '100%';
     tableWrap.style.minHeight = '0';
     tableWrap.style.background = '#fff';
     tableWrap.tabIndex = 0;
 
-    // Tabela ocupa largura mínima para não cortar colunas
+    // Container para rolagem da tabela
+    const scrollContainer = document.createElement('div');
+    scrollContainer.style.flex = '1 1 auto';
+    scrollContainer.style.overflowX = 'auto';
+    scrollContainer.style.overflowY = 'auto';
+    scrollContainer.style.width = '100%';
+    scrollContainer.style.minHeight = '0';
+    scrollContainer.style.background = '#fff';
+
+    // Tabela ocupa largura mínima para não cortar colunas e fica "fixa" dentro do scrollContainer
     const table = document.createElement('table');
     table.className = 'gherkin-log-table';
     table.style.width = '100%';
@@ -1170,6 +1178,8 @@ function renderLogWithActions() {
     table.style.borderCollapse = 'collapse';
     table.style.fontSize = '13px';
     table.style.background = '#fff';
+    // Remover height 100% da tabela para não "esticar" a linha única
+    // table.style.height = '100%';
 
     // Cabeçalho
     const thead = document.createElement('thead');
@@ -1273,19 +1283,20 @@ function renderLogWithActions() {
     }
 
     renderRows();
-    tableWrap.appendChild(table);
+    scrollContainer.appendChild(table);
+    tableWrap.appendChild(scrollContainer);
     log.appendChild(tableWrap);
 
     // Sempre rola para o final ao adicionar novo log
     setTimeout(() => {
-        log.scrollTop = log.scrollHeight;
+        scrollContainer.scrollTop = scrollContainer.scrollHeight;
     }, 0);
 
     // Estilo responsivo e barra de rolagem horizontal fixa e customizada
     if (!document.getElementById('gherkin-log-table-style')) {
         const style = document.createElement('style');
         style.id = 'gherkin-log-table-style';
-        style.innerHTML = `
+    style.innerHTML = `
 /* Container principal do painel de log */
 #gherkin-log {
     display: flex !important;
@@ -1297,9 +1308,15 @@ function renderLogWithActions() {
     margin: 0;
 }
 #gherkin-log > div {
-    flex: 1 1 0%;
+    flex: 1 1 auto;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+    background: #fff;
+}
+#gherkin-log .gherkin-log-table-scroll {
+    flex: 1 1 auto;
     overflow-x: auto;
     overflow-y: auto;
     min-height: 0;
@@ -1308,19 +1325,19 @@ function renderLogWithActions() {
     scrollbar-width: thin;
     scrollbar-color: #007bff #f9f9f9;
 }
-#gherkin-log > div::-webkit-scrollbar {
+#gherkin-log .gherkin-log-table-scroll::-webkit-scrollbar {
     height: 12px;
     background: #f9f9f9;
 }
-#gherkin-log > div::-webkit-scrollbar-thumb {
+#gherkin-log .gherkin-log-table-scroll::-webkit-scrollbar-thumb {
     background: #007bff;
     border-radius: 6px;
     min-width: 40px;
 }
-#gherkin-log > div::-webkit-scrollbar-thumb:hover {
+#gherkin-log .gherkin-log-table-scroll::-webkit-scrollbar-thumb:hover {
     background: #005bb5;
 }
-#gherkin-log > div::-webkit-scrollbar-corner {
+#gherkin-log .gherkin-log-table-scroll::-webkit-scrollbar-corner {
     background: #f9f9f9;
 }
 .gherkin-log-table th, .gherkin-log-table td {
@@ -1332,6 +1349,10 @@ function renderLogWithActions() {
     max-width: 340px;
     overflow: hidden;
     text-overflow: ellipsis;
+    height: 38px !important;
+    min-height: 38px !important;
+    line-height: 38px !important;
+    vertical-align: middle !important;
 }
 .gherkin-log-table th {
     background: #f7faff;
@@ -1347,6 +1368,7 @@ function renderLogWithActions() {
     width: 100%;
     min-width: 700px;
     background: #fff;
+    /* height removido para evitar esticar a linha única */
 }
 @media (max-width: 900px) {
     .gherkin-log-table th, .gherkin-log-table td { font-size: 12px; }
