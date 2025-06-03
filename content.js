@@ -577,14 +577,54 @@ document.addEventListener('click', (event) => {
             }
         }
 
-        const cssSelector = getCSSSelector(event.target);
-        const xpath = getRobustXPath(event.target);
-        let nomeElemento = (event.target.innerText || event.target.value || event.target.getAttribute('aria-label') || event.target.getAttribute('name') || event.target.tagName).trim();
-        if (!nomeElemento) nomeElemento = event.target.tagName;
+        // Busca recursiva por campo editável ao clicar para ação "Preencher"
+        function findFillableDescendant(el) {
+            if (!el) return null;
+            if (isFillableElement(el)) return el;
+            // Busca por input, textarea, contenteditable ou PrimeNG
+            const fillable = el.querySelector && el.querySelector('input:not([type=file]), textarea, [contenteditable="true"], .p-inputnumber-input, .p-inputtext');
+            if (fillable) return fillable;
+            // Busca por p-inputnumber customizado
+            const pInputNumber = el.querySelector && el.querySelector('p-inputnumber');
+            if (pInputNumber) {
+                const input = pInputNumber.querySelector('input.p-inputnumber-input, input.p-inputtext');
+                if (input) return input;
+            }
+            return null;
+        }
+
+        let targetForValue = event.target;
         const actionSelect = document.getElementById('gherkin-action-select');
-        // Capture acao e acaoValue em variáveis auxiliares para uso posterior
         let acao = actionSelect ? actionSelect.options[actionSelect.selectedIndex].text : 'Clicar';
         let acaoValue = actionSelect ? actionSelect.value : 'clica';
+        if (acaoValue === 'preenche') {
+            const found = findFillableDescendant(event.target);
+            if (found) targetForValue = found;
+        }
+
+        const cssSelector = getCSSSelector(targetForValue);
+        const xpath = getRobustXPath(targetForValue);
+
+        // Para nomeElemento, priorize aria-label, name, id, class, tag, mas nunca o valor preenchido
+        let nomeElemento = (
+            targetForValue.getAttribute('aria-label') ||
+            targetForValue.getAttribute('name') ||
+            targetForValue.id ||
+            targetForValue.className ||
+            targetForValue.tagName
+        );
+        if (typeof nomeElemento === 'string') nomeElemento = nomeElemento.trim();
+        if (!nomeElemento) nomeElemento = targetForValue.tagName;
+
+        // Para valorPreenchido, sempre tente pegar value, innerText ou textContent do campo editável
+        let valorPreenchido = '';
+        if (typeof targetForValue.value !== 'undefined') {
+            valorPreenchido = targetForValue.value;
+        } else if (typeof targetForValue.innerText !== 'undefined') {
+            valorPreenchido = targetForValue.innerText;
+        } else if (typeof targetForValue.textContent !== 'undefined') {
+            valorPreenchido = targetForValue.textContent;
+        }
 
 
         // Parâmetros extras para ações específicas
@@ -657,7 +697,22 @@ document.addEventListener('click', (event) => {
         else if (window.interactions.length === 1 && offset === 1) step = 'When';
         else if (window.interactions.length === 2 && offset === 1) step = 'Then';
         window.givenAcessaUrlAdded = false;
-        window.interactions.push({ step, acao: acaoValue, acaoTexto: acao, nomeElemento, cssSelector, xpath, timestamp: Date.now(), ...interactionParams });
+        // Se for ação preenche, registre o valor preenchido corretamente
+        if (acaoValue === 'preenche') {
+            window.interactions.push({
+                step,
+                acao: acaoValue,
+                acaoTexto: acao,
+                nomeElemento,
+                cssSelector,
+                xpath,
+                valorPreenchido,
+                timestamp: Date.now(),
+                ...interactionParams
+            });
+        } else {
+            window.interactions.push({ step, acao: acaoValue, acaoTexto: acao, nomeElemento, cssSelector, xpath, timestamp: Date.now(), ...interactionParams });
+        }
         renderLogWithActions();
     } catch (error) { console.error('Erro ao registrar clique:', error); }
 });
