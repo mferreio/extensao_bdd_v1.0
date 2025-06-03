@@ -586,11 +586,6 @@ document.addEventListener('click', (event) => {
         let acao = actionSelect ? actionSelect.options[actionSelect.selectedIndex].text : 'Clicar';
         let acaoValue = actionSelect ? actionSelect.value : 'clica';
 
-        // Validação para ação "Preencher"
-        if (acaoValue === 'preenche' && !isFillableElement(event.target)) {
-            showFeedback('A ação "Preencher" só pode ser usada em campos editáveis como input, textarea ou elementos contenteditable.', 'error');
-            return;
-        }
 
         // Parâmetros extras para ações específicas
         let interactionParams = {};
@@ -731,10 +726,13 @@ function handleInputEvent(event) {
                 let nomeElemento = (target.getAttribute('aria-label') || target.getAttribute('name') || target.id || target.className || target.tagName).toString().trim();
                 if (!nomeElemento) nomeElemento = target.tagName;
                 let value = '';
-                if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+                // Permite qualquer elemento: tenta pegar value, innerText ou textContent
+                if (typeof target.value !== 'undefined') {
                     value = target.value;
-                } else if (target.isContentEditable) {
-                    value = target.innerText || target.textContent || '';
+                } else if (typeof target.innerText !== 'undefined') {
+                    value = target.innerText;
+                } else if (typeof target.textContent !== 'undefined') {
+                    value = target.textContent;
                 }
                 // Define o step de acordo com a posição
                 let step = 'Then';
