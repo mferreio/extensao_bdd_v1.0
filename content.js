@@ -668,6 +668,7 @@ if (typeof window.saveInteractionsToStorage !== 'function') {
 function handleInputEvent(event) {
     // Protege contra variáveis não definidas
 
+
     try {
         if (!window.isRecording || window.isPaused) return;
         if (!isExtensionContextValid()) return;
@@ -685,88 +686,67 @@ function handleInputEvent(event) {
         // Usa nova versão de isFillableElement para inputs customizados
         if (!isFillableElement(event.target)) return;
 
-        // Recupera valores necessários de forma segura
-        const cssSelector = getCSSSelector(event.target);
-        const xpath = typeof getRobustXPath === 'function' ? getRobustXPath(event.target) : '';
-        let nomeElemento = (event.target.getAttribute('aria-label') || event.target.getAttribute('name') || event.target.id || event.target.className || event.target.tagName).toString().trim();
-        if (!nomeElemento) nomeElemento = event.target.tagName;
         const actionSelect = document.getElementById('gherkin-action-select');
-        // Capture acao e acaoValue em variáveis auxiliares para uso posterior
-        let acao = 'Preencher';
         let acaoValue = 'preenche';
         if (actionSelect && actionSelect.selectedIndex >= 0) {
-            acao = actionSelect.options[actionSelect.selectedIndex].text;
             acaoValue = actionSelect.value;
         }
-        // Proteção extra: se acaoValue ainda estiver indefinido/null, define como 'preenche'
-        if (!acaoValue) {
-            console.error('[Extensão BDD] acaoValue ficou indefinido! Forçando para "preenche". actionSelect:', actionSelect);
-            acaoValue = 'preenche';
-        }
 
-        // Captura valor corretamente para qualquer input, inclusive PrimeNG
-        let value = '';
-        if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
-            value = event.target.value;
-        } else if (event.target.isContentEditable) {
-            value = event.target.innerText || event.target.textContent || '';
-        }
-
-        // Define o step de acordo com a posição
-        let step = 'Then';
-        let offset = 0;
-        if (window.interactions.length > 0 && window.interactions[0].acao === 'acessa_url') offset = 1;
-        if (window.interactions.length === 0) step = 'Given';
-        else if (window.interactions.length === 1 && offset === 0) step = 'When';
-        else if (window.interactions.length === 1 && offset === 1) step = 'When';
-        else if (window.interactions.length === 2 && offset === 1) step = 'Then';
-
-        // Debounce para evitar duplicidade
-        if (window.inputDebounceTimeout) clearTimeout(window.inputDebounceTimeout);
-        // Capture acaoValue e acao em variáveis auxiliares para uso dentro do setTimeout (garante closure correta)
-        const acaoValueTimeout = acaoValue;
-        const acaoTimeout = acao;
-        const cssSelectorTimeout = cssSelector;
-        const nomeElementoTimeout = nomeElemento;
-        const valueTimeout = value;
-        const stepTimeout = step;
-        const xpathTimeout = xpath;
-        window.inputDebounceTimeout = setTimeout(function() {
-            try {
-                // Use apenas as variáveis capturadas, nunca acaoValue direto!
-                if (!acaoValueTimeout) {
-                    console.error('[Extensão BDD] acaoValueTimeout indefinido dentro do setTimeout!');
-                    return;
+        // Só registra ação "preenche" no blur, não no input
+        if (acaoValue === 'preenche') {
+            // Remove qualquer listener antigo para evitar múltiplos binds
+            event.target.removeEventListener('blur', window.__gherkinPreencheBlurHandler, true);
+            window.__gherkinPreencheBlurHandler = function(ev) {
+                if (!window.isRecording || window.isPaused) return;
+                if (!isExtensionContextValid()) return;
+                // Recupera valores necessários de forma segura
+                const cssSelector = getCSSSelector(ev.target);
+                const xpath = typeof getRobustXPath === 'function' ? getRobustXPath(ev.target) : '';
+                let nomeElemento = (ev.target.getAttribute('aria-label') || ev.target.getAttribute('name') || ev.target.id || ev.target.className || ev.target.tagName).toString().trim();
+                if (!nomeElemento) nomeElemento = ev.target.tagName;
+                let value = '';
+                if (ev.target.tagName === 'INPUT' || ev.target.tagName === 'TEXTAREA') {
+                    value = ev.target.value;
+                } else if (ev.target.isContentEditable) {
+                    value = ev.target.innerText || ev.target.textContent || '';
                 }
+                // Define o step de acordo com a posição
+                let step = 'Then';
+                let offset = 0;
+                if (window.interactions.length > 0 && window.interactions[0].acao === 'acessa_url') offset = 1;
+                if (window.interactions.length === 0) step = 'Given';
+                else if (window.interactions.length === 1 && offset === 0) step = 'When';
+                else if (window.interactions.length === 1 && offset === 1) step = 'When';
+                else if (window.interactions.length === 2 && offset === 1) step = 'Then';
+                // Evita duplicidade
                 const last = window.interactions[window.interactions.length - 1];
-                const now = Date.now();
                 if (
                     last &&
-                    last.acao === acaoValueTimeout &&
-                    last.cssSelector === cssSelectorTimeout &&
-                    last.nomeElemento === nomeElementoTimeout &&
-                    last.valorPreenchido === valueTimeout &&
-                    now - last.timestamp < 1000
+                    last.acao === 'preenche' &&
+                    last.cssSelector === cssSelector &&
+                    last.nomeElemento === nomeElemento &&
+                    last.valorPreenchido === value
                 ) {
                     return;
                 }
                 window.interactions.push({
-                    step: stepTimeout,
-                    acao: acaoValueTimeout,
-                    acaoTexto: acaoTimeout,
-                    nomeElemento: nomeElementoTimeout,
-                    cssSelector: cssSelectorTimeout,
-                    xpath: xpathTimeout,
-                    valorPreenchido: valueTimeout,
-                    timestamp: now
+                    step,
+                    acao: 'preenche',
+                    acaoTexto: 'Preencher',
+                    nomeElemento,
+                    cssSelector,
+                    xpath,
+                    valorPreenchido: value,
+                    timestamp: Date.now()
                 });
                 renderLogWithActions();
                 if (typeof window.saveInteractionsToStorage === 'function') window.saveInteractionsToStorage();
-                window.lastInputTarget = null;
-            } catch (err) {
-                console.error('[Extensão BDD] Erro dentro do setTimeout do handleInputEvent:', err);
-            }
-        }, 300);
+            };
+            event.target.addEventListener('blur', window.__gherkinPreencheBlurHandler, true);
+            return;
+        }
+
+        // Para outras ações (não preenche), não faz nada aqui
     } catch (err) {
         console.error('Erro no handleInputEvent:', err);
     }
