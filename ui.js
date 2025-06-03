@@ -1887,31 +1887,39 @@ function buildActionMenu(interaction, idx) {
         // Fecha outros menus
         document.querySelectorAll('.gherkin-action-dropdown').forEach(d => { d.style.display = 'none'; if (d.parentElement === document.body) d.remove(); });
 
-        // Exibe o menu como dropdown centralizado abaixo do botão, fora do fluxo da tabela
+        // Exibe o menu como dropdown centralizado abaixo do botão, DENTRO do gherkin-log
         menu.style.display = 'flex';
         menu.style.position = 'absolute';
         menu.style.visibility = 'hidden';
         menu.style.left = '0';
         menu.style.top = '0';
-        document.body.appendChild(menu);
+        // Garante que o gherkin-log tem position: relative
+        const log = document.getElementById('gherkin-log');
+        if (log) {
+            if (getComputedStyle(log).position === 'static') {
+                log.style.position = 'relative';
+            }
+            log.appendChild(menu);
+        } else {
+            document.body.appendChild(menu);
+        }
 
         // Mede o botão e o menu
         const btnRect = btn.getBoundingClientRect();
         const menuRect = menu.getBoundingClientRect();
+        const logRect = log ? log.getBoundingClientRect() : { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight };
         menu.style.visibility = '';
 
-        // Posição padrão: abaixo do botão
-        let left = btnRect.left + (btnRect.width / 2) - (menuRect.width / 2);
-        let top = btnRect.bottom + 4;
+        // Posição padrão: abaixo do botão, relativa ao gherkin-log
+        let left = btnRect.left - logRect.left + (btnRect.width / 2) - (menuRect.width / 2);
+        let top = btnRect.bottom - logRect.top + 4;
 
-        // Garante que não saia da janela
-        const winWidth = window.innerWidth;
-        const winHeight = window.innerHeight;
+        // Garante que não saia do log
         if (left < 0) left = 0;
-        if (left + menuRect.width > winWidth) left = winWidth - menuRect.width - 2;
-        if (top + menuRect.height > winHeight) {
+        if (left + menuRect.width > logRect.right - logRect.left) left = logRect.right - logRect.left - menuRect.width - 2;
+        if (top + menuRect.height > logRect.bottom - logRect.top) {
             // Exibe para cima do botão
-            top = btnRect.top - menuRect.height - 4;
+            top = btnRect.top - logRect.top - menuRect.height - 4;
             if (top < 0) top = 0;
         }
 
