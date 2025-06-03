@@ -1329,15 +1329,16 @@ class Page${slugify(feature.name, true)}:
                         // Usa a frase exata do .feature se existir
                         frase = interaction.stepText;
                     } else if (interaction.acao === 'preenche') {
-                        frase = `o usuário preenche o campo ${interaction.nomeElemento ? '"' + interaction.nomeElemento + '"' : ''} com "<valor>"`;
+                        // Corrige para usar {valor} no decorator
+                        frase = `o usuário preenche o campo ${interaction.nomeElemento ? '"' + interaction.nomeElemento + '"' : ''} com "{valor}"`;
                     } else if (interaction.acao === 'clica') {
                         frase = `o usuário clica no elemento ${interaction.nomeElemento ? '"' + interaction.nomeElemento + '"' : ''}`;
                     } else if (interaction.acao === 'upload') {
-                        frase = `o usuário faz upload do arquivo "<arquivo>" no campo ${interaction.nomeElemento ? '"' + interaction.nomeElemento + '"' : ''}`;
+                        frase = `o usuário faz upload do arquivo "{arquivo}" no campo ${interaction.nomeElemento ? '"' + interaction.nomeElemento + '"' : ''}`;
                     } else if (interaction.acao === 'espera_elemento') {
                         frase = `o usuário espera o elemento ${interaction.nomeElemento ? '"' + interaction.nomeElemento + '"' : ''} aparecer`;
                     } else if (interaction.acao === 'espera_segundos') {
-                        frase = `o usuário espera ${interaction.tempoEspera || '<segundos>'} segundos`;
+                        frase = `o usuário espera ${interaction.tempoEspera || '{segundos}'} segundos`;
                     } else if (interaction.acao && interaction.acao.toLowerCase().includes('valida')) {
                         frase = `o usuário valida que existe o elemento ${interaction.nomeElemento ? '"' + interaction.nomeElemento + '"' : ''}`;
                     } else {
