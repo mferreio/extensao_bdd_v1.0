@@ -1885,39 +1885,54 @@ function buildActionMenu(interaction, idx) {
     btn.onclick = (e) => {
         e.stopPropagation();
         // Fecha outros menus
-        document.querySelectorAll('.gherkin-action-dropdown').forEach(d => { if (d !== menu) d.style.display = 'none'; });
+        document.querySelectorAll('.gherkin-action-dropdown').forEach(d => { d.style.display = 'none'; if (d.parentElement === document.body) d.remove(); });
 
-        // Exibe o menu como dropdown centralizado abaixo do botão
+        // Exibe o menu como dropdown centralizado abaixo do botão, fora do fluxo da tabela
         menu.style.display = 'flex';
-
-        // Mede o botão e o menu
-        const btnRect = btn.getBoundingClientRect();
+        menu.style.position = 'absolute';
         menu.style.visibility = 'hidden';
         menu.style.left = '0';
         menu.style.top = '0';
-        menuWrap.appendChild(menu); // Garante que está no menuWrap para cálculo correto
+        document.body.appendChild(menu);
+
+        // Mede o botão e o menu
+        const btnRect = btn.getBoundingClientRect();
         const menuRect = menu.getBoundingClientRect();
         menu.style.visibility = '';
 
-        // Calcula left para centralizar o menu em relação ao botão
-        let left = (btn.offsetLeft + (btn.offsetWidth / 2)) - (menu.offsetWidth / 2);
-        // Garante que não saia do menuWrap
+        // Posição padrão: abaixo do botão
+        let left = btnRect.left + (btnRect.width / 2) - (menuRect.width / 2);
+        let top = btnRect.bottom + 4;
+
+        // Garante que não saia da janela
+        const winWidth = window.innerWidth;
+        const winHeight = window.innerHeight;
         if (left < 0) left = 0;
-        // Garante que não ultrapasse o painel
-        const panel = document.getElementById('gherkin-panel');
-        if (panel) {
-            const panelRect = panel.getBoundingClientRect();
-            const menuAbsLeft = btnRect.left + (btn.offsetWidth / 2) - (menu.offsetWidth / 2);
-            if (menuAbsLeft < panelRect.left) left += (panelRect.left - menuAbsLeft);
-            if (menuAbsLeft + menu.offsetWidth > panelRect.right) left -= (menuAbsLeft + menu.offsetWidth - panelRect.right);
+        if (left + menuRect.width > winWidth) left = winWidth - menuRect.width - 2;
+        if (top + menuRect.height > winHeight) {
+            // Exibe para cima do botão
+            top = btnRect.top - menuRect.height - 4;
+            if (top < 0) top = 0;
         }
 
         menu.style.left = left + 'px';
-        menu.style.top = (btn.offsetTop + btn.offsetHeight + 4) + 'px';
+        menu.style.top = top + 'px';
 
         // Garante foco para acessibilidade
         setTimeout(() => {
             if (menu.firstChild && menu.firstChild.focus) menu.firstChild.focus();
+        }, 0);
+
+        // Fecha ao clicar fora
+        setTimeout(() => {
+            function closeDropdown(ev) {
+                if (!menu.contains(ev.target) && ev.target !== btn) {
+                    menu.style.display = 'none';
+                    if (menu.parentElement === document.body) menu.remove();
+                    document.removeEventListener('click', closeDropdown);
+                }
+            }
+            document.addEventListener('click', closeDropdown);
         }, 0);
     };
 
