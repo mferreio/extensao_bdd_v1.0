@@ -1764,13 +1764,37 @@ function buildActionMenu(interaction, idx) {
     menuWrap.style.display = 'inline-block';
 
     const btn = document.createElement('button');
-    btn.innerHTML = '<span aria-hidden="true">⋮</span>';
+    // Ícone SVG de "três pontos" vertical, acessível e responsivo
+    btn.innerHTML = `
+      <span class="gherkin-action-menu-icon" aria-hidden="true" style="display:inline-flex;align-items:center;justify-content:center;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+          <circle cx="12" cy="5" r="2" fill="#0070f3"/>
+          <circle cx="12" cy="12" r="2" fill="#0070f3"/>
+          <circle cx="12" cy="19" r="2" fill="#0070f3"/>
+        </svg>
+      </span>
+      <span class="sr-only">Ações rápidas</span>
+    `;
     btn.title = 'Ações';
     btn.style.background = 'none';
     btn.style.border = 'none';
     btn.style.cursor = 'pointer';
     btn.style.fontSize = '1.2em';
     btn.setAttribute('aria-label', 'Ações rápidas');
+    btn.setAttribute('tabindex', '0');
+    btn.style.display = 'inline-flex';
+    btn.style.alignItems = 'center';
+    btn.style.justifyContent = 'center';
+    btn.style.minWidth = '36px';
+    btn.style.minHeight = '36px';
+    btn.style.borderRadius = '50%';
+    btn.style.transition = 'background 0.18s';
+    btn.onkeydown = (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        btn.click();
+      }
+    };
     menuWrap.appendChild(btn);
 
     const menu = document.createElement('div');
