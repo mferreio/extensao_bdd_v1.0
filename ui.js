@@ -1,3 +1,6 @@
+import { showFeedback } from './utils.js';
+import { getConfig } from './config.js';
+
 // Injeção dinâmica de todos os estilos do sistema (inclui variáveis, responsividade, dark mode, animações, etc.)
 (function injectGherkinStyles() {
     if (document.getElementById('gherkin-global-style')) return;
@@ -478,68 +481,8 @@ body, h1 {
     document.head.appendChild(style);
 })();
 
-// Estilo extra para responsividade dos filtros do log
-if (!document.getElementById('gherkin-log-filters-style')) {
-    const style = document.createElement('style');
-    style.id = 'gherkin-log-filters-style';
-    style.innerHTML = `
-    .gherkin-log-filters {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        gap: 4px;
-        margin: 2px 0 2px 0;
-        width: 100%;
-        padding: 0 2px;
-        min-height: 0;
-        height: 32px;
-        box-sizing: border-box;
-    }
-    .gherkin-log-filters input[type="search"] {
-        flex: 2 1 0;
-        min-width: 0;
-        max-width: 180px;
-        font-size: 12px;
-        padding: 3px 8px;
-        border-radius: 4px;
-        border: 1px solid #ccc;
-        background: #fff;
-        height: 26px;
-        box-sizing: border-box;
-    }
-    .gherkin-log-filters select {
-        flex: 1 1 0;
-        min-width: 0;
-        max-width: 120px;
-        font-size: 12px;
-        padding: 3px 8px;
-        border-radius: 4px;
-        border: 1px solid #ccc;
-        background: #fff;
-        height: 26px;
-        box-sizing: border-box;
-    }
-    @media (max-width: 600px) {
-        .gherkin-log-filters {
-            flex-direction: column;
-            align-items: stretch;
-            gap: 4px;
-            padding: 0 2vw;
-            height: auto;
-        }
-        .gherkin-log-filters input[type="search"],
-        .gherkin-log-filters select {
-            max-width: 100%;
-            width: 100%;
-            height: 28px;
-            font-size: 13px;
-        }
-    }
-    `;
-    document.head.appendChild(style);
-}
-import { showFeedback } from './utils.js';
-import { getConfig } from './config.js';
+
+
 
 // Modal para upload de arquivo de exemplo
 function showUploadModal(nomeElemento, cssSelector, xpath, callback) {
@@ -681,7 +624,7 @@ function renderPanelContent(panel) {
     `;
     if (window.gherkinPanelState === 'feature') {
         html += `
-            <div class="gherkin-content" style="align-items: center; justify-content: center; height: 80%;">
+            <div class="gherkin-content" style="align-items: center; justify-content: center; flex: 1;">
                 <label for="feature-name">Informe o nome da Feature:</label>
                 <input id="feature-name" type="text" placeholder="Ex: Login" />
                 <button id="start-feature" class="gherkin-btn gherkin-btn-main">Iniciar Feature</button>
@@ -689,7 +632,7 @@ function renderPanelContent(panel) {
         `;
     } else if (window.gherkinPanelState === 'cenario') {
         html += `
-            <div class="gherkin-content" style="align-items: center; justify-content: center; height: 80%;">
+            <div class="gherkin-content" style="align-items: center; justify-content: center; flex: 1;">
                 <label for="cenario-name">Informe o nome do Cenário:</label>
                 <input id="cenario-name" type="text" placeholder="Ex: Login com sucesso" />
                 <button id="start-cenario" class="gherkin-btn gherkin-btn-main">Iniciar Cenário</button>
@@ -697,55 +640,58 @@ function renderPanelContent(panel) {
         `;
     } else if (window.gherkinPanelState === 'gravando') {
         html += `
-            <div class="gherkin-content">
-                <p id="gherkin-status" style="font-size: 1.01rem; margin: 2px 0 0 0; color: #555;">Status: Gravando</p>
-                <p style="font-size: 1.01rem; color: #0D47A1; font-weight: bold; margin: 0;">Feature: ${window.currentFeature ? window.currentFeature.name : ''}</p>
-                <p style="font-size: 1.01rem; color: #0070f3; font-weight: bold; margin: 0;">Cenário: ${window.currentCenario ? window.currentCenario.name : ''}</p>
-                <div id="recording-indicator" style="display: none; margin: 10px auto; width: 10px; height: 10px; background-color: #ff0000; border-radius: 50%; animation: pulse 1s infinite;"></div>
-                <p id="gherkin-timer" style="font-size: 1.01rem; margin: 2px 0 0 0; color: #555;">Tempo de execução: 00:00</p>
-                <label for="gherkin-action-select" style="margin-top: 2px;">Ação:</label>
-                <select id="gherkin-action-select">
-                    <optgroup label="Ações">
-                        <option value="clica">Clicar</option>
-                        <option value="altera">Alterar</option>
-                        <option value="preenche">Preencher</option>
-                        <option value="seleciona">Selecionar</option>
-                        <option value="radio">Botão de rádio</option>
-                        <option value="caixa">Caixa de seleção</option>
-                        <option value="navega">Navegar</option>
-                        <option value="login">Login</option>
-                        <option value="upload">Upload de arquivo</option>
-                    </optgroup>
-                    <optgroup label="Validações">
-                        <option value="valida_existe">Validar que existe</option>
-                        <option value="valida_nao_existe">Validar que não existe</option>
-                        <option value="valida_contem">Validar que contém</option>
-                        <option value="valida_nao_contem">Validar que não contém</option>
-                        <option value="valida_deve_ser">Validar que deve ser</option>
-                        <option value="valida_nao_deve_ser">Validar que não deve ser</option>
-                    </optgroup>
-                    <optgroup label="Esperas">
-                        <option value="espera_segundos">Esperar segundos</option>
-                        <option value="espera_elemento">Esperar elemento aparecer</option>
-                        <option value="espera_nao_existe">Esperar elemento desaparecer</option>
-                        <option value="espera_existe">Esperar que o elemento exista</option>
-                        <option value="espera_habilitado">Esperar que o elemento esteja habilitado</option>
-                        <option value="espera_desabilitado">Esperar que o elemento esteja desabilitado</option>
-                    </optgroup>
-                </select>
-                <div id="gherkin-action-params"></div>
-                <div id="gherkin-log" style="overflow-y: auto; height: 350px; margin-top: 6px; border: 1px solid #ccc; padding: 5px; font-size: 13px; background-color: #f9f9f9;"></div>
-                <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; justify-content: center; align-items: center; width: 100%;">
-                    <button id="end-cenario" class="gherkin-btn gherkin-btn-danger" style="min-width: 120px;">Encerrar Cenário</button>
-                    <button id="end-feature" class="gherkin-btn" style="background: #6c757d; color: #fff; min-width: 120px;" disabled>Encerrar Feature</button>
-                    <button id="gherkin-pause" class="gherkin-btn gherkin-btn-warning" style="min-width: 120px;">Pausar</button>
-                    <button id="gherkin-clear" class="gherkin-btn gherkin-btn-danger" style="min-width: 120px;">Limpar</button>
-                    <button id="gherkin-export" class="gherkin-btn gherkin-btn-main" style="min-width: 120px;">Exportar</button>
+            <div class="gherkin-content gherkin-content-flex" style="flex:1; min-height:0; display:flex; flex-direction:column; gap:0;">
+                <div class="gherkin-status-bar" style="display:flex; align-items:center; gap:12px; font-size:0.98rem; background:#f7faff; border-radius:6px; padding:6px 10px; margin-bottom:6px; min-height:36px;">
+                    <span id="gherkin-status" style="color:#555; font-weight:500;">${window.isPaused ? 'Status: Pausado' : 'Status: Gravando'}</span>
+                    <span style="color:#0D47A1; font-weight:600;">${window.currentFeature ? 'Feature: ' + window.currentFeature.name : ''}</span>
+                    <span style="color:#0070f3; font-weight:600;">${window.currentCenario ? 'Cenário: ' + window.currentCenario.name : ''}</span>
+                    <span id="gherkin-timer" style="margin-left:auto; color:#555;">${window.elapsedSeconds !== undefined ? 'Tempo: ' + (window.gherkinTimerText || '00:00') : ''}</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+                    <label for="gherkin-action-select" style="margin:0; font-size:0.98rem;">Ação:</label>
+                    <select id="gherkin-action-select" style="flex:1; min-width:120px; max-width:220px;">
+                        <optgroup label="Ações">
+                            <option value="clica">Clicar</option>
+                            <option value="altera">Alterar</option>
+                            <option value="preenche">Preencher</option>
+                            <option value="seleciona">Selecionar</option>
+                            <option value="radio">Botão de rádio</option>
+                            <option value="caixa">Caixa de seleção</option>
+                            <option value="navega">Navegar</option>
+                            <option value="login">Login</option>
+                            <option value="upload">Upload de arquivo</option>
+                        </optgroup>
+                        <optgroup label="Validações">
+                            <option value="valida_existe">Validar que existe</option>
+                            <option value="valida_nao_existe">Validar que não existe</option>
+                            <option value="valida_contem">Validar que contém</option>
+                            <option value="valida_nao_contem">Validar que não contém</option>
+                            <option value="valida_deve_ser">Validar que deve ser</option>
+                            <option value="valida_nao_deve_ser">Validar que não deve ser</option>
+                        </optgroup>
+                        <optgroup label="Esperas">
+                            <option value="espera_segundos">Esperar segundos</option>
+                            <option value="espera_elemento">Esperar elemento aparecer</option>
+                            <option value="espera_nao_existe">Esperar elemento desaparecer</option>
+                            <option value="espera_existe">Esperar que o elemento exista</option>
+                            <option value="espera_habilitado">Esperar que o elemento esteja habilitado</option>
+                            <option value="espera_desabilitado">Esperar que o elemento esteja desabilitado</option>
+                        </optgroup>
+                    </select>
+                    <div id="gherkin-action-params" style="flex:2;"></div>
+                </div>
+                <div id="gherkin-log" style="flex:1 1 0; min-height:0; margin-bottom:8px; border:1px solid #ccc; border-radius:8px; background-color:#f9f9f9; display:flex; flex-direction:column;"></div>
+                <div class="gherkin-actions-bar" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:auto; justify-content:center; align-items:center; width:100%; padding-top:4px;">
+                    <button id="end-cenario" class="gherkin-btn gherkin-btn-danger" style="min-width:90px; height:34px; font-size:0.98rem;">Encerrar Cenário</button>
+                    <button id="end-feature" class="gherkin-btn" style="background:#6c757d; color:#fff; min-width:90px; height:34px; font-size:0.98rem;" disabled>Encerrar Feature</button>
+                    <button id="gherkin-pause" class="gherkin-btn gherkin-btn-warning" style="min-width:90px; height:34px; font-size:0.98rem;">Pausar</button>
+                    <button id="gherkin-clear" class="gherkin-btn gherkin-btn-danger" style="min-width:90px; height:34px; font-size:0.98rem;">Limpar</button>
+                    <button id="gherkin-export" class="gherkin-btn gherkin-btn-main" style="min-width:90px; height:34px; font-size:0.98rem;">Exportar</button>
                 </div>
             </div>
         `;
     } else if (window.gherkinPanelState === 'exportar') {
-        html += `<div class="gherkin-content" style="padding: 10px;">
+        html += `<div class="gherkin-content" style="padding: 10px; flex:1;">
             <h4 style="color: #0D47A1; font-size: 1.13rem; font-weight: 700; margin-bottom: 8px;">Selecione as features para exportar:</h4>
             <form id="export-form" style="max-height: 250px; overflow-y: auto; margin-bottom: 10px;">`;
         window.gherkinFeatures.forEach((feature, idx) => {
@@ -1198,63 +1144,11 @@ function exportLog(format = 'csv') {
     showFeedback('Log exportado com sucesso!');
 }
 
-// Função para renderizar o log em formato de tabela com busca, filtros, detalhes, ações rápidas, destaque visual, exportação, acessibilidade e responsividade
+    // Função para renderizar o log em formato de tabela (sem filtros)
 function renderLogWithActions() {
     const log = document.getElementById('gherkin-log');
     if (!log) return;
     log.innerHTML = '';
-
-    // Ajusta o container principal do painel de log para altura fixa e rolagem vertical
-    log.style.display = 'flex';
-    log.style.flexDirection = 'column';
-    log.style.height = '350px'; // altura fixa (ajuste conforme necessário)
-    log.style.maxHeight = '350px';
-    log.style.minHeight = '220px';
-    log.style.background = '#f9f9f9';
-    log.style.padding = '0';
-    log.style.margin = '0';
-    log.style.overflowY = 'auto'; // rolagem vertical sempre
-    log.style.overflowX = 'hidden';
-
-
-    // Função separada para renderizar filtros compactos e responsivos
-    function renderLogFilters(onSearch, onActionChange) {
-        const container = document.createElement('div');
-        container.className = 'gherkin-log-filters';
-        container.style.width = '100%';
-        container.style.boxSizing = 'border-box';
-
-        // Campo de busca
-        const searchInput = document.createElement('input');
-        searchInput.type = 'search';
-        searchInput.placeholder = 'Buscar por elemento, ação ou Gherkin...';
-        searchInput.setAttribute('aria-label', 'Buscar logs');
-        searchInput.autocomplete = 'off';
-        searchInput.style.boxSizing = 'border-box';
-
-        // Select de ação
-        const actionFilter = document.createElement('select');
-        actionFilter.innerHTML = `<option value="">Todas as ações</option>` +
-            Object.entries(ACTION_META)
-                .map(([k, v]) => `<option value="${k}">${v.label}</option>`)
-                .join('');
-        actionFilter.style.boxSizing = 'border-box';
-
-        // Adiciona os filtros lado a lado
-        container.appendChild(searchInput);
-        container.appendChild(actionFilter);
-
-        // Eventos
-        if (typeof onSearch === 'function') searchInput.oninput = onSearch;
-        if (typeof onActionChange === 'function') actionFilter.onchange = onActionChange;
-
-        // Expor referências para uso externo
-        return { container, searchInput, actionFilter };
-    }
-
-    // --- Uso da função de filtros ---
-    const { container: searchDiv, searchInput, actionFilter } = renderLogFilters(renderRows, renderRows);
-    log.appendChild(searchDiv);
 
     // Wrapper da tabela: flex-grow para ocupar o espaço restante, rolagem horizontal sempre visível
     const tableWrap = document.createElement('div');
@@ -1294,26 +1188,10 @@ function renderLogWithActions() {
     const tbody = document.createElement('tbody');
     table.appendChild(tbody);
 
-    // Filtro dinâmico
+    // Renderiza todas as interações (sem filtro)
     function renderRows() {
         tbody.innerHTML = '';
-        // Busca os campos de filtro atuais
-        const search = searchDiv.querySelector('input[type="search"]').value.trim().toLowerCase();
-        const action = searchDiv.querySelector('select').value;
-        let filtered = (window.interactions || []).filter(i => {
-            let ok = true;
-            if (search) {
-                ok = (
-                    (i.nomeElemento || '').toLowerCase().includes(search) ||
-                    (i.acaoTexto || i.acao || '').toLowerCase().includes(search) ||
-                    (i.step || '').toLowerCase().includes(search)
-                );
-            }
-            if (action) {
-                ok = ok && i.acao === action;
-            }
-            return ok;
-        });
+        const filtered = window.interactions || [];
 
         if (!filtered.length) {
             const tr = document.createElement('tr');
@@ -1394,7 +1272,6 @@ function renderLogWithActions() {
         });
     }
 
-    // Atualiza ao buscar/filtrar (eventos já conectados na função de filtro)
     renderRows();
     tableWrap.appendChild(table);
     log.appendChild(tableWrap);
