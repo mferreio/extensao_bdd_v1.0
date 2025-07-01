@@ -3,7 +3,7 @@ import { injectGherkinStyles } from './components/styles.js';
 import { createPanel, renderPanelContent, makePanelDraggable } from './components/panel.js';
 import { renderLogWithActions } from './components/log.js';
 import { showModal, showEditModal, showXPathModal, showLogDetailsModal } from './components/modals.js';
-import { handleClickEvent, handleInputEvent } from './events/capture.js';
+import { handleClickEvent, handleInputEvent, handleBlurEvent } from './events/capture.js';
 import { exportSelectedFeatures } from './export/exporter.js';
 import { slugify, downloadFile, showFeedback, debounce, isExtensionContextValid } from '../utils.js';
 
@@ -45,14 +45,14 @@ function initializeExtension() {
 function setupEventListeners() {
     // Remove listeners antigos para evitar duplicatas - garantia extra
     document.removeEventListener('click', handleClickEvent, true);
-    document.removeEventListener('input', handleInputEvent, true);
+    document.removeEventListener('blur', handleBlurEvent, true);
     document.removeEventListener('click', handleClickEvent, false);
-    document.removeEventListener('input', handleInputEvent, false);
+    document.removeEventListener('blur', handleBlurEvent, false);
     
     // Adiciona novos listeners apenas uma vez
     if (!window.gherkinEventListenersAdded) {
         document.addEventListener('click', handleClickEvent, true);
-        document.addEventListener('input', handleInputEvent, true);
+        document.addEventListener('blur', handleBlurEvent, true);
         window.gherkinEventListenersAdded = true;
     }
     

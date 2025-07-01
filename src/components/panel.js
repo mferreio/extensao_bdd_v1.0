@@ -36,7 +36,9 @@ export function renderPanelContent(panel) {
         <div class="gherkin-panel-header">
             <h3>GERADOR DE TESTES AUTOMATIZADOS EM PYTHON</h3>
             <div class="button-container-top">
-                <button id="gherkin-reopen" title="Reabrir" style="display: none;">Abrir</button>
+                <button id="gherkin-reopen" title="Reabrir" style="display: none;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="#28a745" viewBox="0 0 24 24"><path d="M3 3h6v2H5v4H3V3zm6 16H3v-6h2v4h4v2zm8-16v6h-2V5h-4V3h6zm-2 16v-4h2v6h-6v-2h4z"/></svg>
+                </button>
                 <button id="gherkin-minimize" title="Minimizar">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="#ffc107" viewBox="0 0 24 24"><path d="M19 13H5v-2h14v2z"/></svg>
                 </button>
@@ -134,6 +136,49 @@ export function renderPanelContent(panel) {
     }
     html += `<p id="gherkin-footer">By: Matheus Ferreira de Oliveira</p>`;
     panel.innerHTML = html;
+    
+    // Event listeners para os botões do painel
+    const closeBtn = panel.querySelector('#gherkin-close');
+    const minimizeBtn = panel.querySelector('#gherkin-minimize');
+    const reopenBtn = panel.querySelector('#gherkin-reopen');
+
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            panel.remove();
+            window.isRecording = false;
+            window.isPaused = false;
+        });
+    }
+
+    if (minimizeBtn) {
+        minimizeBtn.addEventListener('click', () => {
+            const content = panel.querySelector('.gherkin-content');
+            const buttons = panel.querySelector('.button-container');
+            if (content) content.style.display = 'none';
+            if (buttons) buttons.style.display = 'none';
+            minimizeBtn.style.display = 'none';
+            if (reopenBtn) reopenBtn.style.display = 'block';
+            panel.style.height = 'auto';
+            panel.style.minHeight = 'auto';
+        });
+    }
+
+    if (reopenBtn) {
+        reopenBtn.addEventListener('click', () => {
+            const content = panel.querySelector('.gherkin-content');
+            const buttons = panel.querySelector('.button-container');
+            if (content) content.style.display = 'flex';
+            if (buttons) buttons.style.display = 'flex';
+            minimizeBtn.style.display = 'block';
+            reopenBtn.style.display = 'none';
+            // Restaurar dimensões originais
+            panel.style.height = 'min(700px, calc(100vh - 20px))';
+            panel.style.minHeight = '';
+        });
+    }
+    
+    // Ativar funcionalidade de arrastar
+    makePanelDraggable(panel);
 }
 
 export function makePanelDraggable(panel) {

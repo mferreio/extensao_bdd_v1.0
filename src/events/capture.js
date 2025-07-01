@@ -79,6 +79,13 @@ export function handleClickEvent(event) {
     const tagName = target.tagName.toLowerCase();
     const type = target.type || '';
     
+    // Aplicar filtro: não registrar cliques em elementos preenchíveis
+    if (isFillableElement(target)) {
+        // Para elementos preenchíveis, só registrar se for uma ação de preenchimento
+        // ou validação, não cliques
+        return;
+    }
+    
     // Determina o texto visível do elemento de forma mais robusta
     let nomeElemento = getElementDisplayName(target);
 
@@ -89,9 +96,20 @@ export function handleClickEvent(event) {
     if (type === 'file') {
         acao = 'upload';
     } else if (type === 'checkbox') {
-        acao = 'caixa';
+        acao = 'marca_checkbox';
     } else if (type === 'radio') {
-        acao = 'radio';
+        acao = 'seleciona_radio';
+    }
+    
+    // Verificar se a ação é permitida para este tipo de elemento
+    if (!isActionAllowedForElement(target, acao)) {
+        // Se a ação não é permitida, usar a primeira ação recomendada
+        const allowedActions = getRelevantActionsForElement(target);
+        if (allowedActions.length > 0) {
+            acao = allowedActions[0]; // Usar a primeira ação recomendada
+        } else {
+            return; // Se não há ações permitidas, não registrar
+        }
     }
 
     const interaction = {
@@ -130,12 +148,18 @@ export function handleClickEvent(event) {
 }
 
 export function handleInputEvent(event) {
+    // Esta função agora não registra imediatamente
+    // A captura acontece apenas no evento blur (perda de foco)
+    return;
+}
+
+export function handleBlurEvent(event) {
     if (!window.isRecording || window.isPaused) return;
     
     const target = event.target;
     if (!target) return;
     
-    // Verifica se o input foi em elementos da própria extensão
+    // Verifica se o blur foi em elementos da própria extensão
     if (target.closest('#gherkin-panel') || 
         target.closest('#gherkin-modal') || 
         target.closest('.gherkin-modal-bg') ||
@@ -153,6 +177,9 @@ export function handleInputEvent(event) {
     }
     
     if (!isFillableElement(target)) return;
+    
+    // Só registra se o valor foi alterado
+    if (!target.value || target.value.trim() === '') return;
 
     // Gera seletores robustos
     const contextualSelectors = getContextualSelector(target);
@@ -327,4 +354,63 @@ function findAssociatedLabel(element) {
     }
 
     return null;
+}
+
+// Função para determinar ações relevantes por tipo de elemento
+function getRelevantActionsForElement(element) {
+    const tag = element.tagName.toLowerCase();
+    const type = element.type?.toLowerCase() || '';
+    const role = element.getAttribute('role')?.toLowerCase() || '';
+    
+    // Elementos preenchíveis - só preencher e validar existência
+    if (isFillableElement(element)) {
+        return ['preenche', 'valida_existe'];
+    }
+    
+    // Botões e elementos clicáveis
+    if (tag === 'button' || 
+        (tag === 'input' && ['submit', 'button'].includes(type)) ||
+        role === 'button' ||
+        (tag === 'a' && element.href)) {
+        return ['clica', 'valida_existe'];
+    }
+    
+    // Select/Dropdown
+    if (tag === 'select') {
+        return ['seleciona', 'valida_existe'];
+    }
+    
+    // Checkbox
+    if (tag === 'input' && type === 'checkbox') {
+        return ['marca_checkbox', 'valida_existe'];
+    }
+    
+    // Radio button
+    if (tag === 'input' && type === 'radio') {
+        return ['seleciona_radio', 'valida_existe'];
+    }
+    
+    // Upload de arquivo
+    if (tag === 'input' && type === 'file') {
+        return ['upload', 'valida_existe'];
+    }
+    
+    // Elementos de texto/display (span, div, label, p)
+    if (['span', 'div', 'label', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(tag)) {
+        return ['valida_contem', 'valida_existe'];
+    }
+    
+    // Elementos de imagem
+    if (tag === 'img') {
+        return ['valida_existe'];
+    }
+    
+    // Default para outros elementos clicáveis
+    return ['clica', 'valida_existe'];
+}
+
+// Função para verificar se a ação é permitida para o elemento
+function isActionAllowedForElement(element, action) {
+    const allowedActions = getRelevantActionsForElement(element);
+    return allowedActions.includes(action);
 }
