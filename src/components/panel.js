@@ -70,16 +70,40 @@ export function renderPanelContent(panel) {
         `;
     } else if (window.gherkinPanelState === 'gravando') {
         html += `
-            <div class="gherkin-content gherkin-content-flex" style="flex:1; min-height:0; display:flex; flex-direction:column; gap:0; padding:12px;">
-                <div class="gherkin-status-bar" style="display:flex; align-items:center; gap:8px; font-size:0.85rem; background:#f7faff; border-radius:6px; padding:8px 10px; margin-bottom:8px; min-height:auto; flex-wrap:wrap;">
-                    <span id="gherkin-status" style="color:#555; font-weight:500; white-space:nowrap;">${window.isPaused ? 'Status: Pausado' : 'Status: Gravando'}</span>
-                    <span style="color:#0D47A1; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:120px;" title="${window.currentFeature ? window.currentFeature.name : ''}">${window.currentFeature ? 'Feature: ' + window.currentFeature.name : ''}</span>
-                    <span style="color:#0070f3; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:120px;" title="${window.currentCenario ? window.currentCenario.name : ''}">${window.currentCenario ? 'Cenário: ' + window.currentCenario.name : ''}</span>
-                    <span id="gherkin-timer" style="margin-left:auto; color:#555; white-space:nowrap;">${window.elapsedSeconds !== undefined ? 'Tempo: ' + (window.gherkinTimerText || '00:00') : ''}</span>
+            <div class="gherkin-content gherkin-content-flex" style="flex:1; min-height:0; display:flex; flex-direction:column; gap:0; padding:8px;">
+                <div class="gherkin-status-bar" style="display:flex; align-items:center; gap:4px; font-size:0.75rem; background:#f8f9fa; border:1px solid #dee2e6; border-radius:6px; padding:6px 8px; margin-bottom:8px; min-height:auto; flex-wrap:wrap;">
+                    <div style="display:flex; align-items:center; gap:3px; padding:2px 6px; background:${window.isPaused ? '#fff3cd' : '#d1edff'}; border:1px solid ${window.isPaused ? '#ffeaa7' : '#74b9ff'}; border-radius:4px;">
+                        <span style="font-size:0.8rem;">${window.isPaused ? '⏸️' : '🎬'}</span>
+                        <span id="gherkin-status" style="color:${window.isPaused ? '#856404' : '#0c5460'}; font-weight:600; font-size:0.75rem;">${window.isPaused ? 'Pausado' : 'Gravando'}</span>
+                    </div>
+                    
+                    <span style="color:#6c757d; font-size:0.7rem;">|</span>
+                    
+                    <div style="display:flex; align-items:center; gap:2px; flex:1; min-width:80px; max-width:140px;">
+                        <span style="font-size:0.7rem;">📋</span>
+                        <span style="color:#495057; font-weight:500; font-size:0.7rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${window.currentFeature ? window.currentFeature.name : 'Nenhuma feature'}">${window.currentFeature ? window.currentFeature.name : 'Nenhuma'}</span>
+                    </div>
+                    
+                    <div style="display:flex; align-items:center; gap:2px; flex:1; min-width:80px; max-width:140px;">
+                        <span style="font-size:0.7rem;">🎯</span>
+                        <span style="color:#495057; font-weight:500; font-size:0.7rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${window.currentCenario ? window.currentCenario.name : 'Nenhum cenário'}">${window.currentCenario ? window.currentCenario.name : 'Nenhum'}</span>
+                    </div>
+                    
+                    <span style="color:#6c757d; font-size:0.7rem;">|</span>
+                    
+                    <div style="display:flex; align-items:center; gap:2px;">
+                        <span style="font-size:0.7rem;">⏱️</span>
+                        <span id="gherkin-timer" style="color:#6f42c1; font-weight:600; font-size:0.75rem; min-width:35px;">${window.elapsedSeconds !== undefined ? (window.gherkinTimerText || '00:00') : '00:00'}</span>
+                    </div>
+                    
+                    <div style="display:flex; align-items:center; gap:2px;">
+                        <span style="font-size:0.7rem;">📊</span>
+                        <span style="color:#dc3545; font-weight:600; font-size:0.75rem;" title="Número de ações registradas">${(window.interactions || []).length}</span>
+                    </div>
                 </div>
-                <div style="display:flex; align-items:center; gap:6px; margin-bottom:8px; flex-wrap:wrap;">
-                    <label for="gherkin-action-select" style="margin:0; font-size:0.9rem; white-space:nowrap;">Ação:</label>
-                    <select id="gherkin-action-select" style="flex:1; min-width:100px; max-width:180px; font-size:0.85rem; padding:4px;">
+                <div style="display:flex; align-items:center; gap:4px; margin-bottom:6px; flex-wrap:wrap;">
+                    <label for="gherkin-action-select" style="margin:0; font-size:0.8rem; white-space:nowrap;">Ação:</label>
+                    <select id="gherkin-action-select" style="flex:1; min-width:90px; max-width:160px; font-size:0.8rem; padding:2px 4px; height:26px;">
                         <optgroup label="Ações">
                             <option value="clica">Clicar</option>
                             <option value="altera">Alterar</option>
@@ -108,15 +132,24 @@ export function renderPanelContent(panel) {
                             <option value="espera_desabilitado">Esperar que o elemento esteja desabilitado</option>
                         </optgroup>
                     </select>
-                    <div id="gherkin-action-params" style="flex:1.5; min-width:80px;"></div>
+                    <div style="display:flex; align-items:center; gap:3px; margin-left:4px;">
+                        <input type="checkbox" id="gherkin-force-click" style="margin:0; transform:scale(0.9);">
+                        <label for="gherkin-force-click" style="margin:0; font-size:0.75rem; white-space:nowrap; cursor:pointer;" title="Força o registro do próximo clique, ignorando filtros">Forçar clique</label>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:3px; margin-left:4px;">
+                        <button id="gherkin-inspect-toggle" class="gherkin-btn" style="padding:2px 6px; font-size:0.7rem; height:24px; min-width:auto; border-radius:3px; background:#17a2b8; color:#fff;" title="Ativar/desativar modo de inspeção de elementos">
+                            🔍 Inspecionar
+                        </button>
+                    </div>
+                    <div id="gherkin-action-params" style="flex:1.2; min-width:60px;"></div>
                 </div>
-                <div id="gherkin-log" style="flex:1 1 0; min-height:100px; margin-bottom:8px; border:1px solid #ccc; border-radius:6px; background-color:#f9f9f9; display:flex; flex-direction:column; overflow:hidden;"></div>
-                <div class="gherkin-actions-bar" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:auto; justify-content:center; align-items:center; width:100%; padding-top:4px;">
-                    <button id="end-cenario" class="gherkin-btn gherkin-btn-danger" style="flex:1; min-width:70px; max-width:90px; height:32px; font-size:0.85rem; padding:6px 8px;">Encerrar Cenário</button>
-                    <button id="end-feature" class="gherkin-btn" style="background:#6c757d; color:#fff; flex:1; min-width:70px; max-width:90px; height:32px; font-size:0.85rem; padding:6px 8px;" disabled>Encerrar Feature</button>
-                    <button id="gherkin-pause" class="gherkin-btn gherkin-btn-warning" style="flex:1; min-width:60px; max-width:70px; height:32px; font-size:0.85rem; padding:6px 8px;">Pausar</button>
-                    <button id="gherkin-clear" class="gherkin-btn gherkin-btn-danger" style="flex:1; min-width:60px; max-width:70px; height:32px; font-size:0.85rem; padding:6px 8px;">Limpar</button>
-                    <button id="gherkin-export" class="gherkin-btn gherkin-btn-main" style="flex:1; min-width:70px; max-width:80px; height:32px; font-size:0.85rem; padding:6px 8px;">Exportar</button>
+                <div id="gherkin-log" style="flex:1 1 0; min-height:80px; margin-bottom:6px; border:1px solid #ccc; border-radius:6px; background-color:#f9f9f9; display:flex; flex-direction:column; overflow:hidden;"></div>
+                <div class="gherkin-actions-bar" style="display:flex; flex-wrap:wrap; gap:4px; margin-top:auto; justify-content:center; align-items:center; width:100%; padding-top:2px;">
+                    <button id="end-cenario" class="gherkin-btn gherkin-btn-danger" style="flex:1; min-width:65px; max-width:85px; height:28px; font-size:0.8rem; padding:4px 6px;">Encerrar Cenário</button>
+                    <button id="end-feature" class="gherkin-btn" style="background:#6c757d; color:#fff; flex:1; min-width:65px; max-width:85px; height:28px; font-size:0.8rem; padding:4px 6px;" disabled>Encerrar Feature</button>
+                    <button id="gherkin-pause" class="gherkin-btn gherkin-btn-warning" style="flex:1; min-width:55px; max-width:65px; height:28px; font-size:0.8rem; padding:4px 6px;">Pausar</button>
+                    <button id="gherkin-clear" class="gherkin-btn gherkin-btn-danger" style="flex:1; min-width:55px; max-width:65px; height:28px; font-size:0.8rem; padding:4px 6px;">Limpar</button>
+                    <button id="gherkin-export" class="gherkin-btn gherkin-btn-main" style="flex:1; min-width:65px; max-width:75px; height:28px; font-size:0.8rem; padding:4px 6px;">Exportar</button>
                 </div>
             </div>
         `;
@@ -179,6 +212,13 @@ export function renderPanelContent(panel) {
     
     // Ativar funcionalidade de arrastar
     makePanelDraggable(panel);
+    
+    // Inicializar eventos do painel
+    setTimeout(() => {
+        if (typeof window.initializePanelEvents === 'function') {
+            window.initializePanelEvents();
+        }
+    }, 100);
 }
 
 export function makePanelDraggable(panel) {

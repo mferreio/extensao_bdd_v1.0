@@ -1114,28 +1114,168 @@ function exportReadmeFile(feature, featureSlug) {
         readme += '\n';
     });
 
-    readme += `## Como executar os testes\n`;
-    readme += `1. Instale as dependências:\n`;
-    readme += '   ```bash\n   pip install -r requirements.txt\n   ```\n';
-    readme += `2. Execute os testes com o Behave:\n`;
+    readme += `## Como executar os testes\n\n`;
+    
+    readme += `### 1. Configuração inicial do ambiente\n`;
+    readme += `**1.1. Instale o Python 3.8 ou superior**\n`;
+    readme += `- Baixe em: https://www.python.org/downloads/\n`;
+    readme += `- Durante a instalação, marque "Add Python to PATH"\n\n`;
+    
+    readme += `**1.2. Instale as dependências:**\n`;
+    readme += '   ```bash\n   pip install -r requirements.txt\n   ```\n\n';
+    
+    readme += `**1.3. Configure o WebDriver (Chrome)**\n`;
+    readme += `- Verifique sua versão do Chrome: Menu > Ajuda > Sobre o Google Chrome\n`;
+    readme += `- Baixe o ChromeDriver compatível em: https://chromedriver.chromium.org/\n`;
+    readme += `- Extraia o executável e adicione ao PATH do sistema OU\n`;
+    readme += `- Coloque o executável na pasta do projeto\n\n`;
+    
+    readme += `### 2. Estrutura de pastas recomendada\n`;
+    readme += `Organize seu projeto da seguinte forma:\n`;
+    readme += '```\n';
+    readme += `projeto_testes/\n`;
+    readme += `├── features/\n`;
+    readme += `│   ├── ${featureSlug}.feature\n`;
+    readme += `│   └── steps/\n`;
+    readme += `│       └── ${featureSlug}_steps.py\n`;
+    readme += `├── pages/\n`;
+    readme += `│   └── ${featureSlug}_pages.py\n`;
+    readme += `├── environment.py\n`;
+    readme += `├── requirements.txt\n`;
+    readme += `├── README_${featureSlug}.md\n`;
+    readme += `└── reports/          # (pasta criada automaticamente)\n`;
+    readme += `    └── screenshots/ # (capturas de erro)\n`;
+    readme += '```\n\n';
+    
+    readme += `### 3. Comandos de execução\n`;
+    readme += `**3.1. Executar todos os testes:**\n`;
     readme += '   ```bash\n   behave\n   ```\n\n';
+    
+    readme += `**3.2. Executar apenas esta feature:**\n`;
+    readme += `   \`\`\`bash\n   behave features/${featureSlug}.feature\n   \`\`\`\n\n`;
+    
+    readme += `**3.3. Executar com relatório detalhado:**\n`;
+    readme += '   ```bash\n   behave --format=pretty --format=html --outfile=reports/report.html\n   ```\n\n';
+    
+    readme += `**3.4. Executar em modo debug (sem fechar o navegador):**\n`;
+    readme += '   ```bash\n   behave -D debug=true\n   ```\n\n';
+    
+    readme += `### 4. Configurações importantes\n`;
+    readme += `**4.1. Arquivo environment.py**\n`;
+    readme += `- Configure a URL base do sistema em \`BASE_URL\`\n`;
+    readme += `- Ajuste timeouts se necessário\n`;
+    readme += `- Modifique configurações do WebDriver conforme o ambiente\n\n`;
+    
+    readme += `**4.2. Arquivo de Pages**\n`;
+    readme += `- Verifique se os seletores CSS/XPath estão corretos para seu ambiente\n`;
+    readme += `- Atualize URLs específicas se necessário\n`;
+    readme += `- Customize métodos de interação conforme necessário\n\n`;
+    
+    readme += `**4.3. Arquivo de Steps**\n`;
+    readme += `- Adapte valores de teste (usuários, senhas, dados) para seu ambiente\n`;
+    readme += `- Ajuste validações conforme regras de negócio\n`;
+    readme += `- Adicione steps customizados se necessário\n\n`;
 
     readme += `## Pré-requisitos\n`;
-    readme += `- Python 3.8+\n`;
-    readme += `- Google Chrome ou Firefox\n`;
-    readme += `- Acesso ao ambiente de testes\n\n`;
+    readme += `### Sistema Operacional\n`;
+    readme += `- Windows 10/11, macOS 10.14+, ou Linux Ubuntu 18.04+\n\n`;
+    
+    readme += `### Software\n`;
+    readme += `- **Python 3.8+** (obrigatório)\n`;
+    readme += `- **Google Chrome** 90+ ou **Firefox** 88+ (recomendado Chrome)\n`;
+    readme += `- **Git** (para versionamento, opcional)\n`;
+    readme += `- **IDE/Editor** (VS Code, PyCharm, etc.)\n\n`;
+    
+    readme += `### Acesso\n`;
+    readme += `- Acesso ao ambiente de testes\n`;
+    readme += `- Credenciais de usuário para testes (se aplicável)\n`;
+    readme += `- Conectividade com internet\n\n`;
 
     readme += `## Estrutura dos arquivos\n`;
-    readme += `- \`${featureSlug}.feature\` - Arquivo de feature em Gherkin\n`;
-    readme += `- \`${featureSlug}_pages.py\` - Page Object Model com locators e métodos\n`;
-    readme += `- \`${featureSlug}_steps.py\` - Implementação dos steps do Behave\n`;
+    readme += `### Arquivos principais\n`;
+    readme += `- **\`${featureSlug}.feature\`** - Cenários em linguagem Gherkin (Given/When/Then)\n`;
+    readme += `- **\`${featureSlug}_pages.py\`** - Page Object Model com seletores e métodos de interação\n`;
+    readme += `- **\`${featureSlug}_steps.py\`** - Implementação dos steps do Behave em Python\n`;
+    readme += `- **\`environment.py\`** - Configuração do ambiente e hooks do Behave\n`;
+    readme += `- **\`requirements.txt\`** - Dependências Python necessárias\n\n`;
+    
+    readme += `### Arquivos de apoio\n`;
+    readme += `- **\`README_${featureSlug}.md\`** - Este arquivo com instruções\n`;
+    readme += `- **\`reports/\`** - Pasta para relatórios e screenshots (criada automaticamente)\n\n`;
+
+    readme += `## Solução de problemas comuns\n\n`;
+    
+    readme += `### ❌ "chromedriver not found"\n`;
+    readme += `**Solução:**\n`;
+    readme += `1. Baixe o ChromeDriver: https://chromedriver.chromium.org/\n`;
+    readme += `2. Extraia e adicione ao PATH do sistema OU coloque na pasta do projeto\n`;
+    readme += `3. Verifique se a versão é compatível com seu Chrome\n\n`;
+    
+    readme += `### ❌ "pip: command not found"\n`;
+    readme += `**Solução:**\n`;
+    readme += `1. Reinstale o Python marcando "Add to PATH"\n`;
+    readme += `2. No Windows, use \`py -m pip install -r requirements.txt\`\n`;
+    readme += `3. No Mac/Linux, use \`python3 -m pip install -r requirements.txt\`\n\n`;
+    
+    readme += `### ❌ "Element not found" ou timeouts\n`;
+    readme += `**Solução:**\n`;
+    readme += `1. Verifique se a URL base está correta no environment.py\n`;
+    readme += `2. Confirme que os seletores CSS/XPath são válidos para seu ambiente\n`;
+    readme += `3. Aumente os timeouts se a aplicação for lenta\n`;
+    readme += `4. Use o modo debug para investigar: \`behave -D debug=true\`\n\n`;
+    
+    readme += `### ❌ "ModuleNotFoundError"\n`;
+    readme += `**Solução:**\n`;
+    readme += `1. Certifique-se de estar na pasta correta do projeto\n`;
+    readme += `2. Execute novamente: \`pip install -r requirements.txt\`\n`;
+    readme += `3. Verifique se está usando a versão correta do Python\n\n`;
+
+    readme += `## Dicas importantes\n\n`;
+    readme += `### 🎯 Boas práticas\n`;
+    readme += `- **Execute os testes em ambiente isolado** (não em produção)\n`;
+    readme += `- **Mantenha dados de teste atualizados** nos arquivos de steps\n`;
+    readme += `- **Valide seletores regularmente** - interfaces podem mudar\n`;
+    readme += `- **Use o modo headless** para execução em servidores CI/CD\n`;
+    readme += `- **Revise screenshots de erro** na pasta reports/screenshots/\n\n`;
+    
+    readme += `### 🔧 Customizações\n`;
+    readme += `- **Seletores:** Adapte CSS/XPath no arquivo \`*_pages.py\`\n`;
+    readme += `- **Dados de teste:** Modifique valores no arquivo \`*_steps.py\`\n`;
+    readme += `- **Timeouts:** Ajuste no arquivo \`environment.py\`\n`;
+    readme += `- **Navegador:** Troque Chrome por Firefox no \`environment.py\`\n`;
+    readme += `- **Relatórios:** Configure formatos no comando behave\n\n`;
+    
+    readme += `### 📊 Monitoramento\n`;
+    readme += `- Screenshots automáticos em falhas\n`;
+    readme += `- Logs detalhados no terminal\n`;
+    readme += `- Relatórios HTML opcionais\n`;
+    readme += `- Métricas de tempo de execução\n\n`;
+
+    readme += `## Observações finais\n`;
     readme += `- \`environment.py\` - Configuração do ambiente de testes\n`;
     readme += `- \`requirements.txt\` - Dependências Python\n\n`;
 
-    readme += `## Observações\n`;
-    readme += `- Adapte os seletores e valores conforme necessário para o seu ambiente.\n`;
-    readme += `- Screenshots são capturados automaticamente em caso de falha.\n`;
-    readme += `- Consulte os arquivos de pages e steps para customizações avançadas.\n`;
+    readme += `## Observações finais\n`;
+    readme += `### ⚠️ Importante\n`;
+    readme += `- **Adapte os seletores** conforme necessário para o seu ambiente específico\n`;
+    readme += `- **Teste em ambiente controlado** antes de usar em produção\n`;
+    readme += `- **Mantenha backups** dos arquivos customizados\n`;
+    readme += `- **Documente modificações** para facilitar manutenção\n\n`;
+    
+    readme += `### 📞 Suporte\n`;
+    readme += `- Consulte a documentação do Behave: https://behave.readthedocs.io/\n`;
+    readme += `- Documentação do Selenium: https://selenium-python.readthedocs.io/\n`;
+    readme += `- Para problemas específicos, verifique os logs e screenshots gerados\n\n`;
+    
+    readme += `### 🔄 Versionamento\n`;
+    readme += `- Gerado automaticamente pela extensão Gherkin Generator\n`;
+    readme += `- Feature: ${feature.name}\n`;
+    readme += `- Data de exportação: ${new Date().toLocaleString('pt-BR')}\n`;
+    readme += `- URL base: ${window.location.origin}\n\n`;
+    
+    readme += `---\n`;
+    readme += `**✨ Automatização gerada com Gherkin Generator**\n`;
+    readme += `*Ferramenta desenvolvida para facilitar a criação de testes automatizados*\n`;
 
     downloadFile(`README_${featureSlug}.md`, readme);
 }

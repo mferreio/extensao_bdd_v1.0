@@ -37,6 +37,112 @@ export function exportLog(format = 'csv') {
     showFeedback('Log exportado com sucesso!');
 }
 
+// Função para exportar seletores organizados
+export function exportSelectors() {
+    const data = window.interactions || [];
+    if (!data.length) {
+        showFeedback('Nenhum seletor para exportar!', 'error');
+        return;
+    }
+    
+    // Organizar seletores por elemento
+    const selectorMap = new Map();
+    
+    data.forEach((interaction, index) => {
+        if (interaction.cssSelector || interaction.xpath) {
+            const elementKey = interaction.nomeElemento || `Elemento_${index + 1}`;
+            const acao = ACTION_META[interaction.acao]?.label || interaction.acao;
+            
+            if (!selectorMap.has(elementKey)) {
+                selectorMap.set(elementKey, {
+                    elemento: elementKey,
+                    acao: acao,
+                    cssSelector: interaction.cssSelector || '',
+                    xpath: interaction.xpath || '',
+                    url: interaction.url || window.location.href,
+                    timestamp: interaction.timestamp,
+                    step: interaction.step
+                });
+            }
+        }
+    });
+    
+    if (selectorMap.size === 0) {
+        showFeedback('Nenhum seletor encontrado para exportar!', 'error');
+        return;
+    }
+    
+    // Gerar conteúdo em formato estruturado
+    const selectors = Array.from(selectorMap.values());
+    
+    // Criar JSON estruturado
+    const exportData = {
+        metadata: {
+            feature: window.currentFeature?.name || 'Feature não definida',
+            scenario: window.currentCenario?.name || 'Cenário não definido',
+            url: window.location.href,
+            exportDate: new Date().toISOString(),
+            totalSelectors: selectors.length
+        },
+        selectors: selectors.map((sel, idx) => ({
+            id: idx + 1,
+            elemento: sel.elemento,
+            acao: sel.acao,
+            step: sel.step,
+            seletores: {
+                css: sel.cssSelector,
+                xpath: sel.xpath
+            },
+            contexto: {
+                url: sel.url,
+                timestamp: sel.timestamp
+            }
+        }))
+    };
+    
+    // Gerar também em formato CSV para facilitar análise
+    const csvContent = 'ID,Elemento,Ação,Step,CSS Selector,XPath,URL,Timestamp\n' +
+        selectors.map((sel, idx) => [
+            idx + 1,
+            `"${sel.elemento}"`,
+            `"${sel.acao}"`,
+            `"${sel.step}"`,
+            `"${sel.cssSelector}"`,
+            `"${sel.xpath}"`,
+            `"${sel.url}"`,
+            sel.timestamp || ''
+        ].join(',')).join('\n');
+    
+    // Gerar em formato Markdown para documentação
+    const mdContent = `# Seletores Capturados
+    
+## Informações Gerais
+- **Feature:** ${exportData.metadata.feature}
+- **Cenário:** ${exportData.metadata.scenario}
+- **URL:** ${exportData.metadata.url}
+- **Data de Exportação:** ${new Date(exportData.metadata.exportDate).toLocaleString('pt-BR')}
+- **Total de Seletores:** ${exportData.metadata.totalSelectors}
+
+## Seletores
+
+| ID | Elemento | Ação | Step | CSS Selector | XPath |
+|---|---|---|---|---|---|
+${selectors.map((sel, idx) => 
+    `| ${idx + 1} | ${sel.elemento} | ${sel.acao} | ${sel.step} | \`${sel.cssSelector}\` | \`${sel.xpath}\` |`
+).join('\n')}
+
+---
+*Exportado em ${new Date().toLocaleString('pt-BR')}*
+`;
+    
+    // Baixar todos os formatos
+    downloadFile('seletores.json', JSON.stringify(exportData, null, 2));
+    downloadFile('seletores.csv', csvContent);
+    downloadFile('seletores.md', mdContent);
+    
+    showFeedback(`${selectors.length} seletores exportados em 3 formatos (JSON, CSV, Markdown)!`, 'success');
+}
+
 // Menu de ações rápidas
 function buildActionMenu(interaction, idx) {
     const menu = document.createElement('div');
@@ -313,6 +419,11 @@ export function renderLogWithActions() {
     setTimeout(() => {
         scrollContainer.scrollTop = scrollContainer.scrollHeight;
     }, 0);
+    
+    // Atualizar contador de ações na barra de status
+    if (typeof window.updateActionsCounter === 'function') {
+        window.updateActionsCounter();
+    }
 
     // Estilo responsivo e barra de rolagem horizontal fixa e customizada
     if (!document.getElementById('gherkin-log-table-style')) {
@@ -428,16 +539,17 @@ export function renderLogWithActions() {
                 if (window.isPaused) {
                     pauseBtn.textContent = 'Continuar';
                     pauseBtn.style.backgroundColor = '#28a745';
-                    const status = document.getElementById('gherkin-status');
-                    if (status) status.textContent = 'Status: Pausado';
-                    if (typeof stopTimer === 'function') stopTimer();
                 } else {
                     pauseBtn.textContent = 'Pausar';
                     pauseBtn.style.backgroundColor = '#ffc107';
-                    const status = document.getElementById('gherkin-status');
-                    if (status) status.textContent = 'Status: Gravando';
-                    if (typeof startTimer === 'function') startTimer();
                 }
+                
+                // Atualizar barra de status
+                if (typeof window.updateStatusBar === 'function') {
+                    window.updateStatusBar();
+                }
+                
+                showFeedback(window.isPaused ? 'Gravação pausada' : 'Gravação retomada', 'info');
             };
         }
 
@@ -463,10 +575,12 @@ export function renderLogWithActions() {
                     <button style="width:100%;border:none;background:none;padding:8px;cursor:pointer;text-align:left;" tabindex="0">CSV</button>
                     <button style="width:100%;border:none;background:none;padding:8px;cursor:pointer;text-align:left;" tabindex="0">Markdown</button>
                     <button style="width:100%;border:none;background:none;padding:8px;cursor:pointer;text-align:left;" tabindex="0">JSON</button>
+                    <button style="width:100%;border:none;background:none;padding:8px;cursor:pointer;text-align:left;border-top:1px solid #eee;color:#007bff;font-weight:600;" tabindex="0">🎯 SELETORES</button>
                 `;
                 menu.children[0].onclick = () => { exportLog('csv'); menu.remove(); };
                 menu.children[1].onclick = () => { exportLog('md'); menu.remove(); };
                 menu.children[2].onclick = () => { exportLog('json'); menu.remove(); };
+                menu.children[3].onclick = () => { exportSelectors(); menu.remove(); };
                 document.body.appendChild(menu);
                 // Fecha ao clicar fora
                 setTimeout(() => {
@@ -481,3 +595,6 @@ export function renderLogWithActions() {
         }
     }, 0);
 }
+
+// Tornar função disponível globalmente
+window.exportSelectors = exportSelectors;

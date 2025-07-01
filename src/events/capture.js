@@ -139,6 +139,11 @@ export function handleClickEvent(event) {
     // Aplicar a regra correta dos steps BDD
     applyCorrectStepOrder();
     
+    // Atualizar contador de ações
+    if (typeof window.updateActionsCounter === 'function') {
+        window.updateActionsCounter();
+    }
+    
     if (typeof saveInteractionsToStorage === 'function') {
         saveInteractionsToStorage();
     }
@@ -234,6 +239,11 @@ export function handleBlurEvent(event) {
     
     // Aplicar a regra correta dos steps BDD
     applyCorrectStepOrder();
+    
+    // Atualizar contador de ações
+    if (typeof window.updateActionsCounter === 'function') {
+        window.updateActionsCounter();
+    }
     
     if (typeof saveInteractionsToStorage === 'function') {
         saveInteractionsToStorage();

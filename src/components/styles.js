@@ -199,6 +199,55 @@ export function injectGherkinStyles() {
     }
 }
 
+/* Estilos para a barra de status melhorada */
+.gherkin-status-bar {
+    transition: all 0.3s ease;
+    backdrop-filter: blur(4px);
+}
+
+.gherkin-status-bar > div {
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.gherkin-status-bar > div:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+/* Animação para o status de gravação */
+@keyframes recording-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+.gherkin-status-bar > div:first-child {
+    animation: recording-pulse 2s infinite;
+}
+
+/* Responsividade específica para a barra de status */
+@media (max-width: 480px) {
+    .gherkin-status-bar {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 4px !important;
+        padding: 8px 10px !important;
+    }
+    
+    .gherkin-status-bar > div {
+        flex: 1 1 auto;
+        min-width: 80px;
+        max-width: none !important;
+        font-size: 0.75rem !important;
+    }
+    
+    .gherkin-status-bar > div:last-child,
+    .gherkin-status-bar > div:nth-last-child(2) {
+        flex: 0 0 auto;
+        min-width: fit-content;
+    }
+}
+
 @media (max-width: 360px) {
     .gherkin-status-bar span {
         font-size: 0.7rem !important;
