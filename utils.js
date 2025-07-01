@@ -1,6 +1,13 @@
 // Funções utilitárias
-function slugify(text) {
-    return text.toString().toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+function slugify(text, upperCamel = false) {
+    let result = text.toString().toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+    
+    if (upperCamel) {
+        // Converte para UpperCamelCase
+        result = result.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join('');
+    }
+    
+    return result;
 }
 
 function downloadFile(filename, content) {

@@ -1,0 +1,1 @@
+(()=>{"use strict";if(!window.panel){window.panel=void 0}})();

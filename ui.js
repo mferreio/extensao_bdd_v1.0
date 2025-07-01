@@ -6,477 +6,65 @@ import { getConfig } from './config.js';
     if (document.getElementById('gherkin-global-style')) return;
     const style = document.createElement('style');
     style.id = 'gherkin-global-style';
-    style.innerHTML = `
+    style.textContent = `
 :root {
-    --color-bg: #f8fafc;
-    --color-bg-alt: #f4f7fb;
-    --color-primary: #0070f3;
-    --color-primary-dark: #005bb5;
-    --color-accent: #0D47A1;
-    --color-danger: #e74c3c;
-    --color-success: #28a745;
-    --color-warning: #ffc107;
-    --color-border: #e0e6ed;
-    --color-shadow: rgba(0,0,0,0.10);
-    --color-log-bg: #f1f8ff;
-    --color-log-bg-alt: #e3f2fd;
-    --color-modal-bg: #fff;
-    --color-modal-overlay: rgba(0,0,0,0.25);
-    --color-text: #1a2330;
-    --color-text-light: #fff;
-    --color-muted: #555;
-    --color-footer: #aaa;
-    --btn-radius: 9px;
-    --btn-height: 42px;
-    --btn-min-width: 110px;
-    --btn-font-size: 1.07rem;
-    --btn-shadow: 0 2px 8px rgba(0,112,243,0.08);
-    --input-radius: 8px;
-    --input-height: 38px;
-    --input-font-size: 1rem;
+  --panel-bg: #ffffff;
+  --panel-header-bg: #0D47A1;
+  --panel-header-color: #ffffff;
+  --btn-main-bg: #007bff;
+  --btn-main-color: #ffffff;
+  --btn-danger-bg: #dc3545;
+  --btn-danger-color: #ffffff;
+  --btn-warning-bg: #ffc107;
+  --btn-warning-color: #212529;
+  --border-radius: 8px;
+  --transition: 0.3s ease;
 }
-.dark-theme {
-    --color-bg: #181c24;
-    --color-bg-alt: #232837;
-    --color-primary: #2196f3;
-    --color-primary-dark: #1565c0;
-    --color-accent: #90caf9;
-    --color-danger: #ef5350;
-    --color-success: #66bb6a;
-    --color-warning: #ffd600;
-    --color-border: #333a4d;
-    --color-shadow: rgba(0,0,0,0.45);
-    --color-log-bg: #232837;
-    --color-log-bg-alt: #1a1d29;
-    --color-modal-bg: #232837;
-    --color-modal-overlay: rgba(0,0,0,0.55);
-    --color-text: #e3f2fd;
-    --color-text-light: #fff;
-    --color-muted: #b0bec5;
-    --color-footer: #607d8b;
-}
-body, h1 {
-    font-family: 'Roboto', Arial, sans-serif;
-}
-@keyframes slideIn {
-    from { transform: translateY(-20px); opacity: 0;}
-    to { transform: translateY(0); opacity: 1;}
-}
-@keyframes fadeInOut {
-    0% { opacity: 0;}
-    10% { opacity: 1;}
-    90% { opacity: 1;}
-    100% { opacity: 0;}
-}
-@keyframes gherkin-spin {
-    0% { transform: rotate(0deg);}
-    100% { transform: rotate(360deg);}
+.gherkin-panel {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 480px;
+  max-height: calc(100vh - 40px);
+  display: flex;
+  flex-direction: column;
+  background: var(--panel-bg);
+  border-radius: var(--border-radius);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  overflow: hidden;
+  font-family: 'Roboto', sans-serif;
+  border: none;
 }
 .gherkin-panel-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 8px;
-    min-height: 44px;
-    padding-bottom: 0;
+  background: var(--panel-header-bg);
+  color: var(--panel-header-color);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 .gherkin-panel-header h3 {
-    margin: 0;
-    font-size: 1.25rem;
-    color: var(--color-primary);
-    text-align: center;
-    font-weight: 700;
-    letter-spacing: 0.5px;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.08);
-}
-.button-container-top {
-    display: flex;
-    gap: 6px;
-    align-items: center;
+  margin: 0; font-size: 1rem; font-weight: 600;
 }
 .button-container-top button {
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: 1.2rem;
-    font-weight: bold;
-    color: var(--color-accent);
-    transition: color 0.2s;
-    border-radius: var(--btn-radius);
-    min-width: 36px;
-    min-height: 36px;
-    outline: none;
-}
-.button-container-top button:focus {
-    outline: 2px solid var(--color-primary);
-    outline-offset: 2px;
-}
-.button-container-top button:hover {
-    color: var(--color-primary-dark);
+  background: transparent; border: none; cursor: pointer; padding: 4px;
 }
 .gherkin-content {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    padding: 0 2px;
+  padding: 16px; flex: 1; display: flex; flex-direction: column;
 }
-.gherkin-content label {
-    font-weight: 600;
-    color: var(--color-accent);
-    margin-bottom: 2px;
-    font-size: 1.04rem;
-    letter-spacing: 0.01em;
-}
-.gherkin-content input[type="text"],
-.gherkin-content input[type="number"],
-.gherkin-content textarea,
-.gherkin-content select {
-    box-shadow: 0 1px 4px rgba(0,0,0,0.07);
-    transition: border 0.2s, background 0.2s;
-    border-radius: var(--input-radius);
-    border: 1.5px solid var(--color-border);
-    font-size: var(--input-font-size);
-    margin-bottom: 4px;
-    background: var(--color-bg-alt);
-    color: var(--color-text);
-    padding: 0 12px;
-    height: var(--input-height);
-    outline: none;
-}
-.gherkin-content input[type="text"]:focus,
-.gherkin-content input[type="number"]:focus,
-.gherkin-content textarea:focus,
-.gherkin-content select:focus {
-    border: 1.5px solid var(--color-primary);
-    background: #f1f8ff;
-    outline: 2px solid var(--color-primary);
-    outline-offset: 1px;
-}
-.gherkin-content button,
 .gherkin-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 0 22px;
-    min-width: var(--btn-min-width);
-    height: var(--btn-height);
-    background-color: var(--color-primary);
-    color: var(--color-text-light);
-    border: none;
-    border-radius: var(--btn-radius);
-    cursor: pointer;
-    font-size: var(--btn-font-size);
-    font-weight: 600;
-    box-shadow: var(--btn-shadow);
-    margin: 0 4px 6px 0;
-    transition: background 0.18s, color 0.18s, box-shadow 0.18s, transform 0.13s;
-    outline: none;
+  border: none;
+  border-radius: var(--border-radius);
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: background var(--transition);
 }
-.gherkin-content button:focus,
-.gherkin-btn:focus {
-    outline: 2px solid var(--color-primary);
-    outline-offset: 2px;
-}
-.gherkin-content button:hover,
-.gherkin-btn:hover {
-    background-color: var(--color-primary-dark);
-    color: var(--color-text-light);
-    transform: scale(1.035);
-}
-.gherkin-content button:disabled,
-.gherkin-btn:disabled {
-    background-color: #cccccc;
-    color: #eee;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
-}
-.gherkin-btn-main {
-    background: var(--color-primary);
-    color: var(--color-text-light);
-    box-shadow: var(--btn-shadow);
-}
-.gherkin-btn-main:hover, .gherkin-btn-main:focus {
-    background: var(--color-primary-dark);
-}
-.gherkin-btn-danger {
-    background: var(--color-danger);
-    color: #fff;
-}
-.gherkin-btn-danger:hover, .gherkin-btn-danger:focus {
-    background: #c0392b;
-}
-.gherkin-btn-success {
-    background: var(--color-success);
-    color: #fff;
-}
-.gherkin-btn-success:hover, .gherkin-btn-success:focus {
-    background: #218838;
-}
-.gherkin-btn-warning {
-    background: var(--color-warning);
-    color: #222;
-}
-.gherkin-btn-warning:hover, .gherkin-btn-warning:focus {
-    background: #e0a800;
-}
-.gherkin-content hr, .gherkin-divider {
-    border: none;
-    border-top: 1px solid #e3e3e3;
-    margin: 12px 0 8px 0;
-}
-.gherkin-content input,
-.gherkin-content select,
-.gherkin-content textarea,
-.gherkin-content button {
-    margin-bottom: 8px !important;
-}
-.gherkin-content .gherkin-actions-row {
-    display: flex;
-    gap: 10px;
-    margin: 8px 0 0 0;
-    flex-wrap: wrap;
-}
-.gherkin-content .gherkin-checkbox-list {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    margin-bottom: 8px;
-}
-.gherkin-content .gherkin-checkbox-list label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-weight: 400;
-    font-size: 1rem;
-    color: #222;
-    cursor: pointer;
-}
-.gherkin-content .gherkin-checkbox-list input[type="checkbox"] {
-    accent-color: var(--color-primary);
-    width: 18px;
-    height: 18px;
-}
-.gherkin-content .gherkin-feedback {
-    margin: 6px 0;
-    padding: 10px 14px;
-    border-radius: 6px;
-    font-size: 1rem;
-    font-weight: 500;
-    background: #eafaf1;
-    color: #218838;
-    border: 1.5px solid #28a745;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-height: 40px;
-    transition: background 0.2s, color 0.2s;
-}
-.gherkin-content .gherkin-feedback.error {
-    background: #fff6f6;
-    color: #e74c3c;
-    border-color: #e74c3c;
-}
-.gherkin-content .gherkin-feedback.info {
-    background: #f7faff;
-    color: #0070f3;
-    border-color: #0070f3;
-}
-.gherkin-content .gherkin-feedback .gherkin-feedback-icon {
-    font-size: 1.3em;
-    display: inline-block;
-    vertical-align: middle;
-}
-.gherkin-content .gherkin-tip {
-    background: #f7faff;
-    border-left: 4px solid #0070f3;
-    padding: 8px 14px;
-    border-radius: 6px;
-    color: #0070f3;
-    font-size: 0.98rem;
-    margin-bottom: 6px;
-    margin-top: 0;
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-}
-.gherkin-content .gherkin-tip .gherkin-tip-icon {
-    font-size: 1.2em;
-    margin-right: 4px;
-    color: #0070f3;
-}
-.gherkin-content .gherkin-summary {
-    background: #f9fbfd;
-    border: 1.5px solid #e0e6ed;
-    border-radius: 8px;
-    padding: 10px 14px;
-    margin-bottom: 8px;
-    font-size: 0.98rem;
-    color: #222;
-    max-height: 140px;
-    overflow-y: auto;
-}
-.gherkin-content .gherkin-summary-title {
-    font-weight: 600;
-    color: #0070f3;
-    margin-bottom: 4px;
-    font-size: 1.05rem;
-}
-.gherkin-content .gherkin-summary-list {
-    list-style: disc inside;
-    margin: 0;
-    padding: 0 0 0 10px;
-}
-.gherkin-content .gherkin-summary-list li {
-    margin-bottom: 2px;
-    font-size: 0.97rem;
-}
-.gherkin-content .gherkin-footer {
-    text-align: right;
-    font-size: 0.92rem;
-    color: #888;
-    margin-top: 8px;
-    margin-bottom: 2px;
-}
-.feedback, .gherkin-panel-content .gherkin-feedback {
-    position: fixed;
-    left: 50%;
-    bottom: 32px;
-    transform: translateX(-50%);
-    z-index: 2147483647;
-    background: #0D47A1;
-    color: #fff;
-    border-radius: 8px;
-    padding: 14px 28px 14px 18px;
-    font-size: 16px;
-    font-weight: 600;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.13);
-    animation: fadeInOut 3s ease;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-.feedback .gherkin-feedback-close {
-    margin-left: 18px;
-    background: none;
-    border: none;
-    color: #fff;
-    font-size: 18px;
-    cursor: pointer;
-    opacity: 0.7;
-    transition: opacity 0.2s;
-}
-.feedback .gherkin-feedback-close:hover {
-    opacity: 1;
-}
-.gherkin-spinner {
-    border: 4px solid #e3e3e3;
-    border-top: 4px solid #007bff;
-    border-radius: 50%;
-    width: 32px;
-    height: 32px;
-    animation: gherkin-spin 1s linear infinite;
-    margin: 0 auto;
-    display: block;
-}
-#gherkin-panel, .gherkin-panel {
-    position: fixed;
-    top: 10px;
-    left: 10px;
-    width: 480px;
-    max-width: 540px;
-    min-width: 320px;
-    height: 92vh;
-    max-height: 100vh;
-    background-color: var(--color-bg);
-    border: 1.5px solid var(--color-border);
-    border-radius: 16px;
-    box-shadow: 0 8px 24px var(--color-shadow);
-    padding: 18px 14px 24px 14px;
-    z-index: 10000;
-    font-family: 'Roboto', Arial, sans-serif;
-    transition: opacity 0.3s, transform 0.3s, background 0.3s;
-    transform: translateY(0);
-    animation: slideIn 0.5s;
-    color: var(--color-text);
-    overflow: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-@media (max-width: 600px) {
-    #gherkin-panel, .gherkin-panel {
-        left: 0 !important;
-        top: 0 !important;
-        width: 100vw !important;
-        min-width: 0 !important;
-        max-width: 100vw !important;
-        height: 100vh !important;
-        max-height: 100vh !important;
-        border-radius: 0 !important;
-        padding: 8px 2vw 16px 2vw !important;
-    }
-    .gherkin-content {
-        padding: 0 2vw !important;
-    }
-    #gherkin-panel #gherkin-log {
-        max-height: 30vh !important;
-    }
-    .gherkin-content button, .gherkin-btn {
-        min-width: 90px;
-        font-size: 0.98rem;
-        height: 38px;
-        padding: 0 12px;
-    }
-    .gherkin-content input[type="text"],
-    .gherkin-content input[type="number"],
-    .gherkin-content textarea,
-    .gherkin-content select {
-        font-size: 0.97rem;
-        height: 34px;
-        padding: 0 8px;
-    }
-}
-#gherkin-footer {
-    font-size: 10px;
-    color: var(--color-footer);
-    text-align: right;
-    margin: 0;
-    position: absolute;
-    bottom: -20px;
-    right: 10px;
-}
-#gherkin-panel-minimized {
-    position: fixed;
-    left: 18px;
-    bottom: 18px;
-    width: 54px;
-    height: 54px;
-    background: #0070f3;
-    color: #fff;
-    border-radius: 50%;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.18);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 2147483647;
-    cursor: pointer;
-    font-size: 2.2em;
-    border: none;
-    transition: background 0.2s;
-}
-#gherkin-panel-minimized:focus {
-    outline: 2px solid #fff;
-}
-.dark-theme .feedback, .dark-theme .gherkin-panel-content .gherkin-feedback {
-    background: #2196f3;
-    color: #fff;
-}
-.dark-theme #gherkin-panel-minimized {
-    background: #2196f3;
-    color: #fff;
-}
+.gherkin-btn-main { background: var(--btn-main-bg); color: var(--btn-main-color);}
+.gherkin-btn-danger { background: var(--btn-danger-bg); color: var(--btn-danger-color);}
+.gherkin-btn-warning { background: var(--btn-warning-bg); color: var(--btn-warning-color);}
+.gherkin-btn:hover { filter: brightness(1.1); }
+.gherkin-status-bar { background:#f7faff; border-radius: var(--border-radius); padding: 8px 12px; }
+#gherkin-log { border-radius: var(--border-radius); padding: 8px; background:#f9f9f9; }
 `;
     document.head.appendChild(style);
 })();
@@ -1186,8 +774,6 @@ function renderLogWithActions() {
             <th style="min-width:80px;">Ação</th>
             <th style="min-width:120px;">Elemento</th>
             <th style="min-width:100px;">Valor</th>
-            <th style="min-width:40px;">Detalhes</th>
-            <th style="min-width:40px;">Ações</th>
         </tr>
     `;
     table.appendChild(thead);
@@ -1204,7 +790,7 @@ function renderLogWithActions() {
         if (!filtered.length) {
             const tr = document.createElement('tr');
             const td = document.createElement('td');
-            td.colSpan = 5;
+            td.colSpan = 4;
             td.textContent = 'Nenhuma interação encontrada.';
             td.style.textAlign = 'center';
             tr.appendChild(td);
@@ -1264,28 +850,35 @@ function renderLogWithActions() {
             }
             tr.appendChild(tdValor);
 
-            // Detalhes expansíveis
-            const tdDet = document.createElement('td');
-            const detBtn = document.createElement('button');
-            detBtn.innerHTML = '<span aria-hidden="true">🔎</span>';
-            detBtn.title = 'Ver detalhes';
-            detBtn.style.background = 'none';
-            detBtn.style.border = 'none';
-            detBtn.style.cursor = 'pointer';
-            detBtn.style.fontSize = '1.1em';
-            detBtn.setAttribute('aria-label', 'Ver detalhes');
-            detBtn.onclick = (e) => {
-                e.stopPropagation();
-                showLogDetailsModal(i);
-            };
-            tdDet.appendChild(detBtn);
-            tr.appendChild(tdDet);
+            // Adiciona menu de contexto ao clicar com o botão direito
+            tr.oncontextmenu = (e) => {
+                e.preventDefault();
+                const existingMenu = document.querySelector('.gherkin-context-menu');
+                if (existingMenu) {
+                    existingMenu.remove();
+                }
 
-            // Ações rápidas
-            const tdAcoes = document.createElement('td');
-            tdAcoes.style.textAlign = 'center';
-            tdAcoes.appendChild(buildActionMenu(i, idx));
-            tr.appendChild(tdAcoes);
+                const menu = buildActionMenu(i, idx);
+                menu.classList.add('gherkin-context-menu');
+                menu.style.position = 'fixed';
+                menu.style.top = `${e.clientY}px`;
+                menu.style.left = `${e.clientX}px`;
+                menu.style.zIndex = 10005; // Garante que o menu fique sobre outros elementos
+                document.body.appendChild(menu);
+
+                const closeMenu = (event) => {
+                    if (!menu.contains(event.target)) {
+                        menu.remove();
+                        document.removeEventListener('click', closeMenu);
+                        document.removeEventListener('contextmenu', closeMenu);
+                    }
+                };
+
+                setTimeout(() => {
+                    document.addEventListener('click', closeMenu);
+                    document.addEventListener('contextmenu', closeMenu, { once: true });
+                }, 0);
+            };
 
             // Expansão por linha (teclado)
             tr.onclick = () => showLogDetailsModal(i);
