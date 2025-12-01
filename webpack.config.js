@@ -1,10 +1,13 @@
 const path = require('path');
 
 module.exports = {
-    entry: './src/content.js',
+    entry: {
+        bundle: './src/content.js'
+    },
     output: {
-        filename: 'bundle.js',
+        filename: '[name].js',
         path: path.resolve(__dirname, 'dist'),
+        clean: true
     },
     mode: 'production',
     // Usar source-map em vez de eval para compatibilidade com CSP
