@@ -2,7 +2,9 @@ const path = require('path');
 
 module.exports = {
     entry: {
-        bundle: './src/content.js'
+        bundle: './src/content.js',
+        background: './src/background.js',
+        options: './src/options.js'
     },
     output: {
         filename: '[name].js',
@@ -26,4 +28,12 @@ module.exports = {
             },
         ],
     },
+    optimization: {
+        splitChunks: false,
+    },
+    plugins: [
+        new (require('webpack').optimize.LimitChunkCountPlugin)({
+            maxChunks: 1,
+        }),
+    ],
 };

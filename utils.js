@@ -1,12 +1,13 @@
 // Funções utilitárias
+
 function slugify(text, upperCamel = false) {
     let result = text.toString().toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
-    
+
     if (upperCamel) {
         // Converte para UpperCamelCase
         result = result.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join('');
     }
-    
+
     return result;
 }
 
@@ -67,81 +68,11 @@ function debounce(func, wait) {
     };
 }
 
-function getCSSSelector(element) {
-    if (!element || element.nodeType !== Node.ELEMENT_NODE) return null;
-
-    function buildSelector(el) {
-        let selector = el.tagName.toLowerCase();
-
-        if (el.id) {
-            selector += `#${el.id}`;
-            return selector;
-        }
-
-        if (el.className) {
-            const classes = el.className
-                .split(' ')
-                .filter(cls => cls.trim() !== '')
-                .map(cls => `.${cls}`)
-                .join('');
-            selector += classes;
-        }
-
-        const attributes = ['name', 'type', 'aria-label', 'data-pc-name'];
-        attributes.forEach(attr => {
-            if (el.hasAttribute(attr)) {
-                selector += `[${attr}="${el.getAttribute(attr)}"]`;
-            }
-        });
-
-        return selector;
-    }
-
-    return buildSelector(element);
-}
-
-function getRobustXPath(element) {
-    if (!element || element.nodeType !== Node.ELEMENT_NODE) return null;
-
-    if (element.id && document.querySelectorAll(`#${CSS.escape(element.id)}`).length === 1) {
-        return `//*[@id='${element.id}']`;
-    }
-
-    const attrs = ['data-testid', 'data-qa', 'name', 'aria-label', 'title'];
-    for (const attr of attrs) {
-        const val = element.getAttribute(attr);
-        if (val && document.querySelectorAll(`[${attr}='${val}']`).length === 1) {
-            return `//*[@${attr}='${val}']`;
-        }
-    }
-
-    let path = '';
-    let el = element;
-    while (el && el.nodeType === Node.ELEMENT_NODE && el !== document.body) {
-        let segment = el.tagName.toLowerCase();
-        for (const attr of attrs) {
-            const val = el.getAttribute(attr);
-            if (val && document.querySelectorAll(`[${attr}='${val}']`).length === 1) {
-                path = `//*[@${attr}='${val}']${path ? '/' + path : ''}`;
-                return path;
-            }
-        }
-        const siblings = Array.from(el.parentNode.children).filter(e => e.tagName === el.tagName);
-        if (siblings.length > 1) {
-            const idx = siblings.indexOf(el) + 1;
-            segment += `[${idx}]`;
-        }
-        path = path ? `${segment}/${path}` : segment;
-        el = el.parentNode;
-    }
-    return '//' + path;
-}
-
 function isExtensionContextValid() {
     return typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id;
 }
 
-// Spinner global seguro
+// Spinner global seguro - MODERNIZADO
 function showSpinner(message = 'Processando...') {
     // Evita múltiplos spinners
     if (document.getElementById('gherkin-spinner-modal')) return;
@@ -152,33 +83,47 @@ function showSpinner(message = 'Processando...') {
     modalBg.style.left = '0';
     modalBg.style.width = '100vw';
     modalBg.style.height = '100vh';
-    modalBg.style.background = 'rgba(0,0,0,0.18)';
+    modalBg.style.background = 'rgba(0, 0, 0, 0.5)';
+    modalBg.style.backdropFilter = 'blur(8px)';
     modalBg.style.display = 'flex';
     modalBg.style.alignItems = 'center';
     modalBg.style.justifyContent = 'center';
     modalBg.style.zIndex = '2147483647';
+    modalBg.style.animation = 'gherkinFadeIn 0.2s ease-out';
+
     const modal = document.createElement('div');
-    modal.style.background = '#fff';
-    modal.style.padding = '28px 32px 22px 32px';
-    modal.style.borderRadius = '12px';
-    modal.style.boxShadow = '0 4px 24px rgba(0,0,0,0.18)';
+    modal.style.background = 'rgba(255, 255, 255, 0.95)';
+    modal.style.backdropFilter = 'blur(12px)';
+    modal.style.padding = '32px 40px';
+    modal.style.borderRadius = '16px';
+    modal.style.boxShadow = '0 20px 40px rgba(0, 0, 0, 0.2)';
+    modal.style.border = '1px solid rgba(255, 255, 255, 0.3)';
     modal.style.display = 'flex';
     modal.style.flexDirection = 'column';
     modal.style.alignItems = 'center';
-    modal.style.gap = '18px';
-    modal.style.minWidth = '220px';
-    // Spinner
+    modal.style.gap = '24px';
+    modal.style.minWidth = '240px';
+    modal.style.animation = 'gherkinSlideUp 0.3s ease-out';
+
+    // Spinner moderno com gradiente
     const spinner = document.createElement('div');
-    spinner.className = 'gherkin-spinner';
-    spinner.style.marginBottom = '12px';
+    spinner.style.width = '48px';
+    spinner.style.height = '48px';
+    spinner.style.border = '4px solid rgba(59, 130, 246, 0.2)';
+    spinner.style.borderTopColor = '#3b82f6';
+    spinner.style.borderRadius = '50%';
+    spinner.style.animation = 'spin 0.8s linear infinite';
     modal.appendChild(spinner);
+
     // Mensagem
     const msg = document.createElement('div');
     msg.textContent = message;
-    msg.style.fontSize = '16px';
-    msg.style.color = '#0D47A1';
+    msg.style.fontSize = '1rem';
+    msg.style.fontWeight = '600';
+    msg.style.color = '#1e3a8a';
     msg.style.textAlign = 'center';
     modal.appendChild(msg);
+
     modalBg.appendChild(modal);
     document.body.appendChild(modalBg);
 }
@@ -188,8 +133,4 @@ function hideSpinner() {
     if (modal) modal.remove();
 }
 
-// Garante que as funções estejam disponíveis globalmente
-window.showSpinner = showSpinner;
-window.hideSpinner = hideSpinner;
-
-export { slugify, downloadFile, showFeedback, debounce, getCSSSelector, getRobustXPath, isExtensionContextValid };
+export { slugify, downloadFile, showFeedback, debounce, isExtensionContextValid, showSpinner, hideSpinner };

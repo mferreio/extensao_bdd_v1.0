@@ -1,10 +1,13 @@
 // Gerenciamento do log de interações
 import { showModal, showLogDetailsModal, showEditModal, showXPathModal } from './modals.js';
 import { downloadFile, showFeedback } from '../../utils.js';
+import { getStore } from '../state/store.js';
 
 // Função para exportar logs
 export function exportLog(format = 'csv') {
-    const data = window.interactions || [];
+    const store = getStore();
+    const data = store.getState().interactions || [];
+
     if (!data.length) {
         showFeedback('Nenhum log para exportar!', 'error');
         return;
@@ -39,20 +42,23 @@ export function exportLog(format = 'csv') {
 
 // Função para exportar seletores organizados
 export function exportSelectors() {
-    const data = window.interactions || [];
+    const store = getStore();
+    const state = store.getState();
+    const data = state.interactions || [];
+
     if (!data.length) {
         showFeedback('Nenhum seletor para exportar!', 'error');
         return;
     }
-    
+
     // Organizar seletores por elemento
     const selectorMap = new Map();
-    
+
     data.forEach((interaction, index) => {
         if (interaction.cssSelector || interaction.xpath) {
             const elementKey = interaction.nomeElemento || `Elemento_${index + 1}`;
             const acao = ACTION_META[interaction.acao]?.label || interaction.acao;
-            
+
             if (!selectorMap.has(elementKey)) {
                 selectorMap.set(elementKey, {
                     elemento: elementKey,
@@ -66,20 +72,20 @@ export function exportSelectors() {
             }
         }
     });
-    
+
     if (selectorMap.size === 0) {
         showFeedback('Nenhum seletor encontrado para exportar!', 'error');
         return;
     }
-    
+
     // Gerar conteúdo em formato estruturado
     const selectors = Array.from(selectorMap.values());
-    
+
     // Criar JSON estruturado
     const exportData = {
         metadata: {
-            feature: window.currentFeature?.name || 'Feature não definida',
-            scenario: window.currentCenario?.name || 'Cenário não definido',
+            feature: state.currentFeature?.name || 'Feature não definida',
+            scenario: state.currentScenario?.name || 'Cenário não definido',
             url: window.location.href,
             exportDate: new Date().toISOString(),
             totalSelectors: selectors.length
@@ -99,7 +105,7 @@ export function exportSelectors() {
             }
         }))
     };
-    
+
     // Gerar também em formato CSV para facilitar análise
     const csvContent = 'ID,Elemento,Ação,Step,CSS Selector,XPath,URL,Timestamp\n' +
         selectors.map((sel, idx) => [
@@ -112,7 +118,7 @@ export function exportSelectors() {
             `"${sel.url}"`,
             sel.timestamp || ''
         ].join(',')).join('\n');
-    
+
     // Gerar em formato Markdown para documentação
     const mdContent = `# Seletores Capturados
     
@@ -127,19 +133,19 @@ export function exportSelectors() {
 
 | ID | Elemento | Ação | Step | CSS Selector | XPath |
 |---|---|---|---|---|---|
-${selectors.map((sel, idx) => 
-    `| ${idx + 1} | ${sel.elemento} | ${sel.acao} | ${sel.step} | \`${sel.cssSelector}\` | \`${sel.xpath}\` |`
-).join('\n')}
+${selectors.map((sel, idx) =>
+        `| ${idx + 1} | ${sel.elemento} | ${sel.acao} | ${sel.step} | \`${sel.cssSelector}\` | \`${sel.xpath}\` |`
+    ).join('\n')}
 
 ---
 *Exportado em ${new Date().toLocaleString('pt-BR')}*
 `;
-    
+
     // Baixar todos os formatos
     downloadFile('seletores.json', JSON.stringify(exportData, null, 2));
     downloadFile('seletores.csv', csvContent);
     downloadFile('seletores.md', mdContent);
-    
+
     showFeedback(`${selectors.length} seletores exportados em 3 formatos (JSON, CSV, Markdown)!`, 'success');
 }
 
@@ -157,19 +163,25 @@ function buildActionMenu(interaction, idx) {
 
     const actions = [
         { icon: '✏️', label: 'Editar', action: () => showEditModal(idx) },
-        { icon: '📋', label: 'Duplicar', action: () => {
-            const newInteraction = { ...interaction, timestamp: Date.now() };
-            window.interactions.splice(idx + 1, 0, newInteraction);
-            if (typeof window.saveInteractionsToStorage === 'function') window.saveInteractionsToStorage();
-            if (typeof window.renderLogWithActions === 'function') window.renderLogWithActions();
-        }},
-        { icon: '🗑️', label: 'Excluir', action: () => {
-            showModal('Deseja excluir esta interação?', () => {
-                window.interactions.splice(idx, 1);
-                if (typeof window.saveInteractionsToStorage === 'function') window.saveInteractionsToStorage();
-                if (typeof window.renderLogWithActions === 'function') window.renderLogWithActions();
-            });
-        }},
+        {
+            icon: '📋', label: 'Duplicar', action: () => {
+                const store = getStore();
+                const currentInteractions = [...store.getState().interactions];
+                const newInteraction = { ...interaction, timestamp: Date.now() };
+                currentInteractions.splice(idx + 1, 0, newInteraction);
+                store.setState({ interactions: currentInteractions });
+                if (typeof renderLogWithActions === 'function') renderLogWithActions();
+            }
+        },
+        {
+            icon: '🗑️', label: 'Excluir', action: () => {
+                showModal('Deseja excluir esta interação?', () => {
+                    const store = getStore();
+                    store.removeInteraction(idx);
+                    if (typeof renderLogWithActions === 'function') renderLogWithActions();
+                });
+            }
+        },
         { icon: '📊', label: 'Ver XPath', action: () => showXPathModal(interaction.xpath, interaction.cssSelector, interaction) }
     ];
 
@@ -181,18 +193,18 @@ function buildActionMenu(interaction, idx) {
         item.style.alignItems = 'center';
         item.style.gap = '8px';
         item.style.transition = 'background 0.2s';
-        
+
         item.innerHTML = `<span>${actionItem.icon}</span><span>${actionItem.label}</span>`;
-        
+
         item.onmouseenter = () => item.style.background = '#f5f5f5';
         item.onmouseleave = () => item.style.background = '';
-        
+
         item.onclick = (e) => {
             e.stopPropagation();
             menu.remove();
             actionItem.action();
         };
-        
+
         menu.appendChild(item);
     });
 
@@ -201,18 +213,18 @@ function buildActionMenu(interaction, idx) {
 
 // Ícones e cores para cada ação
 export const ACTION_META = {
-    clica:      { icon: '🖱️', color: '#007bff', label: 'Clicar' },
-    preenche:   { icon: '⌨️', color: '#28a745', label: 'Preencher' },
-    seleciona:  { icon: '☑️', color: '#17a2b8', label: 'Selecionar' },
-    upload:     { icon: '📎', color: '#f39c12', label: 'Upload' },
-    login:      { icon: '🔑', color: '#8e44ad', label: 'Login' },
+    clica: { icon: '🖱️', color: '#007bff', label: 'Clicar' },
+    preenche: { icon: '⌨️', color: '#28a745', label: 'Preencher' },
+    seleciona: { icon: '☑️', color: '#17a2b8', label: 'Selecionar' },
+    upload: { icon: '📎', color: '#f39c12', label: 'Upload' },
+    login: { icon: '🔑', color: '#8e44ad', label: 'Login' },
     espera_segundos: { icon: '⏲️', color: '#ffc107', label: 'Esperar' },
     espera_elemento: { icon: '⏳', color: '#0070f3', label: 'Esperar elemento' },
     espera_nao_existe: { icon: '🚫', color: '#e74c3c', label: 'Esperar sumir' },
     acessa_url: { icon: '🌐', color: '#0070f3', label: 'Acessar URL' },
-    altera:     { icon: '✏️', color: '#6c757d', label: 'Alterar' },
-    radio:      { icon: '🔘', color: '#6c757d', label: 'Radio' },
-    caixa:      { icon: '☑️', color: '#6c757d', label: 'Caixa' },
+    altera: { icon: '✏️', color: '#6c757d', label: 'Alterar' },
+    radio: { icon: '🔘', color: '#6c757d', label: 'Radio' },
+    caixa: { icon: '☑️', color: '#6c757d', label: 'Caixa' },
     valida_existe: { icon: '✅', color: '#218838', label: 'Validar existe' },
     valida_nao_existe: { icon: '❌', color: '#e74c3c', label: 'Validar não existe' },
     valida_contem: { icon: '🔍', color: '#007bff', label: 'Validar contém' },
@@ -224,6 +236,10 @@ export const ACTION_META = {
 export function renderLogWithActions() {
     const log = document.getElementById('gherkin-log');
     if (!log) return;
+
+    const store = getStore();
+    const interactions = store.getState().interactions || [];
+
     log.innerHTML = '';
 
     // Wrapper da tabela: ocupa todo o espaço disponível do log
@@ -274,7 +290,7 @@ export function renderLogWithActions() {
     // Renderiza todas as interações (sem filtro)
     function renderRows() {
         tbody.innerHTML = '';
-        let filtered = window.interactions || [];
+        let filtered = interactions;
 
         if (!filtered.length) {
             const tr = document.createElement('tr');
@@ -290,7 +306,7 @@ export function renderLogWithActions() {
         // Aplicar a regra correta dos steps BDD
         if (filtered.length > 0) {
             filtered = [...filtered]; // Criar uma cópia para não modificar o original
-            
+
             // Aplicar a regra: 1º = Given, último = Then, demais = When
             for (let i = 0; i < filtered.length; i++) {
                 if (i === 0) {
@@ -419,17 +435,16 @@ export function renderLogWithActions() {
     setTimeout(() => {
         scrollContainer.scrollTop = scrollContainer.scrollHeight;
     }, 0);
-    
-    // Atualizar contador de ações na barra de status
-    if (typeof window.updateActionsCounter === 'function') {
-        window.updateActionsCounter();
-    }
+
+    // Atualizar contador de ações na barra de status - opcional se o painel já observa o store
+    // Mas por via das dúvidas deixamos, porém o store já notifica listeners
+    // updateActionsCounter foi removido das globals, agora confiamos no re-render do painel via listener
 
     // Estilo responsivo e barra de rolagem horizontal fixa e customizada
     if (!document.getElementById('gherkin-log-table-style')) {
         const style = document.createElement('style');
         style.id = 'gherkin-log-table-style';
-    style.innerHTML = `
+        style.innerHTML = `
 /* Container principal do painel de log */
 #gherkin-log {
     display: flex !important;
@@ -523,8 +538,7 @@ export function renderLogWithActions() {
             clearBtn.style.opacity = '';
             clearBtn.onclick = () => {
                 showModal('Deseja realmente limpar todas as interações deste cenário?', () => {
-                    if (window.interactions) window.interactions.length = 0;
-                    if (typeof saveInteractionsToStorage === 'function') saveInteractionsToStorage();
+                    store.setState({ interactions: [] });
                     renderLogWithActions();
                 });
             };
@@ -534,22 +548,27 @@ export function renderLogWithActions() {
         if (pauseBtn) {
             pauseBtn.disabled = false;
             pauseBtn.style.opacity = '';
+            // Atualizar texto inicial baseando-se no estado atual
+            const isPaused = store.getState().isPaused;
+            if (isPaused) {
+                pauseBtn.textContent = 'Continuar';
+                pauseBtn.style.backgroundColor = '#28a745';
+            } else {
+                pauseBtn.textContent = 'Pausar';
+                pauseBtn.style.backgroundColor = '#ffc107';
+            }
+
             pauseBtn.onclick = () => {
-                window.isPaused = !window.isPaused;
-                if (window.isPaused) {
-                    pauseBtn.textContent = 'Continuar';
-                    pauseBtn.style.backgroundColor = '#28a745';
-                } else {
-                    pauseBtn.textContent = 'Pausar';
-                    pauseBtn.style.backgroundColor = '#ffc107';
-                }
-                
-                // Atualizar barra de status
-                if (typeof window.updateStatusBar === 'function') {
-                    window.updateStatusBar();
-                }
-                
-                showFeedback(window.isPaused ? 'Gravação pausada' : 'Gravação retomada', 'info');
+                const currentPaused = store.getState().isPaused;
+                store.setState({ isPaused: !currentPaused });
+
+                // O próprio listener do store vai atualizar o UI, mas o renderLogWithActions
+                // não atualiza o botão em si, apenas rebuilda a tabela.
+                // Mas o botão está fora da tabela?
+                // O botão está no renderPanelContent. Se o state mudar, o panel deve re-renderizar.
+                // Então aqui só mudamos o state.
+
+                showFeedback(!currentPaused ? 'Gravação pausada' : 'Gravação retomada', 'info');
             };
         }
 

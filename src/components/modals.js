@@ -1,156 +1,74 @@
 // Modais da extensão
+import { showConfirmDialog } from './confirm-dialog.js';
+import { getStore } from '../state/store.js';
+import { showFeedback } from '../../utils.js';
+
+// Cache para utils importados dinamicamente
+let domUtils = null;
+
+async function getDomUtils() {
+    if (!domUtils) {
+        domUtils = await import('../utils/dom.js');
+    }
+    return domUtils;
+}
 
 export function showModal(message, onYes, onNo) {
-    // Remove modal antigo se existir
-    const oldModal = document.getElementById('gherkin-modal');
-    if (oldModal) oldModal.remove();
-    const modalBg = document.createElement('div');
-    modalBg.id = 'gherkin-modal';
-    modalBg.style.position = 'fixed';
-    modalBg.style.top = '0';
-    modalBg.style.left = '0';
-    modalBg.style.width = '100vw';
-    modalBg.style.height = '100vh';
-    modalBg.style.background = 'rgba(0,0,0,0.25)';
-    modalBg.style.display = 'flex';
-    modalBg.style.alignItems = 'center';
-    modalBg.style.justifyContent = 'center';
-    modalBg.style.zIndex = '10001';
-
-    const modal = document.createElement('div');
-    modal.style.background = '#fff';
-    modal.style.padding = '28px 32px 22px 32px';
-    modal.style.borderRadius = '12px';
-    modal.style.boxShadow = '0 4px 24px rgba(0,0,0,0.18)';
-    modal.style.display = 'flex';
-    modal.style.flexDirection = 'column';
-    modal.style.alignItems = 'center';
-    modal.style.gap = '18px';
-    modal.style.minWidth = '260px';
-    modalBg.className = 'gherkin-modal-bg';
-    modal.className = 'gherkin-modal-content';
-
-    const msg = document.createElement('div');
-    msg.textContent = message;
-    msg.style.fontSize = '17px';
-    msg.style.color = '#0D47A1';
-    msg.style.textAlign = 'center';
-    modal.appendChild(msg);
-
-    const btns = document.createElement('div');
-    btns.style.display = 'flex';
-    btns.style.gap = '18px';
-
-    const yesBtn = document.createElement('button');
-    yesBtn.textContent = 'Sim';
-    yesBtn.style.background = '#007bff';
-    yesBtn.style.color = '#fff';
-    yesBtn.style.border = 'none';
-    yesBtn.style.borderRadius = '6px';
-    yesBtn.style.padding = '8px 22px';
-    yesBtn.style.fontSize = '15px';
-    yesBtn.style.fontWeight = 'bold';
-    yesBtn.style.cursor = 'pointer';
-    yesBtn.onclick = () => {
-        modalBg.remove();
-        if (onYes) onYes();
-    };
-
-    const noBtn = document.createElement('button');
-    noBtn.textContent = 'Não';
-    noBtn.style.background = '#dc3545';
-    noBtn.style.color = '#fff';
-    noBtn.style.border = 'none';
-    noBtn.style.borderRadius = '6px';
-    noBtn.style.padding = '8px 22px';
-    noBtn.style.fontSize = '15px';
-    noBtn.style.fontWeight = 'bold';
-    noBtn.style.cursor = 'pointer';
-    noBtn.onclick = () => {
-        modalBg.remove();
-        if (onNo) onNo();
-    };
-
-    btns.appendChild(yesBtn);
-    btns.appendChild(noBtn);
-    modal.appendChild(btns);
-    modalBg.appendChild(modal);
-    document.body.appendChild(modalBg);
+    // Usar novo showConfirmDialog em vez do antigo sistema modal
+    return showConfirmDialog({
+        title: 'Confirmação',
+        message: message,
+        buttons: {
+            confirm: { text: 'Sim', variant: 'default' },
+            cancel: { text: 'Não', variant: 'default' }
+        },
+        onConfirm: onYes,
+        onCancel: onNo
+    });
 }
 
 export function showUploadModal(nomeElemento, cssSelector, xpath, callback) {
-    // Remove modal antigo se existir
     const oldModal = document.getElementById('gherkin-modal');
     if (oldModal) oldModal.remove();
+
     const modalBg = document.createElement('div');
     modalBg.id = 'gherkin-modal';
-    modalBg.style.position = 'fixed';
-    modalBg.style.top = '0';
-    modalBg.style.left = '0';
-    modalBg.style.width = '100vw';
-    modalBg.style.height = '100vh';
-    modalBg.style.background = 'rgba(0,0,0,0.25)';
-    modalBg.style.display = 'flex';
-    modalBg.style.alignItems = 'center';
-    modalBg.style.justifyContent = 'center';
-    modalBg.style.zIndex = '10003';
-    const modal = document.createElement('div');
-    modal.style.background = '#fff';
-    modal.style.padding = '28px 32px 22px 32px';
-    modal.style.borderRadius = '12px';
-    modal.style.boxShadow = '0 4px 24px rgba(0,0,0,0.18)';
-    modal.style.display = 'flex';
-    modal.style.flexDirection = 'column';
-    modal.style.alignItems = 'center';
-    modal.style.gap = '18px';
-    modal.style.minWidth = '260px';
     modalBg.className = 'gherkin-modal-bg';
+
+    const modal = document.createElement('div');
     modal.className = 'gherkin-modal-content';
-    // Título
-    const title = document.createElement('div');
-    title.textContent = 'Upload de arquivo de exemplo';
-    title.style.fontSize = '17px';
-    title.style.color = '#0D47A1';
-    title.style.textAlign = 'center';
+
+    const title = document.createElement('h3');
+    title.textContent = 'Upload de Arquivo';
+    title.className = 'gherkin-modal-title';
     modal.appendChild(title);
-    // Nome do arquivo
-    const fileLabel = document.createElement('label');
-    fileLabel.textContent = 'Nome do arquivo de exemplo:';
-    fileLabel.style.fontWeight = 'bold';
-    fileLabel.style.marginBottom = '4px';
-    modal.appendChild(fileLabel);
+
+    const label = document.createElement('label');
+    label.textContent = 'Nome do Arquivo:';
+    label.className = 'gherkin-label';
+    modal.appendChild(label);
+
     const fileInput = document.createElement('input');
     fileInput.type = 'text';
-    fileInput.placeholder = 'exemplo.pdf, imagem.png, etc.';
-    fileInput.style.width = '100%';
-    fileInput.style.padding = '7px';
-    fileInput.style.borderRadius = '5px';
-    fileInput.style.border = '1px solid #ccc';
-    fileInput.style.fontSize = '14px';
-    fileInput.value = '';
+    fileInput.placeholder = 'ex: documento.pdf';
+    // Estilo global de input será aplicado automaticamente
     modal.appendChild(fileInput);
-    // Botões
+
     const btns = document.createElement('div');
-    btns.style.display = 'flex';
-    btns.style.gap = '18px';
-    btns.style.marginTop = '12px';
+    btns.className = 'gherkin-modal-footer';
+
     const saveBtn = document.createElement('button');
     saveBtn.textContent = 'Salvar';
-    saveBtn.style.background = '#007bff';
-    saveBtn.style.color = '#fff';
-    saveBtn.style.border = 'none';
-    saveBtn.style.borderRadius = '6px';
-    saveBtn.style.padding = '8px 22px';
-    saveBtn.style.fontSize = '15px';
-    saveBtn.style.fontWeight = 'bold';
-    saveBtn.style.cursor = 'pointer';
+    saveBtn.className = 'gherkin-btn gherkin-btn-main';
     saveBtn.onclick = () => {
         const nomeArquivo = fileInput.value.trim();
         if (!nomeArquivo) {
             alert('Por favor, informe o nome do arquivo de exemplo.');
             return;
         }
-        window.interactions.push({
+
+        const store = getStore();
+        store.addInteraction({
             step: 'When',
             acao: 'upload',
             acaoTexto: 'Upload arquivo',
@@ -160,102 +78,81 @@ export function showUploadModal(nomeElemento, cssSelector, xpath, callback) {
             xpath: xpath,
             timestamp: Date.now()
         });
-        saveInteractionsToStorage();
-        renderLogWithActions();
+
         modalBg.remove();
         if (typeof callback === 'function') callback(nomeArquivo);
     };
+
     const cancelBtn = document.createElement('button');
     cancelBtn.textContent = 'Cancelar';
-    cancelBtn.style.background = '#dc3545';
-    cancelBtn.style.color = '#fff';
-    cancelBtn.style.border = 'none';
-    cancelBtn.style.borderRadius = '6px';
-    cancelBtn.style.padding = '8px 22px';
-    cancelBtn.style.fontSize = '15px';
-    cancelBtn.style.fontWeight = 'bold';
-    cancelBtn.style.cursor = 'pointer';
+    cancelBtn.className = 'gherkin-btn gherkin-btn-danger';
     cancelBtn.onclick = () => modalBg.remove();
+
     btns.appendChild(saveBtn);
     btns.appendChild(cancelBtn);
     modal.appendChild(btns);
     modalBg.appendChild(modal);
     document.body.appendChild(modalBg);
+
+    setTimeout(() => fileInput.focus(), 50);
 }
 
 export function showLoginModal() {
     const oldModal = document.getElementById('gherkin-modal');
     if (oldModal) oldModal.remove();
+
     const modalBg = document.createElement('div');
     modalBg.id = 'gherkin-modal';
-    modalBg.style.position = 'fixed';
-    modalBg.style.top = '0';
-    modalBg.style.left = '0';
-    modalBg.style.width = '100vw';
-    modalBg.style.height = '100vh';
-    modalBg.style.background = 'rgba(0,0,0,0.25)';
-    modalBg.style.display = 'flex';
-    modalBg.style.alignItems = 'center';
-    modalBg.style.justifyContent = 'center';
-    modalBg.style.zIndex = '10003';
-    const modal = document.createElement('div');
-    modal.style.background = '#fff';
-    modal.style.padding = '28px 32px 22px 32px';
-    modal.style.borderRadius = '12px';
-    modal.style.boxShadow = '0 4px 24px rgba(0,0,0,0.18)';
-    modal.style.display = 'flex';
-    modal.style.flexDirection = 'column';
-    modal.style.alignItems = 'center';
-    modal.style.gap = '18px';
-    modal.style.minWidth = '260px';
     modalBg.className = 'gherkin-modal-bg';
+
+    const modal = document.createElement('div');
     modal.className = 'gherkin-modal-content';
-    const title = document.createElement('div');
-    title.textContent = 'Marcar ação como Login';
-    title.style.fontSize = '17px';
-    title.style.color = '#0D47A1';
-    title.style.textAlign = 'center';
+
+    const title = document.createElement('h3');
+    title.className = 'gherkin-modal-title gherkin-justify-center';
+    title.innerHTML = '<span style="font-size: 1.2em; margin-right: 8px;">🔑</span>Marcar ação como Login';
     modal.appendChild(title);
+
+    // Container Usuário
+    const userContainer = document.createElement('div');
+    userContainer.className = 'gherkin-flex-col gherkin-gap-xs';
+
     const userLabel = document.createElement('label');
-    userLabel.textContent = 'Usuário/Email:';
-    userLabel.style.fontWeight = 'bold';
-    userLabel.style.marginBottom = '4px';
-    modal.appendChild(userLabel);
+    userLabel.textContent = 'Usuário/Email';
+    userLabel.className = 'gherkin-label';
+    userContainer.appendChild(userLabel);
+
     const userInput = document.createElement('input');
     userInput.type = 'text';
-    userInput.style.width = '100%';
-    userInput.style.padding = '7px';
-    userInput.style.borderRadius = '5px';
-    userInput.style.border = '1px solid #ccc';
-    userInput.style.fontSize = '14px';
-    modal.appendChild(userInput);
+    userInput.placeholder = 'Digite seu usuário ou email';
+    userInput.className = 'gherkin-w-full';
+    userContainer.appendChild(userInput);
+    modal.appendChild(userContainer);
+
+    // Container Senha
+    const passContainer = document.createElement('div');
+    passContainer.className = 'gherkin-flex-col gherkin-gap-xs';
+
     const passLabel = document.createElement('label');
-    passLabel.textContent = 'Senha:';
-    passLabel.style.fontWeight = 'bold';
-    passLabel.style.marginBottom = '4px';
-    modal.appendChild(passLabel);
+    passLabel.textContent = 'Senha';
+    passLabel.className = 'gherkin-label';
+    passContainer.appendChild(passLabel);
+
     const passInput = document.createElement('input');
     passInput.type = 'password';
-    passInput.style.width = '100%';
-    passInput.style.padding = '7px';
-    passInput.style.borderRadius = '5px';
-    passInput.style.border = '1px solid #ccc';
-    passInput.style.fontSize = '14px';
-    modal.appendChild(passInput);
+    passInput.placeholder = 'Digite sua senha';
+    passInput.className = 'gherkin-w-full';
+    passContainer.appendChild(passInput);
+    modal.appendChild(passContainer);
+
+    // Footer Buttons
     const btns = document.createElement('div');
-    btns.style.display = 'flex';
-    btns.style.gap = '18px';
-    btns.style.marginTop = '12px';
+    btns.className = 'gherkin-modal-footer';
+
     const saveBtn = document.createElement('button');
-    saveBtn.textContent = 'Salvar Login';
-    saveBtn.style.background = '#007bff';
-    saveBtn.style.color = '#fff';
-    saveBtn.style.border = 'none';
-    saveBtn.style.borderRadius = '6px';
-    saveBtn.style.padding = '8px 22px';
-    saveBtn.style.fontSize = '15px';
-    saveBtn.style.fontWeight = 'bold';
-    saveBtn.style.cursor = 'pointer';
+    saveBtn.innerHTML = '✓ Salvar Login';
+    saveBtn.className = 'gherkin-btn gherkin-btn-main gherkin-flex-1';
+
     saveBtn.onclick = () => {
         const usuario = userInput.value.trim();
         const senha = passInput.value;
@@ -263,7 +160,9 @@ export function showLoginModal() {
             alert('Por favor, preencha usuário e senha.');
             return;
         }
-        window.interactions.push({
+
+        const store = getStore();
+        store.addInteraction({
             step: 'Given',
             acao: 'login',
             acaoTexto: 'Login',
@@ -271,77 +170,53 @@ export function showLoginModal() {
             valorPreenchido: senha,
             timestamp: Date.now()
         });
-        saveInteractionsToStorage();
-        renderLogWithActions();
+
         modalBg.remove();
         showFeedback('Ação de login registrada!', 'success');
     };
+
     const cancelBtn = document.createElement('button');
     cancelBtn.textContent = 'Cancelar';
-    cancelBtn.style.background = '#dc3545';
-    cancelBtn.style.color = '#fff';
-    cancelBtn.style.border = 'none';
-    cancelBtn.style.borderRadius = '6px';
-    cancelBtn.style.padding = '8px 22px';
-    cancelBtn.style.fontSize = '15px';
-    cancelBtn.style.fontWeight = 'bold';
-    cancelBtn.style.cursor = 'pointer';
+    cancelBtn.className = 'gherkin-btn gherkin-btn-danger';
     cancelBtn.onclick = () => modalBg.remove();
+
     btns.appendChild(saveBtn);
     btns.appendChild(cancelBtn);
     modal.appendChild(btns);
     modalBg.appendChild(modal);
     document.body.appendChild(modalBg);
+
+    setTimeout(() => userInput.focus(), 50);
 }
 
 export function showLogDetailsModal(interaction) {
     // Remove modal antigo se existir
     const oldModal = document.getElementById('gherkin-modal');
     if (oldModal) oldModal.remove();
-    
+
     const modalBg = document.createElement('div');
     modalBg.id = 'gherkin-modal';
-    modalBg.style.position = 'fixed';
-    modalBg.style.top = '0';
-    modalBg.style.left = '0';
-    modalBg.style.width = '100vw';
-    modalBg.style.height = '100vh';
-    modalBg.style.background = 'rgba(0,0,0,0.25)';
-    modalBg.style.display = 'flex';
-    modalBg.style.alignItems = 'center';
-    modalBg.style.justifyContent = 'center';
-    modalBg.style.zIndex = '10003';
+    modalBg.className = 'gherkin-modal-bg';
 
     const modal = document.createElement('div');
-    modal.style.background = '#fff';
-    modal.style.padding = '28px 32px 22px 32px';
-    modal.style.borderRadius = '12px';
-    modal.style.boxShadow = '0 4px 24px rgba(0,0,0,0.18)';
-    modal.style.display = 'flex';
-    modal.style.flexDirection = 'column';
-    modal.style.alignItems = 'flex-start';
-    modal.style.gap = '12px';
-    modal.style.minWidth = '320px';
-    modal.style.maxWidth = '96vw';
-    modal.style.maxHeight = '80vh';
+    modal.className = 'gherkin-modal-content gherkin-flex-col gherkin-gap-md';
+    modal.style.maxHeight = '80vh'; // Add overflow handling explicitly if needed, though class might handle it
     modal.style.overflowY = 'auto';
-    modalBg.className = 'gherkin-modal-bg';
-    modal.className = 'gherkin-modal-content';
 
     // ACTION_META local para evitar importação circular
     const ACTION_META = {
-        clica:      { icon: '🖱️', color: '#007bff', label: 'Clicar' },
-        preenche:   { icon: '⌨️', color: '#28a745', label: 'Preencher' },
-        seleciona:  { icon: '☑️', color: '#17a2b8', label: 'Selecionar' },
-        upload:     { icon: '📎', color: '#f39c12', label: 'Upload' },
-        login:      { icon: '🔑', color: '#8e44ad', label: 'Login' },
+        clica: { icon: '🖱️', color: '#007bff', label: 'Clicar' },
+        preenche: { icon: '⌨️', color: '#28a745', label: 'Preencher' },
+        seleciona: { icon: '☑️', color: '#17a2b8', label: 'Selecionar' },
+        upload: { icon: '📎', color: '#f39c12', label: 'Upload' },
+        login: { icon: '🔑', color: '#8e44ad', label: 'Login' },
         espera_segundos: { icon: '⏲️', color: '#ffc107', label: 'Esperar' },
         espera_elemento: { icon: '⏳', color: '#0070f3', label: 'Esperar elemento' },
         espera_nao_existe: { icon: '🚫', color: '#e74c3c', label: 'Esperar sumir' },
         acessa_url: { icon: '🌐', color: '#0070f3', label: 'Acessar URL' },
-        altera:     { icon: '✏️', color: '#6c757d', label: 'Alterar' },
-        radio:      { icon: '🔘', color: '#6c757d', label: 'Radio' },
-        caixa:      { icon: '☑️', color: '#6c757d', label: 'Caixa' },
+        altera: { icon: '✏️', color: '#6c757d', label: 'Alterar' },
+        radio: { icon: '🔘', color: '#6c757d', label: 'Radio' },
+        caixa: { icon: '☑️', color: '#6c757d', label: 'Caixa' },
         valida_existe: { icon: '✅', color: '#218838', label: 'Validar existe' },
         valida_nao_existe: { icon: '❌', color: '#e74c3c', label: 'Validar não existe' },
         valida_contem: { icon: '🔍', color: '#007bff', label: 'Validar contém' },
@@ -351,130 +226,136 @@ export function showLogDetailsModal(interaction) {
     };
 
     const meta = ACTION_META[interaction.acao] || {};
-    const title = document.createElement('div');
-    title.innerHTML = `<span style="font-size:1.3em;color:${meta.color || '#222'}">${meta.icon || ''}</span> <b>${meta.label || interaction.acao}</b> (${interaction.step})`;
-    title.style.fontSize = '17px';
-    title.style.color = '#0D47A1';
-    title.style.textAlign = 'left';
+    const title = document.createElement('h3');
+    title.className = 'gherkin-modal-title';
+    title.innerHTML = `<span style="font-size:1.3em;color:${meta.color || '#222'}">${meta.icon || ''}</span> <b>${meta.label || interaction.acao}</b> <span class="gherkin-text-muted" style="font-weight:normal; font-size: 0.9em;">(${interaction.step})</span>`;
     modal.appendChild(title);
 
     const details = [
-        ['Nome do elemento', interaction.nomeElemento || ''],
-        ['Valor preenchido', interaction.valorPreenchido || interaction.nomeArquivo || ''],
-        ['Selector CSS', interaction.cssSelector || ''],
-        ['XPath', interaction.xpath || ''],
-        ['Timestamp', interaction.timestamp ? new Date(interaction.timestamp).toLocaleString() : ''],
-        ['Texto do passo', interaction.stepText || ''],
+        ['Nome do elemento', interaction.nomeElemento || '', '📌'],
+        ['Valor preenchido', interaction.valorPreenchido || interaction.nomeArquivo || '', '✏️'],
+        ['Selector CSS', interaction.cssSelector || '', '🎨'],
+        ['XPath', interaction.xpath || '', '📍'],
+        ['Timestamp', interaction.timestamp ? new Date(interaction.timestamp).toLocaleString() : '', '🕒'],
+        ['Texto do passo', interaction.stepText || '', '📝'],
     ];
-    
-    details.forEach(([label, value]) => {
+
+    const listContainer = document.createElement('div');
+    listContainer.className = 'gherkin-flex-col gherkin-gap-xs gherkin-w-full';
+
+    details.forEach(([label, value, icon]) => {
         if (value) {
             const row = document.createElement('div');
-            row.innerHTML = `<b>${label}:</b> <span style="font-family:monospace">${value}</span>`;
-            modal.appendChild(row);
+            row.className = 'gherkin-list-item';
+            row.style.lineBreak = 'anywhere';
+            row.style.alignItems = 'flex-start'; // Alinha topo para textos longos
+
+            // Container do Label + Icone
+            const labelContainer = document.createElement('div');
+            labelContainer.style.minWidth = '140px';
+            labelContainer.style.flexShrink = '0';
+            labelContainer.innerHTML = `<span style="margin-right:4px">${icon}</span> <b>${label}:</b>`;
+
+            // Container do Valor
+            const valueContainer = document.createElement('div');
+            valueContainer.className = 'gherkin-code';
+            valueContainer.style.flex = '1';
+            valueContainer.style.margin = '0 8px';
+            valueContainer.textContent = value;
+
+            // Botão de Copiar (Apenas se o valor não for timestamp/texto simples curto)
+            const actionsContainer = document.createElement('div');
+            if (label !== 'Timestamp') {
+                const copyBtn = document.createElement('button');
+                copyBtn.className = 'gherkin-btn-icon';
+                copyBtn.style.padding = '4px';
+                copyBtn.title = 'Copiar';
+                copyBtn.innerHTML = '📋';
+                copyBtn.onclick = () => {
+                    navigator.clipboard.writeText(value);
+                    const originalHTML = copyBtn.innerHTML;
+                    copyBtn.innerHTML = '✅';
+                    setTimeout(() => copyBtn.innerHTML = originalHTML, 2000);
+                };
+                actionsContainer.appendChild(copyBtn);
+            }
+
+            row.appendChild(labelContainer);
+            row.appendChild(valueContainer);
+            row.appendChild(actionsContainer);
+            listContainer.appendChild(row);
         }
     });
+    modal.appendChild(listContainer);
 
-    // Botão fechar
+    // Footer
+    const footer = document.createElement('div');
+    footer.className = 'gherkin-modal-footer';
+
     const closeBtn = document.createElement('button');
     closeBtn.textContent = 'Fechar';
-    closeBtn.style.background = '#007bff';
-    closeBtn.style.color = '#fff';
-    closeBtn.style.border = 'none';
-    closeBtn.style.borderRadius = '6px';
-    closeBtn.style.padding = '8px 22px';
-    closeBtn.style.fontSize = '15px';
-    closeBtn.style.fontWeight = 'bold';
-    closeBtn.style.cursor = 'pointer';
+    closeBtn.className = 'gherkin-btn gherkin-btn-main';
     closeBtn.onclick = () => modalBg.remove();
-    modal.appendChild(closeBtn);
+
+    footer.appendChild(closeBtn);
+    modal.appendChild(footer);
 
     modalBg.appendChild(modal);
     document.body.appendChild(modalBg);
 }
 
 export function showEditModal(idx) {
-    const interaction = window.interactions[idx];
+    const store = getStore();
+    const interaction = store.getState().interactions[idx];
     if (!interaction) return;
-    
+
     // Remove modal antigo se existir
     const oldModal = document.getElementById('gherkin-modal');
     if (oldModal) oldModal.remove();
-    
+
     const modalBg = document.createElement('div');
     modalBg.id = 'gherkin-modal';
-    modalBg.style.position = 'fixed';
-    modalBg.style.top = '0';
-    modalBg.style.left = '0';
-    modalBg.style.width = '100vw';
-    modalBg.style.height = '100vh';
-    modalBg.style.background = 'rgba(0,0,0,0.25)';
-    modalBg.style.display = 'flex';
-    modalBg.style.alignItems = 'center';
-    modalBg.style.justifyContent = 'center';
-    modalBg.style.zIndex = '10003';
-    
+    modalBg.className = 'gherkin-modal-bg';
+
     const modal = document.createElement('div');
-    modal.style.background = '#fff';
-    modal.style.padding = '20px 24px 18px 24px';
-    modal.style.borderRadius = '12px';
-    modal.style.boxShadow = '0 4px 24px rgba(0,0,0,0.18)';
-    modal.style.display = 'flex';
-    modal.style.flexDirection = 'column';
-    modal.style.alignItems = 'stretch';
-    modal.style.gap = '12px';
-    modal.style.width = '95vw';
-    modal.style.maxWidth = '400px';
-    modal.style.minWidth = '280px';
+    modal.className = 'gherkin-modal-content gherkin-flex-col gherkin-gap-sm';
     modal.style.maxHeight = '90vh';
     modal.style.overflowY = 'auto';
-    
+
     // Título
-    const title = document.createElement('div');
+    const title = document.createElement('h3');
     title.textContent = 'Editar interação';
-    title.style.fontSize = '16px';
-    title.style.color = '#0D47A1';
-    title.style.textAlign = 'center';
-    title.style.fontWeight = 'bold';
-    title.style.marginBottom = '4px';
+    title.className = 'gherkin-modal-title gherkin-text-center';
     modal.appendChild(title);
-    
+
+    // Wrapper para os campos para manter espaçamento consistente
+    const fieldsContainer = document.createElement('div');
+    fieldsContainer.className = 'gherkin-flex-col gherkin-gap-sm';
+
     // Campo passo (Given, When, Then)
     const stepLabel = document.createElement('label');
     stepLabel.textContent = 'Passo BDD:';
-    stepLabel.style.fontWeight = 'bold';
-    stepLabel.style.fontSize = '14px';
-    stepLabel.style.marginBottom = '4px';
-    stepLabel.style.display = 'block';
-    modal.appendChild(stepLabel);
-    
+    stepLabel.className = 'gherkin-label';
+    fieldsContainer.appendChild(stepLabel);
+
     const stepSelect = document.createElement('select');
-    stepSelect.style.width = '100%';
-    stepSelect.style.padding = '8px 10px';
-    stepSelect.style.borderRadius = '6px';
-    stepSelect.style.border = '2px solid #ddd';
-    stepSelect.style.fontSize = '14px';
-    stepSelect.style.marginBottom = '8px';
-    stepSelect.style.boxSizing = 'border-box';
-    
-    ['Given','When','Then'].forEach(opt => {
+    stepSelect.className = 'gherkin-w-full';
+
+    ['Given', 'When', 'Then', 'And'].forEach(opt => {
         const option = document.createElement('option');
         option.value = opt;
         option.textContent = opt;
         if (interaction.step === opt) option.selected = true;
         stepSelect.appendChild(option);
     });
-    modal.appendChild(stepSelect);
-    
+    fieldsContainer.appendChild(stepSelect);
+
     // Campo ação
     const actionLabel = document.createElement('label');
     actionLabel.textContent = 'Ação:';
-    actionLabel.style.fontWeight = 'bold';
-    actionLabel.style.fontSize = '14px';
-    actionLabel.style.marginBottom = '4px';
-    actionLabel.style.display = 'block';
-    modal.appendChild(actionLabel);
-    
+    actionLabel.className = 'gherkin-label';
+    fieldsContainer.appendChild(actionLabel);
+
     let actionSelect;
     if (interaction.acao === 'acessa_url') {
         // Para o passo inicial, exibe o valor fixo e desabilita edição
@@ -482,24 +363,11 @@ export function showEditModal(idx) {
         actionSelect.type = 'text';
         actionSelect.value = 'acessa_url';
         actionSelect.disabled = true;
-        actionSelect.style.width = '100%';
-        actionSelect.style.padding = '8px 10px';
-        actionSelect.style.borderRadius = '6px';
-        actionSelect.style.border = '2px solid #ddd';
-        actionSelect.style.fontSize = '14px';
-        actionSelect.style.background = '#f5f5f5';
-        actionSelect.style.boxSizing = 'border-box';
-        actionSelect.style.marginBottom = '8px';
+        actionSelect.className = 'gherkin-w-full';
     } else {
         actionSelect = document.createElement('select');
-        actionSelect.style.width = '100%';
-        actionSelect.style.padding = '8px 10px';
-        actionSelect.style.borderRadius = '6px';
-        actionSelect.style.border = '2px solid #ddd';
-        actionSelect.style.fontSize = '14px';
-        actionSelect.style.boxSizing = 'border-box';
-        actionSelect.style.marginBottom = '8px';
-        
+        actionSelect.className = 'gherkin-w-full';
+
         // Opções iguais ao painel
         const mainActionSelect = document.getElementById('gherkin-action-select');
         if (mainActionSelect && mainActionSelect.innerHTML.trim()) {
@@ -509,147 +377,97 @@ export function showEditModal(idx) {
         }
         actionSelect.value = interaction.acao;
     }
-    modal.appendChild(actionSelect);
-    
+    fieldsContainer.appendChild(actionSelect);
+
     // Campo nome do elemento
     const nomeLabel = document.createElement('label');
     nomeLabel.textContent = 'Nome do elemento:';
-    nomeLabel.style.fontWeight = 'bold';
-    nomeLabel.style.fontSize = '14px';
-    nomeLabel.style.marginBottom = '4px';
-    nomeLabel.style.display = 'block';
-    modal.appendChild(nomeLabel);
-    
+    nomeLabel.className = 'gherkin-label';
+    fieldsContainer.appendChild(nomeLabel);
+
     const nomeInput = document.createElement('input');
     nomeInput.type = 'text';
     nomeInput.value = interaction.nomeElemento || '';
-    nomeInput.style.width = '100%';
-    nomeInput.style.padding = '8px 10px';
-    nomeInput.style.borderRadius = '6px';
-    nomeInput.style.border = '2px solid #ddd';
-    nomeInput.style.fontSize = '14px';
-    nomeInput.style.boxSizing = 'border-box';
-    nomeInput.style.marginBottom = '8px';
-    modal.appendChild(nomeInput);
-    
+    nomeInput.className = 'gherkin-w-full';
+    fieldsContainer.appendChild(nomeInput);
+
     // Campo nome do arquivo (apenas para upload)
     let fileInput = null;
     if (interaction.acao === 'upload') {
         const fileLabel = document.createElement('label');
         fileLabel.textContent = 'Nome do arquivo de exemplo:';
-        fileLabel.style.fontWeight = 'bold';
-        fileLabel.style.fontSize = '14px';
-        fileLabel.style.marginBottom = '4px';
-        fileLabel.style.display = 'block';
-        modal.appendChild(fileLabel);
-        
+        fileLabel.className = 'gherkin-label';
+        fieldsContainer.appendChild(fileLabel);
+
         fileInput = document.createElement('input');
         fileInput.type = 'text';
         fileInput.value = interaction.nomeArquivo || '';
-        fileInput.style.width = '100%';
-        fileInput.style.padding = '8px 10px';
-        fileInput.style.borderRadius = '6px';
-        fileInput.style.border = '2px solid #ddd';
-        fileInput.style.fontSize = '14px';
-        fileInput.style.boxSizing = 'border-box';
-        fileInput.style.marginBottom = '8px';
-        modal.appendChild(fileInput);
+        fileInput.className = 'gherkin-w-full';
+        fieldsContainer.appendChild(fileInput);
     }
-    
+
     // Campo valor preenchido (apenas para ação preenche)
     let valorPreenchidoInput = null;
     if (interaction.acao === 'preenche') {
         const valorLabel = document.createElement('label');
         valorLabel.textContent = 'Valor preenchido:';
-        valorLabel.style.fontWeight = 'bold';
-        valorLabel.style.fontSize = '14px';
-        valorLabel.style.marginBottom = '4px';
-        valorLabel.style.display = 'block';
-        modal.appendChild(valorLabel);
-        
+        valorLabel.className = 'gherkin-label';
+        fieldsContainer.appendChild(valorLabel);
+
         valorPreenchidoInput = document.createElement('input');
         valorPreenchidoInput.type = 'text';
         valorPreenchidoInput.value = typeof interaction.valorPreenchido !== 'undefined' ? interaction.valorPreenchido : '';
-        valorPreenchidoInput.style.width = '100%';
-        valorPreenchidoInput.style.padding = '8px 10px';
-        valorPreenchidoInput.style.borderRadius = '6px';
-        valorPreenchidoInput.style.border = '2px solid #ddd';
-        valorPreenchidoInput.style.fontSize = '14px';
-        valorPreenchidoInput.style.boxSizing = 'border-box';
-        valorPreenchidoInput.style.marginBottom = '8px';
+        valorPreenchidoInput.className = 'gherkin-w-full';
         valorPreenchidoInput.autocomplete = 'off';
-        modal.appendChild(valorPreenchidoInput);
+        fieldsContainer.appendChild(valorPreenchidoInput);
     }
-    
+
+    modal.appendChild(fieldsContainer);
+
     // Botões
     const btns = document.createElement('div');
-    btns.style.display = 'flex';
-    btns.style.gap = '12px';
-    btns.style.marginTop = '8px';
-    btns.style.justifyContent = 'center';
-    
+    btns.className = 'gherkin-modal-footer';
+
     const saveBtn = document.createElement('button');
     saveBtn.textContent = 'Salvar';
-    saveBtn.style.background = '#007bff';
-    saveBtn.style.color = '#fff';
-    saveBtn.style.border = 'none';
-    saveBtn.style.borderRadius = '6px';
-    saveBtn.style.padding = '10px 20px';
-    saveBtn.style.fontSize = '14px';
-    saveBtn.style.fontWeight = 'bold';
-    saveBtn.style.cursor = 'pointer';
-    saveBtn.style.flex = '1';
-    saveBtn.style.maxWidth = '120px';
+    saveBtn.className = 'gherkin-btn gherkin-btn-main gherkin-flex-1';
     saveBtn.onclick = () => {
-        interaction.step = stepSelect.value;
+        const updates = {
+            step: stepSelect.value,
+            nomeElemento: nomeInput.value.trim() || interaction.nomeElemento
+        };
+
         if (interaction.acao === 'acessa_url') {
-            // Mantém a ação fixa
-            interaction.acao = 'acessa_url';
-            interaction.acaoTexto = 'Acessa';
+            updates.acao = 'acessa_url';
+            updates.acaoTexto = 'Acessa';
         } else {
-            interaction.acao = actionSelect.value;
+            updates.acao = actionSelect.value;
             // Protege contra opção indefinida
             const selectedOption = actionSelect.options ? actionSelect.options[actionSelect.selectedIndex] : null;
-            interaction.acaoTexto = selectedOption ? selectedOption.text : actionSelect.value;
+            updates.acaoTexto = selectedOption ? selectedOption.text : actionSelect.value;
         }
-        interaction.nomeElemento = nomeInput.value.trim() || interaction.nomeElemento;
-        
+
         if (interaction.acao === 'upload' && fileInput) {
-            interaction.nomeArquivo = fileInput.value.trim() || interaction.nomeArquivo;
+            updates.nomeArquivo = fileInput.value.trim() || interaction.nomeArquivo;
         }
-        
+
         if (interaction.acao === 'preenche' && valorPreenchidoInput) {
-            interaction.valorPreenchido = valorPreenchidoInput.value;
+            updates.valorPreenchido = valorPreenchidoInput.value;
         }
-        
-        if (typeof window.saveInteractionsToStorage === 'function') {
-            window.saveInteractionsToStorage();
-        }
-        
-        if (typeof window.renderLogWithActions === 'function') {
-            window.renderLogWithActions();
-        }
-        
+
+        store.updateInteraction(idx, updates);
         modalBg.remove();
     };
-    
+
     const cancelBtn = document.createElement('button');
     cancelBtn.textContent = 'Cancelar';
-    cancelBtn.style.background = '#dc3545';
-    cancelBtn.style.color = '#fff';
-    cancelBtn.style.border = 'none';
-    cancelBtn.style.borderRadius = '6px';
-    cancelBtn.style.padding = '10px 20px';
-    cancelBtn.style.fontSize = '14px';
-    cancelBtn.style.fontWeight = 'bold';
-    cancelBtn.style.cursor = 'pointer';
-    cancelBtn.style.flex = '1';
-    cancelBtn.style.maxWidth = '120px';
+    cancelBtn.className = 'gherkin-btn gherkin-btn-danger gherkin-flex-1';
     cancelBtn.onclick = () => modalBg.remove();
-    
+
     btns.appendChild(saveBtn);
     btns.appendChild(cancelBtn);
     modal.appendChild(btns);
+
     modalBg.appendChild(modal);
     document.body.appendChild(modalBg);
 }
@@ -658,345 +476,217 @@ export function showXPathModal(xpath, cssSelector = null, elementInfo = null) {
     // Remove modal antigo se existir
     const oldModal = document.getElementById('gherkin-modal');
     if (oldModal) oldModal.remove();
-    
+
     const modalBg = document.createElement('div');
     modalBg.id = 'gherkin-modal';
-    modalBg.style.position = 'fixed';
-    modalBg.style.top = '0';
-    modalBg.style.left = '0';
-    modalBg.style.width = '100vw';
-    modalBg.style.height = '100vh';
-    modalBg.style.background = 'rgba(0,0,0,0.25)';
-    modalBg.style.display = 'flex';
-    modalBg.style.alignItems = 'center';
-    modalBg.style.justifyContent = 'center';
-    modalBg.style.zIndex = '10003';
-    
+    modalBg.className = 'gherkin-modal-bg';
+
     const modal = document.createElement('div');
-    modal.style.background = '#fff';
-    modal.style.padding = '20px 24px 18px 24px';
-    modal.style.borderRadius = '12px';
-    modal.style.boxShadow = '0 4px 24px rgba(0,0,0,0.18)';
-    modal.style.display = 'flex';
-    modal.style.flexDirection = 'column';
-    modal.style.alignItems = 'stretch';
-    modal.style.gap = '14px';
-    modal.style.width = '95vw';
+    modal.className = 'gherkin-modal-content gherkin-flex-col gherkin-gap-md';
     modal.style.maxWidth = '750px';
-    modal.style.minWidth = '320px';
     modal.style.maxHeight = '95vh';
     modal.style.overflowY = 'auto';
-    
+
     // Título
-    const title = document.createElement('div');
+    const title = document.createElement('h3');
     title.textContent = 'Seletores do elemento';
-    title.style.fontSize = '16px';
-    title.style.color = '#0D47A1';
-    title.style.textAlign = 'center';
-    title.style.fontWeight = 'bold';
-    title.style.marginBottom = '4px';
+    title.className = 'gherkin-modal-title gherkin-text-center';
     modal.appendChild(title);
-    
+
+    // Verificação de URL
+    if (elementInfo && elementInfo.acao === 'acessa_url') {
+        const warning = document.createElement('div');
+        warning.className = 'gherkin-badge gherkin-badge-warning gherkin-p-md gherkin-text-center';
+        warning.innerHTML = '🌐 <b>Ação de Navegação (URL)</b><br>Seletores CSS/XPath não se aplicam a esta ação.';
+        modal.appendChild(warning);
+
+        modalBg.appendChild(modal);
+        document.body.appendChild(modalBg);
+
+        // Footer com botão fechar
+        const footer = document.createElement('div');
+        footer.className = 'gherkin-modal-footer gherkin-mt-auto';
+        const closeBtn = document.createElement('button');
+        closeBtn.textContent = 'Fechar';
+        closeBtn.className = 'gherkin-btn gherkin-btn-main';
+        closeBtn.onclick = () => modalBg.remove();
+        footer.appendChild(closeBtn);
+        modal.appendChild(footer);
+        return;
+    }
+
     // Se houver informações sobre validação e robustez, mostra
-    if (elementInfo) {
+    if (elementInfo && elementInfo.robustness) {
         const infoContainer = document.createElement('div');
-        infoContainer.style.width = '100%';
-        infoContainer.style.marginBottom = '8px';
-        
-        if (elementInfo.isValid) {
-            const statusDiv = document.createElement('div');
-            statusDiv.style.display = 'flex';
-            statusDiv.style.gap = '16px';
-            statusDiv.style.fontSize = '14px';
-            statusDiv.style.marginBottom = '8px';
-            
-            const cssStatus = document.createElement('span');
-            cssStatus.innerHTML = `CSS: ${elementInfo.isValid.css ? '✅ Válido' : '❌ Inválido'}`;
-            cssStatus.style.color = elementInfo.isValid.css ? '#28a745' : '#dc3545';
-            
-            const xpathStatus = document.createElement('span');
-            xpathStatus.innerHTML = `XPath: ${elementInfo.isValid.xpath ? '✅ Válido' : '❌ Inválido'}`;
-            xpathStatus.style.color = elementInfo.isValid.xpath ? '#28a745' : '#dc3545';
-            
-            statusDiv.appendChild(cssStatus);
-            statusDiv.appendChild(xpathStatus);
-            infoContainer.appendChild(statusDiv);
+        infoContainer.className = 'gherkin-w-full gherkin-mb-sm';
+
+        // ... (restante da lógica de robustez se existir) ...
+        const robustnessDiv = document.createElement('div');
+        robustnessDiv.className = 'gherkin-box gherkin-text-sm';
+
+        if (elementInfo.robustness.css) {
+            const css = elementInfo.robustness.css;
+            const cssRobustness = document.createElement('div');
+            cssRobustness.innerHTML = `
+                <strong>CSS:</strong> 
+                ${css.isUnique ? '✅ Único' : '❌ Não único'} | 
+                ${css.isStable ? '✅ Estável' : '❌ Instável'} | 
+                Especificidade: ${css.specificity}
+            `;
+            cssRobustness.className = 'gherkin-mb-xs';
+            robustnessDiv.appendChild(cssRobustness);
         }
 
-        // Informações de robustez
-        if (elementInfo.robustness) {
-            const robustnessDiv = document.createElement('div');
-            robustnessDiv.style.fontSize = '13px';
-            robustnessDiv.style.background = '#f8f9fa';
-            robustnessDiv.style.padding = '8px';
-            robustnessDiv.style.borderRadius = '4px';
-            robustnessDiv.style.border = '1px solid #e9ecef';
-            
-            if (elementInfo.robustness.css) {
-                const css = elementInfo.robustness.css;
-                const cssRobustness = document.createElement('div');
-                cssRobustness.innerHTML = `
-                    <strong>CSS:</strong> 
-                    ${css.isUnique ? '✅ Único' : '❌ Não único'} | 
-                    ${css.isStable ? '✅ Estável' : '❌ Instável'} | 
-                    Especificidade: ${css.specificity}
-                `;
-                cssRobustness.style.marginBottom = '4px';
-                robustnessDiv.appendChild(cssRobustness);
-            }
-            
-            if (elementInfo.robustness.xpath) {
-                const xpath = elementInfo.robustness.xpath;
-                const xpathRobustness = document.createElement('div');
-                xpathRobustness.innerHTML = `
-                    <strong>XPath:</strong> 
-                    ${xpath.isUnique ? '✅ Único' : '❌ Não único'} | 
-                    ${xpath.isStable ? '✅ Estável' : '❌ Instável'}
-                `;
-                robustnessDiv.appendChild(xpathRobustness);
-            }
-            
-            infoContainer.appendChild(robustnessDiv);
+        if (elementInfo.robustness.xpath) {
+            const xpathVal = elementInfo.robustness.xpath;
+            const xpathRobustness = document.createElement('div');
+            xpathRobustness.innerHTML = `
+                <strong>XPath:</strong> 
+                ${xpathVal.isUnique ? '✅ Único' : '❌ Não único'} | 
+                ${xpathVal.isStable ? '✅ Estável' : '❌ Instável'}
+            `;
+            robustnessDiv.appendChild(xpathRobustness);
         }
-        
+
+        infoContainer.appendChild(robustnessDiv);
         modal.appendChild(infoContainer);
+    } else if (!xpath && !cssSelector) {
+        // Caso sem seletores disponíveis (e não é URL)
+        const noSelectors = document.createElement('div');
+        noSelectors.className = 'gherkin-alert gherkin-alert-info gherkin-text-center';
+        noSelectors.textContent = 'Nenhum seletor salvo para esta interação.';
+        modal.appendChild(noSelectors);
     }
-    
+
     // CSS Selector (se fornecido)
     if (cssSelector) {
         const cssLabel = document.createElement('div');
         cssLabel.textContent = 'CSS Selector:';
-        cssLabel.style.fontSize = '14px';
-        cssLabel.style.fontWeight = 'bold';
-        cssLabel.style.alignSelf = 'flex-start';
-        cssLabel.style.marginBottom = '4px';
+        cssLabel.className = 'gherkin-label';
         modal.appendChild(cssLabel);
-        
+
         const cssBox = document.createElement('textarea');
         cssBox.value = cssSelector;
         cssBox.readOnly = true;
-        cssBox.style.width = '100%';
+        cssBox.className = 'gherkin-input gherkin-code gherkin-w-full';
         cssBox.style.height = '60px';
-        cssBox.style.fontSize = '12px';
-        cssBox.style.fontFamily = 'monospace';
-        cssBox.style.padding = '8px';
-        cssBox.style.borderRadius = '5px';
-        cssBox.style.border = '1px solid #ccc';
-        cssBox.style.resize = 'vertical';
-        cssBox.style.marginBottom = '8px';
         modal.appendChild(cssBox);
     }
-    
-    // Seletores alternativos (se disponíveis)
+
+    // Seletores alternativos
     if (elementInfo && elementInfo.alternativeSelectors && elementInfo.alternativeSelectors.length > 0) {
-        const alternativesLabel = document.createElement('div');
-        alternativesLabel.textContent = 'Seletores Alternativos:';
-        alternativesLabel.style.fontSize = '14px';
-        alternativesLabel.style.fontWeight = 'bold';
-        alternativesLabel.style.alignSelf = 'flex-start';
-        alternativesLabel.style.marginTop = '12px';
-        alternativesLabel.style.marginBottom = '6px';
-        modal.appendChild(alternativesLabel);
+        const altLabel = document.createElement('div');
+        altLabel.innerHTML = '⚡ Sugestões Alternativas:';
+        altLabel.className = 'gherkin-label gherkin-mt-md';
+        modal.appendChild(altLabel);
 
         const alternativesContainer = document.createElement('div');
-        alternativesContainer.style.width = '100%';
+        alternativesContainer.className = 'gherkin-flex-col gherkin-gap-sm';
         alternativesContainer.style.maxHeight = '250px';
         alternativesContainer.style.overflowY = 'auto';
-        alternativesContainer.style.border = '1px solid #e9ecef';
-        alternativesContainer.style.borderRadius = '6px';
-        alternativesContainer.style.background = '#f8f9fa';
 
         elementInfo.alternativeSelectors.forEach((alt, index) => {
             const altDiv = document.createElement('div');
-            altDiv.style.padding = '10px';
-            altDiv.style.borderBottom = index < elementInfo.alternativeSelectors.length - 1 ? '1px solid #e9ecef' : 'none';
-            altDiv.style.position = 'relative';
+            altDiv.className = 'gherkin-list-item gherkin-flex-col';
 
-            // Header com ranking e estratégia
-            const headerDiv = document.createElement('div');
-            headerDiv.style.display = 'flex';
-            headerDiv.style.justifyContent = 'space-between';
-            headerDiv.style.alignItems = 'center';
-            headerDiv.style.marginBottom = '8px';
+            const badge = document.createElement('div');
+            badge.className = 'gherkin-badge gherkin-mb-xs';
+            badge.style.width = 'fit-content';
 
-            const strategySpan = document.createElement('span');
-            strategySpan.textContent = `#${alt.rank} - ${alt.strategy}`;
-            strategySpan.style.fontWeight = 'bold';
-            strategySpan.style.fontSize = '13px';
-            strategySpan.style.color = '#0D47A1';
-
-            const robustnessSpan = document.createElement('span');
-            robustnessSpan.style.fontSize = '12px';
-            robustnessSpan.style.padding = '2px 8px';
-            robustnessSpan.style.borderRadius = '12px';
-            robustnessSpan.style.fontWeight = 'bold';
-            
-            // Cor baseada na robustez
             if (alt.robustness >= 80) {
-                robustnessSpan.style.background = '#d4edda';
-                robustnessSpan.style.color = '#155724';
-                robustnessSpan.textContent = `${alt.robustness}% ⭐⭐⭐`;
+                badge.className += ' gherkin-badge-success';
+                badge.textContent = `${alt.robustness}% ⭐⭐⭐`;
             } else if (alt.robustness >= 60) {
-                robustnessSpan.style.background = '#fff3cd';
-                robustnessSpan.style.color = '#856404';
-                robustnessSpan.textContent = `${alt.robustness}% ⭐⭐`;
+                badge.className += ' gherkin-badge-warning';
+                badge.textContent = `${alt.robustness}% ⭐⭐`;
             } else {
-                robustnessSpan.style.background = '#f8d7da';
-                robustnessSpan.style.color = '#721c24';
-                robustnessSpan.textContent = `${alt.robustness}% ⭐`;
+                badge.className += ' gherkin-badge-danger';
+                badge.textContent = `${alt.robustness}% ⭐`;
             }
+            altDiv.appendChild(badge);
 
-            headerDiv.appendChild(strategySpan);
-            headerDiv.appendChild(robustnessSpan);
-            altDiv.appendChild(headerDiv);
+            const strategySpan = document.createElement('div');
+            strategySpan.textContent = `#${alt.rank} - ${alt.strategy}`;
+            strategySpan.className = 'gherkin-font-bold gherkin-text-sm gherkin-text-primary gherkin-mb-xs';
+            altDiv.appendChild(strategySpan);
 
-            // Descrição
             const descDiv = document.createElement('div');
             descDiv.textContent = alt.description;
-            descDiv.style.fontSize = '12px';
-            descDiv.style.color = '#6c757d';
-            descDiv.style.marginBottom = '8px';
+            descDiv.className = 'gherkin-text-muted gherkin-text-xs gherkin-mb-sm';
             altDiv.appendChild(descDiv);
 
-            // CSS Selector (se disponível)
             if (alt.selector) {
-                const cssLabel = document.createElement('div');
-                cssLabel.textContent = 'CSS:';
-                cssLabel.style.fontSize = '11px';
-                cssLabel.style.fontWeight = 'bold';
-                cssLabel.style.marginBottom = '2px';
-                altDiv.appendChild(cssLabel);
+                const selLabel = document.createElement('div');
+                selLabel.textContent = 'CSS:';
+                selLabel.className = 'gherkin-text-xs gherkin-font-bold';
+                altDiv.appendChild(selLabel);
 
-                const cssCode = document.createElement('code');
-                cssCode.textContent = alt.selector;
-                cssCode.style.fontSize = '11px';
-                cssCode.style.fontFamily = 'monospace';
-                cssCode.style.background = '#fff';
-                cssCode.style.padding = '4px 6px';
-                cssCode.style.borderRadius = '3px';
-                cssCode.style.border = '1px solid #ddd';
-                cssCode.style.display = 'block';
-                cssCode.style.marginBottom = '4px';
-                cssCode.style.wordBreak = 'break-all';
-                altDiv.appendChild(cssCode);
+                const selCode = document.createElement('code');
+                selCode.textContent = alt.selector;
+                selCode.className = 'gherkin-code gherkin-block gherkin-word-break gherkin-mb-xs';
+                altDiv.appendChild(selCode);
             }
 
-            // XPath
             if (alt.xpath) {
                 const xpathLabel = document.createElement('div');
                 xpathLabel.textContent = 'XPath:';
-                xpathLabel.style.fontSize = '11px';
-                xpathLabel.style.fontWeight = 'bold';
-                xpathLabel.style.marginBottom = '2px';
+                xpathLabel.className = 'gherkin-text-xs gherkin-font-bold';
                 altDiv.appendChild(xpathLabel);
 
                 const xpathCode = document.createElement('code');
                 xpathCode.textContent = alt.xpath;
-                xpathCode.style.fontSize = '11px';
-                xpathCode.style.fontFamily = 'monospace';
-                xpathCode.style.background = '#fff';
-                xpathCode.style.padding = '4px 6px';
-                xpathCode.style.borderRadius = '3px';
-                xpathCode.style.border = '1px solid #ddd';
-                xpathCode.style.display = 'block';
-                xpathCode.style.wordBreak = 'break-all';
+                xpathCode.className = 'gherkin-code gherkin-block gherkin-word-break';
                 altDiv.appendChild(xpathCode);
             }
 
-            // Botões de ação para cada alternativa
+            // Buttons
             const actionsDiv = document.createElement('div');
-            actionsDiv.style.display = 'flex';
-            actionsDiv.style.gap = '6px';
-            actionsDiv.style.marginTop = '8px';
-            actionsDiv.style.flexWrap = 'wrap';
+            actionsDiv.className = 'gherkin-flex gherkin-gap-xs gherkin-mt-sm gherkin-flex-wrap';
 
-            // Botão de teste e highlight
             const testBtn = document.createElement('button');
             testBtn.textContent = 'Testar & Destacar';
-            testBtn.style.fontSize = '10px';
+            testBtn.className = 'gherkin-btn gherkin-btn-secondary gherkin-text-xs';
             testBtn.style.padding = '4px 8px';
-            testBtn.style.background = '#6f42c1';
-            testBtn.style.color = '#fff';
-            testBtn.style.border = 'none';
-            testBtn.style.borderRadius = '3px';
-            testBtn.style.cursor = 'pointer';
-            testBtn.style.fontWeight = 'bold';
-            
-            // Status indicator (inicialmente oculto)
+
             const statusSpan = document.createElement('span');
-            statusSpan.style.fontSize = '10px';
-            statusSpan.style.padding = '2px 6px';
-            statusSpan.style.borderRadius = '10px';
-            statusSpan.style.marginLeft = '4px';
-            statusSpan.style.fontWeight = 'bold';
+            statusSpan.className = 'gherkin-badge';
             statusSpan.style.display = 'none';
-            
+
             testBtn.onclick = async () => {
-                // Remove highlights anteriores
-                if (typeof window.removeAllHighlights === 'function') {
-                    window.removeAllHighlights();
-                }
-                
+                const domUtils = await getDomUtils();
+                domUtils.removeAllHighlights();
                 testBtn.textContent = 'Testando...';
                 testBtn.disabled = true;
-                
-                // Importa as funções dinamicamente se não estiverem disponíveis
-                if (typeof window.testAndHighlightSelector !== 'function') {
-                    const { testAndHighlightSelector, removeAllHighlights } = await import('../utils/dom.js');
-                    window.testAndHighlightSelector = testAndHighlightSelector;
-                    window.removeAllHighlights = removeAllHighlights;
-                }
-                
-                // Testa o seletor apropriado
+
                 const selectorToTest = alt.selector || alt.xpath;
                 const selectorType = alt.selector ? 'css' : 'xpath';
-                
+
                 try {
-                    const result = window.testAndHighlightSelector(selectorToTest, selectorType);
-                    
-                    // Atualiza o status
-                    statusSpan.textContent = `${result.statusIcon} ${result.count} elemento(s)`;
+                    const result = domUtils.testAndHighlightSelector(selectorToTest, selectorType);
+                    statusSpan.textContent = `${result.statusIcon} ${result.count}`;
                     statusSpan.style.background = result.statusColor + '20';
                     statusSpan.style.color = result.statusColor;
                     statusSpan.style.border = `1px solid ${result.statusColor}`;
-                    statusSpan.style.display = 'inline';
-                    
+                    statusSpan.style.display = 'inline-flex';
+
                     testBtn.textContent = 'Testar & Destacar';
                     testBtn.disabled = false;
-                    
-                    // Feedback visual no botão
-                    const originalBg = testBtn.style.background;
-                    testBtn.style.background = result.statusColor;
-                    setTimeout(() => {
-                        testBtn.style.background = originalBg;
-                    }, 1000);
-                    
                 } catch (error) {
-                    console.error('Erro ao testar seletor:', error);
                     statusSpan.textContent = '💥 Erro';
-                    statusSpan.style.background = '#dc354520';
-                    statusSpan.style.color = '#dc3545';
-                    statusSpan.style.border = '1px solid #dc3545';
-                    statusSpan.style.display = 'inline';
-                    
+                    statusSpan.className = 'gherkin-badge gherkin-badge-danger';
+                    statusSpan.style.display = 'inline-flex';
                     testBtn.textContent = 'Testar & Destacar';
                     testBtn.disabled = false;
                 }
             };
-            
             actionsDiv.appendChild(testBtn);
             actionsDiv.appendChild(statusSpan);
 
             if (alt.selector) {
                 const copyBtn = document.createElement('button');
                 copyBtn.textContent = 'Copiar CSS';
-                copyBtn.style.fontSize = '10px';
+                copyBtn.className = 'gherkin-btn gherkin-btn-info gherkin-text-xs';
                 copyBtn.style.padding = '4px 8px';
-                copyBtn.style.background = '#17a2b8';
-                copyBtn.style.color = '#fff';
-                copyBtn.style.border = 'none';
-                copyBtn.style.borderRadius = '3px';
-                copyBtn.style.cursor = 'pointer';
                 copyBtn.onclick = () => {
                     navigator.clipboard.writeText(alt.selector).then(() => {
                         copyBtn.textContent = 'Copiado!';
@@ -1009,13 +699,8 @@ export function showXPathModal(xpath, cssSelector = null, elementInfo = null) {
             if (alt.xpath) {
                 const copyXpathBtn = document.createElement('button');
                 copyXpathBtn.textContent = 'Copiar XPath';
-                copyXpathBtn.style.fontSize = '10px';
+                copyXpathBtn.className = 'gherkin-btn gherkin-btn-success gherkin-text-xs';
                 copyXpathBtn.style.padding = '4px 8px';
-                copyXpathBtn.style.background = '#28a745';
-                copyXpathBtn.style.color = '#fff';
-                copyXpathBtn.style.border = 'none';
-                copyXpathBtn.style.borderRadius = '3px';
-                copyXpathBtn.style.cursor = 'pointer';
                 copyXpathBtn.onclick = () => {
                     navigator.clipboard.writeText(alt.xpath).then(() => {
                         copyXpathBtn.textContent = 'Copiado!';
@@ -1024,162 +709,110 @@ export function showXPathModal(xpath, cssSelector = null, elementInfo = null) {
                 };
                 actionsDiv.appendChild(copyXpathBtn);
             }
-
             altDiv.appendChild(actionsDiv);
             alternativesContainer.appendChild(altDiv);
         });
-
         modal.appendChild(alternativesContainer);
     }
-    
-    // XPath principal
+
+    // XPath Principal
     const xpathLabel = document.createElement('div');
     xpathLabel.textContent = 'XPath Principal:';
-    xpathLabel.style.fontSize = '14px';
-    xpathLabel.style.fontWeight = 'bold';
-    xpathLabel.style.alignSelf = 'flex-start';
-    xpathLabel.style.marginTop = '12px';
-    xpathLabel.style.marginBottom = '4px';
+    xpathLabel.className = 'gherkin-label gherkin-mt-md';
     modal.appendChild(xpathLabel);
-    
+
     const xpathBox = document.createElement('textarea');
     xpathBox.value = xpath || 'XPath não disponível';
     xpathBox.readOnly = true;
-    xpathBox.style.width = '100%';
+    xpathBox.className = 'gherkin-input gherkin-code gherkin-w-full';
     xpathBox.style.height = '80px';
-    xpathBox.style.fontSize = '12px';
-    xpathBox.style.fontFamily = 'monospace';
-    xpathBox.style.padding = '8px';
-    xpathBox.style.borderRadius = '5px';
-    xpathBox.style.border = '1px solid #ccc';
-    xpathBox.style.resize = 'vertical';
     modal.appendChild(xpathBox);
-    
+
     // Botões de ação principais
     const actionBtns = document.createElement('div');
-    actionBtns.style.display = 'flex';
-    actionBtns.style.gap = '8px';
-    actionBtns.style.flexWrap = 'wrap';
-    actionBtns.style.justifyContent = 'center';
-    actionBtns.style.marginTop = '8px';
-    
+    actionBtns.className = 'gherkin-modal-footer gherkin-justify-center gherkin-mt-md';
+
     // Botão de teste para seletores principais
     const testMainBtn = document.createElement('button');
     testMainBtn.textContent = '🧪 Testar';
-    testMainBtn.style.background = '#6f42c1';
-    testMainBtn.style.color = '#fff';
-    testMainBtn.style.border = 'none';
-    testMainBtn.style.borderRadius = '5px';
-    testMainBtn.style.padding = '6px 12px';
-    testMainBtn.style.fontSize = '14px';
-    testMainBtn.style.fontWeight = 'bold';
-    testMainBtn.style.cursor = 'pointer';
-    
+    testMainBtn.className = 'gherkin-btn gherkin-btn-secondary';
+
     // Status dos seletores principais
     const mainStatusDiv = document.createElement('div');
-    mainStatusDiv.style.fontSize = '12px';
-    mainStatusDiv.style.marginTop = '8px';
-    mainStatusDiv.style.textAlign = 'center';
+    mainStatusDiv.className = 'gherkin-text-center gherkin-text-xs gherkin-mt-xs';
     mainStatusDiv.style.display = 'none';
-    
+
     testMainBtn.onclick = async () => {
         testMainBtn.textContent = '🔄 Testando...';
         testMainBtn.disabled = true;
-        
-        // Importa as funções dinamicamente se não estiverem disponíveis
-        if (typeof window.testSelectorInRealTime !== 'function') {
-            const { testSelectorInRealTime, highlightElements, removeAllHighlights } = await import('../utils/dom.js');
-            window.testSelectorInRealTime = testSelectorInRealTime;
-            window.highlightElements = highlightElements;
-            window.removeAllHighlights = removeAllHighlights;
-        }
-        
-        // Remove highlights anteriores
-        window.removeAllHighlights();
-        
+
+        const domUtils = await getDomUtils();
+        domUtils.removeAllHighlights();
+
         try {
             const results = [];
-            
+
             // Testa CSS Selector
             if (cssSelector) {
-                const cssResult = window.testSelectorInRealTime(cssSelector, 'css');
+                const cssResult = domUtils.testSelectorInRealTime(cssSelector, 'css');
                 results.push({ type: 'CSS', result: cssResult });
-                
+
                 // Destaca elementos encontrados
                 if (cssResult.elements.length > 0) {
-                    window.highlightElements(cssResult.elements, cssResult.statusColor);
+                    domUtils.highlightElements(cssResult.elements, cssResult.statusColor);
                 }
             }
-            
+
             // Testa XPath (apenas se diferente do CSS)
             if (xpath && xpath !== cssSelector) {
-                const xpathResult = window.testSelectorInRealTime(xpath, 'xpath');
+                const xpathResult = domUtils.testSelectorInRealTime(xpath, 'xpath');
                 results.push({ type: 'XPath', result: xpathResult });
-                
+
                 // Se não temos elementos CSS ou XPath encontrou elementos diferentes
                 if (!cssSelector || xpathResult.elements.length > 0) {
-                    window.highlightElements(xpathResult.elements, xpathResult.statusColor);
+                    domUtils.highlightElements(xpathResult.elements, xpathResult.statusColor);
                 }
             }
-            
+
             // Exibe resultados
-            mainStatusDiv.innerHTML = results.map(({ type, result }) => 
-                `<span style="color: ${result.statusColor}; margin-right: 12px;">
+            mainStatusDiv.innerHTML = results.map(({ type, result }) =>
+                `<span style="color: ${result.statusColor}; margin-right: 12px; font-weight:bold;">
                     ${result.statusIcon} ${type}: ${result.count} elemento(s) - ${result.status}
                 </span>`
             ).join('');
             mainStatusDiv.style.display = 'block';
-            
+
             testMainBtn.textContent = '🧪 Testar Seletores';
             testMainBtn.disabled = false;
-            
+
         } catch (error) {
             console.error('Erro ao testar seletores principais:', error);
-            mainStatusDiv.innerHTML = '<span style="color: #dc3545;">💥 Erro ao testar seletores</span>';
+            mainStatusDiv.innerHTML = '<span class="gherkin-text-danger">💥 Erro ao testar seletores</span>';
             mainStatusDiv.style.display = 'block';
-            
+
             testMainBtn.textContent = '🧪 Testar Seletores';
             testMainBtn.disabled = false;
         }
     };
-    
+
     actionBtns.appendChild(testMainBtn);
-    
+
     // Botão para limpar highlights
     const clearHighlightsBtn = document.createElement('button');
     clearHighlightsBtn.textContent = '🧹 Limpar';
-    clearHighlightsBtn.style.background = '#6c757d';
-    clearHighlightsBtn.style.color = '#fff';
-    clearHighlightsBtn.style.border = 'none';
-    clearHighlightsBtn.style.borderRadius = '5px';
-    clearHighlightsBtn.style.padding = '6px 12px';
-    clearHighlightsBtn.style.fontSize = '13px';
-    clearHighlightsBtn.style.fontWeight = 'bold';
-    clearHighlightsBtn.style.cursor = 'pointer';
+    clearHighlightsBtn.className = 'gherkin-btn gherkin-btn-danger';
     clearHighlightsBtn.onclick = async () => {
-        if (typeof window.removeAllHighlights !== 'function') {
-            const { removeAllHighlights } = await import('../utils/dom.js');
-            window.removeAllHighlights = removeAllHighlights;
-        }
-        window.removeAllHighlights();
+        const domUtils = await getDomUtils();
+        domUtils.removeAllHighlights();
         mainStatusDiv.style.display = 'none';
     };
-    
     actionBtns.appendChild(clearHighlightsBtn);
-    
-    
+
     // Botão copiar CSS
     if (cssSelector) {
         const copyCssBtn = document.createElement('button');
         copyCssBtn.textContent = 'Copiar CSS';
-        copyCssBtn.style.background = '#17a2b8';
-        copyCssBtn.style.color = '#fff';
-        copyCssBtn.style.border = 'none';
-        copyCssBtn.style.borderRadius = '5px';
-        copyCssBtn.style.padding = '6px 12px';
-        copyCssBtn.style.fontSize = '13px';
-        copyCssBtn.style.fontWeight = 'bold';
-        copyCssBtn.style.cursor = 'pointer';
+        copyCssBtn.className = 'gherkin-btn gherkin-btn-info';
         copyCssBtn.onclick = () => {
             navigator.clipboard.writeText(cssSelector).then(() => {
                 copyCssBtn.textContent = 'Copiado!';
@@ -1188,18 +821,11 @@ export function showXPathModal(xpath, cssSelector = null, elementInfo = null) {
         };
         actionBtns.appendChild(copyCssBtn);
     }
-    
+
     // Botão copiar XPath
     const copyXpathBtn = document.createElement('button');
     copyXpathBtn.textContent = 'Copiar XPath';
-    copyXpathBtn.style.background = '#28a745';
-    copyXpathBtn.style.color = '#fff';
-    copyXpathBtn.style.border = 'none';
-    copyXpathBtn.style.borderRadius = '5px';
-    copyXpathBtn.style.padding = '6px 12px';
-    copyXpathBtn.style.fontSize = '13px';
-    copyXpathBtn.style.fontWeight = 'bold';
-    copyXpathBtn.style.cursor = 'pointer';
+    copyXpathBtn.className = 'gherkin-btn gherkin-btn-success';
     copyXpathBtn.onclick = () => {
         navigator.clipboard.writeText(xpath || '').then(() => {
             copyXpathBtn.textContent = 'Copiado!';
@@ -1207,31 +833,82 @@ export function showXPathModal(xpath, cssSelector = null, elementInfo = null) {
         });
     };
     actionBtns.appendChild(copyXpathBtn);
-    
+
     // Botão fechar
     const closeBtn = document.createElement('button');
     closeBtn.textContent = 'Fechar';
-    closeBtn.style.background = '#007bff';
-    closeBtn.style.color = '#fff';
-    closeBtn.style.border = 'none';
-    closeBtn.style.borderRadius = '5px';
-    closeBtn.style.padding = '6px 12px';
-    closeBtn.style.fontSize = '13px';
-    closeBtn.style.fontWeight = 'bold';
-    closeBtn.style.cursor = 'pointer';
+    closeBtn.className = 'gherkin-btn gherkin-btn-main';
     closeBtn.onclick = async () => {
         // Remove highlights ao fechar
-        if (typeof window.removeAllHighlights !== 'function') {
-            const { removeAllHighlights } = await import('../utils/dom.js');
-            window.removeAllHighlights = removeAllHighlights;
-        }
-        window.removeAllHighlights();
+        const domUtils = await getDomUtils();
+        domUtils.removeAllHighlights();
         modalBg.remove();
     };
     actionBtns.appendChild(closeBtn);
-    
+
     modal.appendChild(actionBtns);
     modal.appendChild(mainStatusDiv);
     modalBg.appendChild(modal);
     document.body.appendChild(modalBg);
 }
+
+export function showPostExportModal(onCloseExtension, onContinue) {
+    const oldModal = document.getElementById('gherkin-modal');
+    if (oldModal) oldModal.remove();
+
+    const modalBg = document.createElement('div');
+    modalBg.id = 'gherkin-modal';
+    modalBg.className = 'gherkin-modal-bg';
+    modalBg.style.zIndex = '10002'; // Acima do painel
+
+    const modal = document.createElement('div');
+    modal.className = 'gherkin-modal-content';
+    modal.style.textAlign = 'center';
+    modal.style.maxWidth = '400px';
+
+    const icon = document.createElement('div');
+    icon.innerHTML = '🚀';
+    icon.style.fontSize = '3em';
+    icon.style.marginBottom = '16px';
+    modal.appendChild(icon);
+
+    const title = document.createElement('h3');
+    title.textContent = 'Projeto Exportado com Sucesso!';
+    title.className = 'gherkin-modal-title gherkin-justify-center';
+    modal.appendChild(title);
+
+    const text = document.createElement('p');
+    text.textContent = 'O que você deseja fazer agora?';
+    text.className = 'gherkin-text-muted gherkin-mb-lg';
+    modal.appendChild(text);
+
+    const btns = document.createElement('div');
+    btns.className = 'gherkin-flex-col gherkin-gap-sm';
+
+    // Botão Encerrar
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = 'Encerrar Extensão';
+    closeBtn.className = 'gherkin-btn gherkin-btn-danger gherkin-w-full';
+    closeBtn.style.padding = '12px';
+    closeBtn.onclick = () => {
+        modalBg.remove();
+        if (onCloseExtension) onCloseExtension();
+    };
+    btns.appendChild(closeBtn);
+
+    // Botão Continuar
+    const continueBtn = document.createElement('button');
+    continueBtn.textContent = 'Continuar na Extensão';
+    continueBtn.className = 'gherkin-btn gherkin-btn-secondary gherkin-w-full';
+    continueBtn.style.padding = '12px';
+    continueBtn.onclick = () => {
+        modalBg.remove();
+        if (onContinue) onContinue();
+    };
+    btns.appendChild(continueBtn);
+
+    modal.appendChild(btns);
+    modalBg.appendChild(modal);
+    document.body.appendChild(modalBg);
+}
+

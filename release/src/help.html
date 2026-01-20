@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual do Usuário - Assistente Automatizador</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            background-color: #f9f9f9;
+        }
+
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #007bff;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 0.5rem;
+        }
+
+        h2 {
+            color: #444;
+            margin-top: 2rem;
+        }
+
+        h3 {
+            color: #666;
+        }
+
+        code {
+            background: #f4f4f4;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.95em;
+        }
+
+        pre {
+            background: #f4f4f4;
+            padding: 1rem;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+
+        .note {
+            background: #e7f5ff;
+            border-left: 4px solid #007bff;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 0 4px 4px 0;
+        }
+
+        .step {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .step-number {
+            background: #007bff;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 1rem;
+            flex-shrink: 0;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        .step-content {
+            flex: 1;
+        }
+
+        img {
+            max-width: 100%;
+            border-radius: 4px;
+            margin: 1rem 0;
+            border: 1px solid #ddd;
+        }
+
+        footer {
+            margin-top: 3rem;
+            text-align: center;
+            color: #888;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Manual do Usuário</h1>
+        <p>Bem-vindo ao <strong>Assistente Automatizador</strong>! Esta ferramenta ajuda você a criar testes
+            automatizados em Python de forma rápida e intuitiva, gravando suas ações no navegador.</p>
+
+        <h2>🚀 Como Usar a Ferramenta</h2>
+
+        <h3>1. Criando uma Feature</h3>
+        <div class="step">
+            <div class="step-number">1</div>
+            <div class="step-content">
+                Ao abrir a extensão, digite o nome da sua <strong>Feature</strong> (funcionalidade macro que será
+                testada e.g., "Login", "Carrinho").
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-number">2</div>
+            <div class="step-content">
+                Clique em <strong>"Criar Feature"</strong>.
+            </div>
+        </div>
+
+        <h3>2. Gravando um Cenário</h3>
+        <div class="step">
+            <div class="step-number">3</div>
+            <div class="step-content">
+                Dê um nome para o seu <strong>Cenário</strong> (caso de teste específico e.g., "Login com sucesso",
+                "Senha incorreta").
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-number">4</div>
+            <div class="step-content">
+                Clique em <strong>"Iniciar Gravação"</strong>. A partir de agora, suas ações na página serão capturadas.
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-number">5</div>
+            <div class="step-content">
+                Interaja com a página:
+                <ul>
+                    <li>Clique em botões e links.</li>
+                    <li>Preencha campos de formulário.</li>
+                    <li>Use a tecla <strong>TAB</strong> ou clique fora para confirmar o preenchimento de campos.</li>
+                </ul>
+            </div>
+        </div>
+        <div class="note">
+            <strong>Dica:</strong> Para validar se um elemento, texto ou imagem está na tela, ative o modo
+            <strong>"Inspecionar Elemento"</strong> (ícone de olho), clique no elemento desejado e depois escolha a
+            validação na lista.
+        </div>
+
+        <h3>3. Finalizando e Exportando</h3>
+        <div class="step">
+            <div class="step-number">6</div>
+            <div class="step-content">
+                Quando terminar o fluxo, abra a extensão e clique em <strong>"Parar Gravação"</strong>.
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-number">7</div>
+            <div class="step-content">
+                Você pode adicionar mais cenários à mesma feature ou finalizar a feature atual.
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-number">8</div>
+            <div class="step-content">
+                Quando tudo estiver pronto, clique em <strong>"Finalizar e Exportar"</strong>. Um arquivo
+                <code>projeto_bdd.zip</code> será baixado.
+            </div>
+        </div>
+
+        <hr>
+
+        <h2>💻 Como Rodar os Testes (Python)</h2>
+        <p>O arquivo ZIP exportado contém uma estrutura completa de projeto. Siga os passos abaixo para executá-lo:</p>
+
+        <h3>Pré-requisitos</h3>
+        <ul>
+            <li><a href="https://www.python.org/downloads/" target="_blank">Python</a> instalado.</li>
+            <li>Navegador Google Chrome instalado.</li>
+        </ul>
+
+        <h3>Passo a Passo</h3>
+        <ol>
+            <li>Descompacte o arquivo <code>projeto_bdd.zip</code> em uma pasta.</li>
+            <li>Abra o terminal (CMD ou PowerShell) e navegue até essa pasta:
+                <pre>cd caminho/para/sua/pasta</pre>
+            </li>
+            <li>Instale as dependências (necessário apenas na primeira vez):
+                <pre>pip install -r requirements.txt</pre>
+            </li>
+            <li>Execute os testes:
+                <pre>behave</pre>
+            </li>
+        </ol>
+
+        <div class="note">
+            O navegador será aberto automaticamente e executará os passos que você gravou. Ao final, um relatório será
+            exibido no terminal.
+        </div>
+
+        <hr>
+
+        <h2>🔒 Licença e Suporte</h2>
+        <p>Para usar todas as funcionalidades, é necessário uma chave de licença válida.</p>
+        <p>Se tiver dúvidas ou problemas, entre em contato com o suporte ou consulte nossa <a
+                href="PRIVACY_POLICY.md">Política de Privacidade</a>.</p>
+
+        <footer>
+            <p>&copy; 2024 Matheus Ferreira de Oliveira. Todos os direitos reservados.</p>
+        </footer>
+    </div>
+</body>
+
+</html>

@@ -1,5 +1,9 @@
-// Módulo de exportação completa para features
+/**
+ * Módulo de exportação - Compatibilidade com novo ExportManager
+ * Mantém funções legadas enquanto delega para novo sistema
+ */
 import { downloadFile, showFeedback, slugify } from '../../utils.js';
+import { ExportManager } from './export-manager.js';
 
 function validateDataConsistency(features) {
     const errors = [];
@@ -683,6 +687,16 @@ export function exportSelectedFeatures(selectedIdxs) {
             }
         });
         
+        // Exportar arquivos globais apenas uma vez (não duplicar)
+        try {
+            console.log('[EXPORT] Exportando arquivos globais (environment.py, requirements.txt)...');
+            exportGlobalFiles(validatedFeatures);
+            console.log('[EXPORT] Arquivos globais exportados com sucesso');
+        } catch (error) {
+            console.error('[EXPORT] Erro ao exportar arquivos globais:', error);
+            errorCount++;
+        }
+        
         const exportTime = Date.now() - exportStartTime;
         console.log(`[EXPORT] Exportação concluída em ${exportTime}ms`);
         
@@ -714,14 +728,94 @@ function exportFeatureFiles(feature) {
     // 3. Exporta steps.py  
     exportStepsFile(feature, featureSlug);
     
-    // 4. Exporta environment.py
-    exportEnvironmentFile(feature, featureSlug);
+    // NOTE: environment.py e requirements.txt são exportados uma única vez em exportGlobalFiles()
+    // não devem ser exportados para cada feature
+}
+
+/**
+ * Exporta arquivos globais apenas uma vez (não duplica para cada feature)
+ * Isso inclui: environment.py, requirements.txt, e READMEs consolidados
+ */
+function exportGlobalFiles(features) {
+    if (!features || features.length === 0) {
+        console.warn('[EXPORT] Nenhuma feature fornecida para gerar arquivos globais');
+        return;
+    }
+
+    // 1. Exportar environment.py uma única vez
+    exportEnvironmentFile(features[0], 'features');
     
-    // 5. Exporta requirements.txt
-    exportRequirementsFile(feature, featureSlug);
+    // 2. Exportar requirements.txt uma única vez
+    exportRequirementsFile(features[0], 'features');
     
-    // 6. Exporta README.md
-    exportReadmeFile(feature, featureSlug);
+    // 3. Exportar README consolidado para todas as features
+    let consolidatedReadme = `# BDD - Testes Automatizados\n\n`;
+    consolidatedReadme += `## Features Exportadas\n\n`;
+    
+    features.forEach((feature) => {
+        consolidatedReadme += `### Feature: ${feature.name}\n\n`;
+        consolidatedReadme += `#### Descrição do fluxo\n`;
+        
+        (feature.scenarios || []).forEach((scenario) => {
+            consolidatedReadme += `**Cenário: ${scenario.name}**\n`;
+            consolidatedReadme += `Fluxo resumido:\n`;
+            (scenario.interactions || []).forEach((interaction) => {
+                let step = interaction.step || '';
+                let acao = interaction.acao || '';
+                let elemento = interaction.nomeElemento || '';
+                let valor = interaction.valorPreenchido ? ` (valor: "${interaction.valorPreenchido}")` : '';
+                let extra = '';
+                if (interaction.acao === 'upload' && interaction.nomeArquivo) {
+                    extra = ` (arquivo: ${interaction.nomeArquivo})`;
+                }
+                consolidatedReadme += `- ${step} ${acao} em "${elemento}"${valor}${extra}\n`;
+            });
+            consolidatedReadme += '\n';
+        });
+        consolidatedReadme += '\n';
+    });
+
+    consolidatedReadme += `## Como executar os testes\n\n`;
+    consolidatedReadme += `### 1. Configuração inicial do ambiente\n`;
+    consolidatedReadme += `**1.1. Instale o Python 3.8 ou superior**\n`;
+    consolidatedReadme += `- Baixe em: https://www.python.org/downloads/\n`;
+    consolidatedReadme += `- Durante a instalação, marque "Add Python to PATH"\n\n`;
+    consolidatedReadme += `**1.2. Instale as dependências:**\n`;
+    consolidatedReadme += '   ```bash\n   pip install -r requirements.txt\n   ```\n\n';
+    consolidatedReadme += `### 2. Executando os testes\n`;
+    consolidatedReadme += '   ```bash\n   behave\n   ```\n\n';
+    consolidatedReadme += `### 3. Gerando relatórios\n`;
+    consolidatedReadme += '   ```bash\n   behave --tags=@smoke\n   ```\n\n';
+    consolidatedReadme += `## Estrutura de Diretórios\n`;
+    consolidatedReadme += `\`\`\`\n`;
+    consolidatedReadme += `features/\n`;
+    consolidatedReadme += `  ├── steps/\n`;
+    consolidatedReadme += `  │   `;
+    
+    features.forEach((feature) => {
+        const featureSlug = slugify(feature.name);
+        consolidatedReadme += `└── ${featureSlug}_steps.py\n`;
+        consolidatedReadme += `  │   `;
+    });
+    
+    consolidatedReadme += `└── pages/\n`;
+    consolidatedReadme += `  │   `;
+    
+    features.forEach((feature) => {
+        const featureSlug = slugify(feature.name);
+        consolidatedReadme += `└── ${featureSlug}_pages.py\n`;
+        consolidatedReadme += `  │   `;
+    });
+    
+    consolidatedReadme += `environment.py\n`;
+    consolidatedReadme += `requirements.txt\n`;
+    features.forEach((feature) => {
+        const featureSlug = slugify(feature.name);
+        consolidatedReadme += `${featureSlug}.feature\n`;
+    });
+    consolidatedReadme += `\`\`\`\n`;
+
+    downloadFile('README.md', consolidatedReadme);
 }
 
 function exportFeatureFile(feature, featureSlug) {

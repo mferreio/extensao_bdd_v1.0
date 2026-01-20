@@ -55,9 +55,9 @@ export function getCSSSelector(element) {
         if (el.className && typeof el.className === 'string') {
             const classes = el.className.trim().split(/\s+/).filter(cls => {
                 // Filtra classes que parecem ser específicas do componente
-                return cls && 
-                       !cls.match(/^(btn|button|input|form|text|primary|secondary|active|focus|hover|selected)$/i) &&
-                       cls.length > 2;
+                return cls &&
+                    !cls.match(/^(btn|button|input|form|text|primary|secondary|active|focus|hover|selected)$/i) &&
+                    cls.length > 2;
             });
             if (classes.length > 0) {
                 // Usa no máximo 2 classes mais específicas
@@ -98,7 +98,7 @@ export function getCSSSelector(element) {
 
         while (current && current.nodeType === Node.ELEMENT_NODE && current !== document.body) {
             let selector = current.tagName.toLowerCase();
-            
+
             // Se tem ID, para aqui
             if (current.id) {
                 path.unshift(`#${current.id}`);
@@ -107,10 +107,10 @@ export function getCSSSelector(element) {
 
             // Adiciona informações que tornam o seletor mais específico
             const parts = [];
-            
+
             if (current.className && typeof current.className === 'string') {
-                const classes = current.className.trim().split(/\s+/).filter(cls => 
-                    cls && cls.length > 2 && 
+                const classes = current.className.trim().split(/\s+/).filter(cls =>
+                    cls && cls.length > 2 &&
                     !cls.match(/^(active|focus|hover|selected)$/i)
                 );
                 if (classes.length > 0) {
@@ -130,11 +130,11 @@ export function getCSSSelector(element) {
 
             // Verifica se precisa de um índice
             const siblings = Array.from(current.parentNode?.children || []);
-            const sameTagSiblings = siblings.filter(sib => 
-                sib.tagName === current.tagName && 
+            const sameTagSiblings = siblings.filter(sib =>
+                sib.tagName === current.tagName &&
                 sib.className === current.className
             );
-            
+
             if (sameTagSiblings.length > 1) {
                 const index = sameTagSiblings.indexOf(current) + 1;
                 selector += `:nth-of-type(${index})`;
@@ -193,7 +193,7 @@ export function getRobustXPath(element) {
     // Gera expressão de atributos relevantes para um elemento
     function getAttrExpr(el) {
         const attrs = [];
-        
+
         // Prioriza atributos mais estáveis
         if (el.getAttribute('type')) {
             attrs.push(`@type=${escapeXpathString(el.getAttribute('type'))}`);
@@ -210,7 +210,7 @@ export function getRobustXPath(element) {
         if (el.getAttribute('name') && el.getAttribute('name').length < 50) {
             attrs.push(`@name=${escapeXpathString(el.getAttribute('name'))}`);
         }
-        
+
         // Atributos específicos de frameworks
         if (el.getAttribute('data-pc-name')) {
             attrs.push(`@data-pc-name=${escapeXpathString(el.getAttribute('data-pc-name'))}`);
@@ -222,10 +222,10 @@ export function getRobustXPath(element) {
         // Classes específicas (evita classes genéricas)
         if (el.className && typeof el.className === 'string') {
             const classList = el.className.trim().split(/\s+/).filter(cls => {
-                return cls && cls.length > 2 && 
-                       !cls.match(/^(btn|button|input|form|text|primary|secondary|active|focus|hover|selected|disabled)$/i);
+                return cls && cls.length > 2 &&
+                    !cls.match(/^(btn|button|input|form|text|primary|secondary|active|focus|hover|selected|disabled)$/i);
             });
-            
+
             // Usa apenas uma classe mais específica
             if (classList.length > 0) {
                 const specificClass = classList[0];
@@ -252,10 +252,10 @@ export function getRobustXPath(element) {
     let attempts = 0;
     const maxAttempts = 10; // Evita loops infinitos
 
-    while (current && current.nodeType === Node.ELEMENT_NODE && 
-           current !== document.body && current !== document.documentElement && 
-           attempts < maxAttempts) {
-        
+    while (current && current.nodeType === Node.ELEMENT_NODE &&
+        current !== document.body && current !== document.documentElement &&
+        attempts < maxAttempts) {
+
         attempts++;
         let tag = current.tagName.toLowerCase();
         let attrExpr = getAttrExpr(current);
@@ -280,7 +280,7 @@ export function getRobustXPath(element) {
         // Se não for único, constrói o caminho hierárquico
         let siblings = Array.from(current.parentNode ? current.parentNode.children : []);
         let sameTagSiblings = siblings.filter(sib => sib.tagName === current.tagName);
-        
+
         if (sameTagSiblings.length === 1) {
             // Único filho com essa tag
             path = '/' + tag + path;
@@ -294,7 +294,7 @@ export function getRobustXPath(element) {
     }
 
     // Se chegou até aqui, tenta diferentes estratégias
-    
+
     // Estratégia 1: XPath absoluto simples
     const absolutePath = getAbsolutePath(element);
     if (absolutePath && isXPathUnique(absolutePath)) {
@@ -307,28 +307,28 @@ export function getRobustXPath(element) {
     function getAbsolutePath(el) {
         const path = [];
         let current = el;
-        
+
         while (current && current.nodeType === Node.ELEMENT_NODE && current !== document.documentElement) {
             let tag = current.tagName.toLowerCase();
-            
+
             if (current.id) {
                 path.unshift(`${tag}[@id="${current.id}"]`);
                 break;
             }
-            
+
             const siblings = Array.from(current.parentNode?.children || []);
             const sameTagSiblings = siblings.filter(sib => sib.tagName === current.tagName);
-            
+
             if (sameTagSiblings.length > 1) {
                 const idx = sameTagSiblings.indexOf(current) + 1;
                 path.unshift(`${tag}[${idx}]`);
             } else {
                 path.unshift(tag);
             }
-            
+
             current = current.parentNode;
         }
-        
+
         return path.length > 0 ? '/' + path.join('/') : null;
     }
 }
@@ -358,7 +358,7 @@ export function getContextualSelector(element) {
     if ((tag === 'button' || tag === 'a' || element.getAttribute('role') === 'button') && textContent) {
         const textSelector = `${tag}:contains("${textContent}")`;
         const textXPath = `//${tag}[normalize-space(text())="${textContent}"]`;
-        
+
         try {
             // Nota: :contains não é CSS padrão, mas funciona em algumas libs
             // Para XPath funciona normalmente
@@ -377,7 +377,7 @@ export function getContextualSelector(element) {
         if (label && label.textContent?.trim()) {
             const labelText = label.textContent.trim();
             const labelXPath = `//input[preceding-sibling::label[normalize-space(text())="${labelText}"] or following-sibling::label[normalize-space(text())="${labelText}"] or ancestor::label[normalize-space(text())="${labelText}"]]`;
-            
+
             try {
                 const result = document.evaluate(labelXPath, document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
                 if (result.snapshotLength === 1) {
@@ -461,7 +461,7 @@ export function optimizeSelector(element, selector, type = 'css') {
                 }
             }
         }
-        
+
         // Para XPath
         if (type === 'xpath') {
             const result = document.evaluate(selector, document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
@@ -481,12 +481,12 @@ export function optimizeSelector(element, selector, type = 'css') {
 // Gera versões simplificadas de um seletor CSS
 function generateSimplifiedSelectors(element, originalSelector) {
     const simplified = [];
-    
+
     // Se o seletor original tem ID, tenta apenas o ID
     if (originalSelector.includes('#') && element.id) {
         simplified.push(`#${element.id}`);
     }
-    
+
     // Se tem atributos únicos, tenta apenas eles
     const uniqueAttrs = ['data-testid', 'data-qa', 'name'];
     for (const attr of uniqueAttrs) {
@@ -495,19 +495,19 @@ function generateSimplifiedSelectors(element, originalSelector) {
             simplified.push(`[${attr}="${value}"]`);
         }
     }
-    
+
     // Tenta tag + classe principal
     if (element.className) {
         const classes = element.className.trim().split(/\s+/);
-        const mainClass = classes.find(cls => 
-            cls.length > 3 && 
+        const mainClass = classes.find(cls =>
+            cls.length > 3 &&
             !cls.match(/^(active|focus|hover|selected|disabled)$/i)
         );
         if (mainClass) {
             simplified.push(`${element.tagName.toLowerCase()}.${mainClass}`);
         }
     }
-    
+
     return simplified;
 }
 
@@ -525,20 +525,20 @@ export function testSelectorRobustness(element, selector, type = 'css') {
             const elements = document.querySelectorAll(selector);
             results.isUnique = elements.length === 1;
             results.specificity = calculateCSSSpecificity(selector);
-            
+
             // Testa estabilidade verificando se o seletor não depende de posições
-            results.isStable = !selector.includes(':nth-') && 
-                              !selector.includes('[class*=') && 
-                              (selector.includes('#') || selector.includes('[data-'));
+            results.isStable = !selector.includes(':nth-') &&
+                !selector.includes('[class*=') &&
+                (selector.includes('#') || selector.includes('[data-'));
         } else if (type === 'xpath') {
             const result = document.evaluate(selector, document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
             results.isUnique = result.snapshotLength === 1;
-            
+
             // XPath é considerado estável se não depende de índices
-            results.isStable = !selector.includes('[1]') && !selector.includes('[2]') && 
-                              (selector.includes('@id') || selector.includes('@data-'));
+            results.isStable = !selector.includes('[1]') && !selector.includes('[2]') &&
+                (selector.includes('@id') || selector.includes('@data-'));
         }
-        
+
         // Se não for robusto, tenta gerar uma alternativa
         if (!results.isUnique || !results.isStable) {
             if (type === 'css') {
@@ -557,17 +557,17 @@ export function testSelectorRobustness(element, selector, type = 'css') {
 // Calcula a especificidade de um seletor CSS
 function calculateCSSSpecificity(selector) {
     let specificity = 0;
-    
+
     // IDs (+100)
     specificity += (selector.match(/#/g) || []).length * 100;
-    
+
     // Classes, atributos e pseudo-classes (+10)
     specificity += (selector.match(/[\.\[\:]/g) || []).length * 10;
-    
+
     // Elementos (+1)
     const elements = selector.match(/\b[a-z]+\b/g) || [];
     specificity += elements.length;
-    
+
     return specificity;
 }
 
@@ -576,7 +576,7 @@ export function generateAlternativeSelectors(element) {
     if (!element || element.nodeType !== Node.ELEMENT_NODE) return [];
 
     const alternatives = [];
-    
+
     // Estratégia 1: ID único (mais confiável)
     if (element.id && document.querySelectorAll(`#${CSS.escape(element.id)}`).length === 1) {
         alternatives.push({
@@ -654,15 +654,15 @@ export function generateAlternativeSelectors(element) {
     // Estratégia 6: Classe específica + tipo
     if (element.className && typeof element.className === 'string') {
         const classes = element.className.trim().split(/\s+/).filter(cls => {
-            return cls && cls.length > 3 && 
-                   !cls.match(/^(active|focus|hover|selected|disabled|btn|button)$/i);
+            return cls && cls.length > 3 &&
+                !cls.match(/^(active|focus|hover|selected|disabled|btn|button)$/i);
         });
-        
+
         if (classes.length > 0) {
             const specificClass = classes[0];
             const classSelector = `${element.tagName.toLowerCase()}.${specificClass}`;
             const classElements = document.querySelectorAll(classSelector);
-            
+
             alternatives.push({
                 type: 'css',
                 selector: classSelector,
@@ -681,13 +681,13 @@ export function generateAlternativeSelectors(element) {
         { attr: 'data-v-', framework: 'Vue.js' },
         { attr: 'ng-reflect-', framework: 'Angular' }
     ];
-    
+
     for (const { attr, framework } of frameworkAttrs) {
         const attributes = Array.from(element.attributes).filter(a => a.name.startsWith(attr));
         for (const attribute of attributes) {
             const selector = `[${attribute.name}="${attribute.value}"]`;
             const elements = document.querySelectorAll(selector);
-            
+
             if (elements.length <= 3) { // Aceita até 3 elementos
                 alternatives.push({
                     type: 'css',
@@ -707,7 +707,7 @@ export function generateAlternativeSelectors(element) {
         if (parent.id) {
             const hierarchical = `#${parent.id} ${element.tagName.toLowerCase()}`;
             const hierarchicalElements = document.querySelectorAll(hierarchical);
-            
+
             // Se há poucos elementos, adiciona como alternativa
             if (hierarchicalElements.length <= 5) {
                 alternatives.push({
@@ -738,7 +738,7 @@ export function generateAlternativeSelectors(element) {
     }
 
     // Remove duplicatas e ordena por robustez
-    const uniqueAlternatives = alternatives.filter((item, index, self) => 
+    const uniqueAlternatives = alternatives.filter((item, index, self) =>
         index === self.findIndex(alt => alt.selector === item.selector && alt.xpath === item.xpath)
     );
 
@@ -805,10 +805,10 @@ export function testSelectorInRealTime(selector, type = 'css') {
 // Função para destacar elementos na página
 export function highlightElements(elements, color = '#007bff', duration = 3000) {
     const highlights = [];
-    
+
     elements.forEach((element, index) => {
         if (!element || element.nodeType !== Node.ELEMENT_NODE) return;
-        
+
         // Cria overlay de highlight
         const highlight = document.createElement('div');
         highlight.className = 'gherkin-element-highlight';
@@ -820,7 +820,7 @@ export function highlightElements(elements, color = '#007bff', duration = 3000) 
         highlight.style.background = `${color}15`;
         highlight.style.boxShadow = `0 0 10px ${color}50`;
         highlight.style.transition = 'all 0.3s ease';
-        
+
         // Adiciona número se múltiplos elementos
         if (elements.length > 1) {
             const numberLabel = document.createElement('div');
@@ -841,7 +841,7 @@ export function highlightElements(elements, color = '#007bff', duration = 3000) 
             numberLabel.style.border = '2px solid #fff';
             highlight.appendChild(numberLabel);
         }
-        
+
         // Posiciona o highlight sobre o elemento
         function updatePosition() {
             const rect = element.getBoundingClientRect();
@@ -850,16 +850,16 @@ export function highlightElements(elements, color = '#007bff', duration = 3000) 
             highlight.style.width = `${rect.width + 6}px`;
             highlight.style.height = `${rect.height + 6}px`;
         }
-        
+
         updatePosition();
         document.body.appendChild(highlight);
         highlights.push(highlight);
-        
+
         // Atualiza posição quando a página rola
         const scrollListener = () => updatePosition();
         window.addEventListener('scroll', scrollListener);
         window.addEventListener('resize', scrollListener);
-        
+
         // Remove highlight após duração especificada
         setTimeout(() => {
             highlight.style.opacity = '0';
@@ -867,12 +867,18 @@ export function highlightElements(elements, color = '#007bff', duration = 3000) 
                 if (highlight.parentNode) {
                     highlight.parentNode.removeChild(highlight);
                 }
-                window.removeEventListener('scroll', scrollListener);
-                window.removeEventListener('resize', scrollListener);
+                if (window && typeof window.removeEventListener === 'function') {
+                    try {
+                        window.removeEventListener('scroll', scrollListener);
+                        window.removeEventListener('resize', scrollListener);
+                    } catch (e) {
+                        // Ignore errors on cleanup
+                    }
+                }
             }, 300);
         }, duration);
     });
-    
+
     return highlights;
 }
 
@@ -893,10 +899,10 @@ export function removeAllHighlights() {
 export function testAndHighlightSelector(selector, type = 'css', highlightColor = '#007bff') {
     // Remove highlights anteriores
     removeAllHighlights();
-    
+
     // Testa o seletor
     const testResult = testSelectorInRealTime(selector, type);
-    
+
     // Destaca elementos encontrados
     if (testResult.elements.length > 0) {
         // Cor baseada no status
@@ -908,9 +914,9 @@ export function testAndHighlightSelector(selector, type = 'css', highlightColor 
         } else if (testResult.status === 'quebrado') {
             color = '#dc3545'; // Vermelho
         }
-        
+
         highlightElements(testResult.elements, color);
     }
-    
+
     return testResult;
 }
