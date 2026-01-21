@@ -2,6 +2,37 @@
 import { getRobustXPath, getCSSSelector, getContextualSelector, validateSelector, optimizeSelector, testSelectorRobustness, generateAlternativeSelectors } from '../utils/dom.js';
 import { getStore } from '../state/store.js';
 
+// Helper para identificar elementos da própria extensão
+function isExtensionElement(target) {
+    if (!target) return false;
+
+    // IDs principais
+    if (target.id === 'gherkin-panel' ||
+        target.id === 'gherkin-manual-modal' ||
+        target.id === 'gherkin-inspection-overlay' ||
+        target.id === 'gherkin-element-highlight') return true;
+
+    // Classes principais
+    if (target.classList && (
+        target.classList.contains('gherkin-panel') ||
+        target.classList.contains('gherkin-modal-overlay') ||
+        target.classList.contains('gherkin-modal-content') ||
+        target.classList.contains('gherkin-context-menu')
+    )) return true;
+
+    // Closest checks
+    if (target.closest('#gherkin-panel') ||
+        target.closest('#gherkin-manual-modal') ||
+        target.closest('.gherkin-modal-overlay') ||
+        target.closest('.gherkin-context-menu') ||
+        target.closest('.gherkin-action-dropdown') ||
+        target.closest('.gherkin-content')) {
+        return true;
+    }
+
+    return false;
+}
+
 // Função para aplicar a regra correta dos steps BDD
 function applyCorrectStepOrder(interactions) {
     if (!interactions || interactions.length === 0) return interactions;
@@ -35,20 +66,8 @@ export function handleClickEvent(event) {
     const target = event.target;
     if (!target) return;
 
-    // Verifica se o clique foi em elementos da própria extensão
-    if (target.closest('#gherkin-panel') ||
-        target.closest('#gherkin-modal') ||
-        target.closest('.gherkin-modal-bg') ||
-        target.closest('.gherkin-context-menu') ||
-        target.closest('.gherkin-action-dropdown') ||
-        target.closest('.gherkin-content') ||
-        target.id === 'gherkin-panel' ||
-        target.id === 'gherkin-modal' ||
-        target.classList.contains('gherkin-panel') ||
-        target.classList.contains('gherkin-modal-bg') ||
-        target.classList.contains('gherkin-context-menu') ||
-        target.classList.contains('gherkin-action-dropdown') ||
-        target.classList.contains('gherkin-content')) {
+    // Verifica se o clique foi em elementos da própria extensão usando o helper
+    if (isExtensionElement(target)) {
         return;
     }
 
@@ -91,7 +110,6 @@ export function handleClickEvent(event) {
 
     // Seleciona a ação baseada no elemento
     // Tenta pegar do select global se existir (ui hack, mas aceitável se sincronizado)
-    // Com store, poderíamos ter selectedAction no state.
     const actionSelect = document.getElementById('gherkin-action-select');
     let acao = actionSelect ? actionSelect.value : 'clica';
 
@@ -151,13 +169,8 @@ export function handleBlurEvent(event) {
     const target = event.target;
     if (!target) return;
 
-    // Filtros de UI da extensão
-    if (target.closest('#gherkin-panel') ||
-        target.closest('#gherkin-modal') ||
-        target.closest('.gherkin-modal-bg') ||
-        target.closest('.gherkin-context-menu') ||
-        target.closest('.gherkin-action-dropdown') ||
-        target.closest('.gherkin-content')) {
+    // Filtros de UI da extensão usando helper
+    if (isExtensionElement(target)) {
         return;
     }
 
@@ -350,7 +363,8 @@ export function handleChangeEvent(event) {
     const target = event.target;
     if (!target) return;
 
-    if (target.closest('#gherkin-panel') || target.closest('#gherkin-modal')) {
+    // Filtros de UI da extensão usando helper
+    if (isExtensionElement(target)) {
         return;
     }
 
@@ -426,7 +440,8 @@ export function handleKeydownEvent(event) {
     const target = event.target;
     if (!target) return;
 
-    if (target.closest('#gherkin-panel') || target.closest('#gherkin-modal')) {
+    // Filtros de UI da extensão usando helper
+    if (isExtensionElement(target)) {
         return;
     }
 

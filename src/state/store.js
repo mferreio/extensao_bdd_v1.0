@@ -14,6 +14,8 @@ class Store {
       isPaused: false,
       isRecording: false,
       isInspecting: false,
+      manualInspectionMode: false, // Modo de inspeção manual (para o modal)
+      manualInspectionResult: null, // Resultado da inspeção manual
 
       // Data
       features: [],
@@ -41,7 +43,12 @@ class Store {
    */
   async init() {
     if (this.initialized) return;
-    await this.loadFromStorage();
+    const loadedState = await this.loadFromStorage();
+
+    // Inicializa histórico com estado inicial
+    this.history = [JSON.parse(JSON.stringify(loadedState))];
+    this.historyIndex = 0;
+
     this.initialized = true;
     return this.state;
   }
@@ -64,12 +71,25 @@ class Store {
    */
   setState(newState) {
     const oldState = JSON.parse(JSON.stringify(this.state));
-    this.state = { ...this.state, ...newState };
+    const mergedState = { ...this.state, ...newState };
 
-    // Adicionar ao histórico para undo/redo
+    // Verifica se houve mudança real (opcional, mas bom pra evitar spam no hist)
+    if (JSON.stringify(oldState) === JSON.stringify(mergedState)) return;
+
+    this.state = mergedState;
+
+    // Gerenciamento de Histórico (Standard Stack)
+    // Remove futuro (se houve undo antes)
+    this.history = this.history.slice(0, this.historyIndex + 1);
+    // Adiciona novo estado
+    this.history.push(JSON.parse(JSON.stringify(this.state)));
     this.historyIndex++;
-    this.history = this.history.slice(0, this.historyIndex);
-    this.history.push(oldState);
+
+    // Limita tamanho do histórico (opcional, ex: 50)
+    if (this.history.length > 50) {
+      this.history.shift();
+      this.historyIndex--;
+    }
 
     // Notificar listeners
     this.listeners.forEach(listener => {
@@ -89,15 +109,17 @@ class Store {
   }
 
   /**
-   * Desfazer última ação
+   * Desfazer última ação e navegar para trás no histórico
    */
   undo() {
     if (this.historyIndex > 0) {
+      const oldState = JSON.parse(JSON.stringify(this.state));
+
       this.historyIndex--;
       this.state = JSON.parse(JSON.stringify(this.history[this.historyIndex]));
 
       this.listeners.forEach(listener => {
-        listener(this.state, null);
+        listener(this.state, oldState);
       });
 
       this.saveToStorage();
@@ -105,15 +127,17 @@ class Store {
   }
 
   /**
-   * Refazer última ação desfeita
+   * Refazer última ação desfeita (Avançar no histórico)
    */
   redo() {
     if (this.historyIndex < this.history.length - 1) {
+      const oldState = JSON.parse(JSON.stringify(this.state));
+
       this.historyIndex++;
       this.state = JSON.parse(JSON.stringify(this.history[this.historyIndex]));
 
       this.listeners.forEach(listener => {
-        listener(this.state, null);
+        listener(this.state, oldState);
       });
 
       this.saveToStorage();
@@ -203,6 +227,27 @@ class Store {
     const { interactions } = this.state;
     const newInteractions = [...interactions];
     newInteractions[index] = { ...newInteractions[index], ...updates };
+    const recalculated = recalculateSteps(newInteractions);
+
+    this.setState({
+      interactions: recalculated
+    });
+  }
+
+  /**
+   * Mover interação de posição
+   * @param {number} fromIndex - Índice de origem
+   * @param {number} toIndex - Índice de destino
+   */
+  moveInteraction(fromIndex, toIndex) {
+    const { interactions } = this.state;
+    if (toIndex < 0 || toIndex >= interactions.length) return;
+
+    const newInteractions = [...interactions];
+    const [movedItem] = newInteractions.splice(fromIndex, 1);
+    newInteractions.splice(toIndex, 0, movedItem);
+
+    // Recalcular steps após mover
     const recalculated = recalculateSteps(newInteractions);
 
     this.setState({
@@ -332,6 +377,30 @@ class Store {
   }
 
   /**
+   * Iniciar inspeção manual (para o modal)
+   */
+  startManualInspection() {
+    this.setState({
+      isInspecting: true,
+      manualInspectionMode: true,
+      manualInspectionResult: null,
+      isVisible: false // Esconde o painel para facilitar inspeção
+    });
+  }
+
+  /**
+   * Finalizar inspeção manual com resultado
+   */
+  finishManualInspection(result) {
+    this.setState({
+      isInspecting: false,
+      manualInspectionMode: false,
+      manualInspectionResult: result,
+      isVisible: true // Mostra o painel novamente
+    });
+  }
+
+  /**
    * Alternar visibilidade da UI
    */
   toggleVisibility() {
@@ -348,7 +417,7 @@ class Store {
       // Salvar estado, exceto isVisible (controle de sessão) e isInspecting
       // Assim, ao abrir nova aba, começa oculta a menos que esteja gravando
       // eslint-disable-next-line no-unused-vars
-      const { isVisible, isInspecting, ...stateToSave } = this.state;
+      const { isVisible, isInspecting, manualInspectionMode, ...stateToSave } = this.state;
 
       if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
         chrome.storage.local.set({ 'gherkin-state': stateToSave }, () => {

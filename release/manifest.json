@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "Assistente automatizador",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "description": "Gera Xpath e CSS_selectors com base na navegação do usuário.",
     "permissions": [
         "activeTab",

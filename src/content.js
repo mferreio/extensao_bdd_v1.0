@@ -283,6 +283,24 @@ function handleInspectionClick(event) {
 
     // Desativar modo de inspeção via Store
     const store = getStore();
+    const state = store.getState();
+
+    // Se estiver em modo de inspeção manual (para preencher o modal)
+    if (state.manualInspectionMode) {
+        const cssSelector = getCSSSelector(element);
+        const xpath = getRobustXPath(element);
+
+        // Finaliza inspeção manual e passa os dados do elemento selecionado
+        store.finishManualInspection({
+            selector: cssSelector,
+            xpath: xpath,
+            tagName: element.tagName.toLowerCase(),
+            elementId: element.id || ''
+        });
+
+        return;
+    }
+
     store.toggleInspect(); // Vai disparar subscribe -> toggleElementInspection(false)
 
     // Mostrar modal com detalhes
