@@ -87,8 +87,34 @@ async function initializeExtension() {
         }
 
         // Re-renderizar painel se necessário e visível
+        // Otimização: Se apenas o timer mudou, atualiza só o elemento do timer (evita flicker)
         if (state.isVisible && panel && document.body.contains(panel)) {
-            renderPanelContent(panel);
+            // Comparação por VALOR (não referência) já que o store faz deep clone
+            const onlyTimerChanged = oldState &&
+                state.elapsedSeconds !== oldState.elapsedSeconds &&
+                state.panelState === oldState.panelState &&
+                state.isPaused === oldState.isPaused &&
+                state.isRecording === oldState.isRecording &&
+                state.interactions.length === oldState.interactions.length &&
+                state.selectedAction === oldState.selectedAction &&
+                state.forceClick === oldState.forceClick &&
+                state.isInspecting === oldState.isInspecting &&
+                // Compara features/scenarios por nome, não referência
+                (state.currentFeature?.name || '') === (oldState.currentFeature?.name || '') &&
+                (state.currentScenario?.name || '') === (oldState.currentScenario?.name || '');
+
+            if (onlyTimerChanged) {
+                // Atualiza apenas o timer diretamente no DOM
+                const timerEl = panel.querySelector('#gherkin-timer');
+                if (timerEl) {
+                    const minutes = Math.floor((state.elapsedSeconds || 0) / 60);
+                    const seconds = (state.elapsedSeconds || 0) % 60;
+                    timerEl.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                }
+            } else {
+                // Re-renderiza o painel completo para outras mudanças
+                renderPanelContent(panel);
+            }
         }
 
         // Gerenciar modo de inspeção
