@@ -255,11 +255,13 @@ export function renderLogWithActions() {
 
     // Container para rolagem da tabela
     const scrollContainer = document.createElement('div');
+    scrollContainer.className = 'gherkin-log-table-scroll';
     scrollContainer.style.flex = '1 1 auto';
     scrollContainer.style.overflowX = 'auto';
     scrollContainer.style.overflowY = 'auto';
     scrollContainer.style.width = '100%';
     scrollContainer.style.minHeight = '0';
+    scrollContainer.style.maxHeight = '456px'; // 11 rows × 38px + 38px header = 456px
     scrollContainer.style.background = '#fff';
 
     // Tabela ocupa largura mínima para não cortar colunas e fica "fixa" dentro do scrollContainer
@@ -468,6 +470,7 @@ export function renderLogWithActions() {
     overflow-x: auto;
     overflow-y: auto;
     min-height: 0;
+    max-height: 456px; /* 11 rows × 38px + 38px header = 456px */
     background: #fff;
     /* Barra de rolagem sempre visível */
     scrollbar-width: thin;
@@ -475,6 +478,7 @@ export function renderLogWithActions() {
 }
 #gherkin-log .gherkin-log-table-scroll::-webkit-scrollbar {
     height: 12px;
+    width: 8px;
     background: #f9f9f9;
 }
 #gherkin-log .gherkin-log-table-scroll::-webkit-scrollbar-thumb {

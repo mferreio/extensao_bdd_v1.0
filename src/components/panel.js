@@ -207,7 +207,7 @@ export function renderPanelContent(panel) {
                 </div>
                 </div>
 
-                <div id="gherkin-log" class="gherkin-flex-1 gherkin-mb-md" style="min-height:80px; overflow:hidden; display:flex; flex-direction:column;"></div>
+                <div id="gherkin-log" class="gherkin-flex-1 gherkin-mb-md" style="min-height:80px; max-height:380px; overflow-x:hidden; overflow-y:auto; display:flex; flex-direction:column;"></div>
                 
                 <div class="gherkin-actions-bar gherkin-flex-col gherkin-gap-sm gherkin-mt-auto gherkin-w-full">
                     <!-- Botões principais de finalização -->
@@ -837,6 +837,11 @@ function renderLogs(container, interactions) {
             </div>
         `;
     }).join(''); // Ordem cronológica (sem reverse)
+
+    // Auto-scroll para a última interação (a mais recente fica visível)
+    setTimeout(() => {
+        container.scrollTop = container.scrollHeight;
+    }, 0);
 
     // Adicionar listeners para remoção e edição
     container.querySelectorAll('.remove-log').forEach(btn => {

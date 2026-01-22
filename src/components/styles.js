@@ -310,6 +310,27 @@ export function injectGherkinStyles() {
   background: var(--bg-primary);
   border: var(--border-width) solid var(--border-color);
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+  max-height: 380px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+#gherkin-log::-webkit-scrollbar {
+  width: 8px;
+}
+
+#gherkin-log::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+}
+
+#gherkin-log::-webkit-scrollbar-thumb {
+  background: var(--color-primary);
+  border-radius: var(--radius-sm);
+}
+
+#gherkin-log::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary-light);
 }
 
 /* Input moderno */
@@ -626,6 +647,7 @@ label {
     
     #gherkin-log {
         min-height: 80px !important;
+        max-height: 300px !important;
     }
 }
 
