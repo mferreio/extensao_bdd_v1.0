@@ -912,3 +912,353 @@ export function showPostExportModal(onCloseExtension, onContinue) {
     document.body.appendChild(modalBg);
 }
 
+export function showAddStepModal() {
+    const oldModal = document.getElementById('gherkin-modal');
+    if (oldModal) oldModal.remove();
+
+    const modalBg = document.createElement('div');
+    modalBg.id = 'gherkin-modal';
+    modalBg.className = 'gherkin-modal-bg';
+
+    const modal = document.createElement('div');
+    modal.className = 'gherkin-modal-content gherkin-flex-col gherkin-gap-sm';
+    modal.style.maxHeight = '90vh';
+    modal.style.overflowY = 'auto';
+
+    // Título
+    const title = document.createElement('h3');
+    title.innerHTML = '<span style="font-size: 1.2em; margin-right: 8px;">➕</span> Adicionar Passo Manual';
+    title.className = 'gherkin-modal-title gherkin-text-center';
+    modal.appendChild(title);
+
+    const fieldsContainer = document.createElement('div');
+    fieldsContainer.className = 'gherkin-flex-col gherkin-gap-sm';
+
+    // Campo ação
+    const actionLabel = document.createElement('label');
+    actionLabel.textContent = 'Tipo de Ação:';
+    actionLabel.className = 'gherkin-label';
+    fieldsContainer.appendChild(actionLabel);
+
+    const actionSelect = document.createElement('select');
+    actionSelect.className = 'gherkin-w-full';
+    actionSelect.innerHTML = `
+        <optgroup label="Ações">
+            <option value="clica">Clicar</option>
+            <option value="preenche">Preencher</option>
+            <option value="seleciona">Selecionar</option>
+            <option value="radio">Botão de rádio</option>
+            <option value="caixa">Caixa de seleção</option>
+            <option value="acessa_url">Acessar URL</option>
+        </optgroup>
+        <optgroup label="Validações">
+            <option value="valida_existe">Validar que existe</option>
+            <option value="valida_nao_existe">Validar que não existe</option>
+            <option value="valida_contem">Validar que contém</option>
+            <option value="valida_nao_contem">Validar que não contém</option>
+        </optgroup>
+        <optgroup label="Esperas">
+            <option value="espera_segundos">Esperar segundos</option>
+            <option value="espera_elemento">Esperar elemento aparecer</option>
+            <option value="espera_nao_existe">Esperar elemento desaparecer</option>
+        </optgroup>
+    `;
+    fieldsContainer.appendChild(actionSelect);
+
+    // Container para nome do elemento com botão inspecionar
+    const nomeContainer = document.createElement('div');
+    nomeContainer.className = 'gherkin-flex-col gherkin-gap-xs';
+
+    const nomeLabel = document.createElement('label');
+    nomeLabel.textContent = 'Nome do elemento ou seletor:';
+    nomeLabel.className = 'gherkin-label';
+    nomeContainer.appendChild(nomeLabel);
+
+    const nomeInputRow = document.createElement('div');
+    nomeInputRow.className = 'gherkin-flex gherkin-gap-xs gherkin-items-center';
+
+    const nomeInput = document.createElement('input');
+    nomeInput.type = 'text';
+    nomeInput.id = 'add-step-nome-input';
+    nomeInput.placeholder = 'Ex: botão de login, #submit-btn';
+    nomeInput.className = 'gherkin-w-full';
+    nomeInput.style.flex = '1';
+    nomeInputRow.appendChild(nomeInput);
+
+    // Botão Inspecionar
+    const inspectBtn = document.createElement('button');
+    inspectBtn.innerHTML = '🔍 Inspecionar';
+    inspectBtn.className = 'gherkin-btn gherkin-btn-info';
+    inspectBtn.style.padding = '6px 10px';
+    inspectBtn.style.fontSize = '0.8rem';
+    inspectBtn.style.whiteSpace = 'nowrap';
+    inspectBtn.title = 'Clique para selecionar um elemento na página';
+    nomeInputRow.appendChild(inspectBtn);
+
+    nomeContainer.appendChild(nomeInputRow);
+
+    // Campos ocultos para armazenar seletores capturados
+    const hiddenCssInput = document.createElement('input');
+    hiddenCssInput.type = 'hidden';
+    hiddenCssInput.id = 'add-step-css-selector';
+    nomeContainer.appendChild(hiddenCssInput);
+
+    const hiddenXpathInput = document.createElement('input');
+    hiddenXpathInput.type = 'hidden';
+    hiddenXpathInput.id = 'add-step-xpath';
+    nomeContainer.appendChild(hiddenXpathInput);
+
+    fieldsContainer.appendChild(nomeContainer);
+
+    // Campo valor (opcional)
+    const valorLabel = document.createElement('label');
+    valorLabel.textContent = 'Valor (para preencher, URL, ou segundos):';
+    valorLabel.className = 'gherkin-label';
+    fieldsContainer.appendChild(valorLabel);
+
+    const valorInput = document.createElement('input');
+    valorInput.type = 'text';
+    valorInput.id = 'add-step-valor-input';
+    valorInput.placeholder = 'Ex: teste@email.com, https://..., 5';
+    valorInput.className = 'gherkin-w-full';
+    fieldsContainer.appendChild(valorInput);
+
+    modal.appendChild(fieldsContainer);
+
+    // Função para atualizar campos baseado na ação selecionada
+    const updateFieldsForAction = () => {
+        const action = actionSelect.value;
+
+        if (action === 'acessa_url') {
+            // Auto-preencher com URL atual
+            valorInput.value = window.location.href;
+            valorInput.placeholder = 'URL para acessar';
+            nomeInput.value = 'página';
+            nomeInput.disabled = true;
+            inspectBtn.style.display = 'none';
+        } else if (action === 'espera_segundos') {
+            valorInput.placeholder = 'Número de segundos';
+            nomeInput.value = '';
+            nomeInput.disabled = true;
+            inspectBtn.style.display = 'none';
+        } else {
+            nomeInput.disabled = false;
+            inspectBtn.style.display = 'inline-flex';
+            if (action === 'preenche' || action === 'seleciona') {
+                valorInput.placeholder = 'Valor a preencher';
+            } else if (action.startsWith('valida_contem') || action.startsWith('valida_nao_contem')) {
+                valorInput.placeholder = 'Texto esperado';
+            } else {
+                valorInput.placeholder = 'Valor (opcional)';
+            }
+        }
+    };
+
+    // Listener para mudança de ação
+    actionSelect.addEventListener('change', updateFieldsForAction);
+
+    // Lógica do botão Inspecionar
+    inspectBtn.onclick = async () => {
+        // Minimizar modal temporariamente
+        modal.style.display = 'none';
+        modalBg.style.background = 'transparent';
+        modalBg.style.pointerEvents = 'none';
+
+        showFeedback('Clique no elemento que deseja selecionar...', 'info');
+
+        // Importar utils de DOM dinamicamente
+        const domUtils = await getDomUtils();
+
+        // Criar highlight temporário
+        const highlight = document.createElement('div');
+        highlight.id = 'gherkin-temp-highlight';
+        highlight.style.cssText = `
+            position: absolute;
+            border: 3px solid #28a745;
+            background: rgba(40, 167, 69, 0.15);
+            pointer-events: none;
+            z-index: 999999;
+            display: none;
+            border-radius: 4px;
+            transition: all 0.1s ease;
+        `;
+        document.body.appendChild(highlight);
+
+        let selectedElement = null;
+
+        const handleMouseMove = (e) => {
+            const element = e.target;
+            if (element.closest('#gherkin-modal') || element.closest('#gherkin-panel') || element.id === 'gherkin-temp-highlight') {
+                highlight.style.display = 'none';
+                return;
+            }
+
+            const rect = element.getBoundingClientRect();
+            highlight.style.display = 'block';
+            highlight.style.left = (rect.left + window.scrollX) + 'px';
+            highlight.style.top = (rect.top + window.scrollY) + 'px';
+            highlight.style.width = rect.width + 'px';
+            highlight.style.height = rect.height + 'px';
+            selectedElement = element;
+        };
+
+        const handleClick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const element = e.target;
+            if (element.closest('#gherkin-modal') || element.closest('#gherkin-panel')) {
+                return;
+            }
+
+            // Capturar seletores
+            const cssSelector = domUtils.getCSSSelector(element);
+            const xpath = domUtils.getRobustXPath(element);
+
+            // Capturar nome amigável do elemento
+            let elementName = '';
+            if (element.innerText && element.innerText.trim().length > 0 && element.innerText.length < 50) {
+                elementName = element.innerText.trim().substring(0, 40);
+            } else if (element.placeholder) {
+                elementName = element.placeholder;
+            } else if (element.name) {
+                elementName = element.name;
+            } else if (element.id) {
+                elementName = element.id;
+            } else if (element.className && typeof element.className === 'string') {
+                elementName = element.className.split(' ')[0];
+            } else {
+                elementName = element.tagName.toLowerCase();
+            }
+
+            // Preencher campos
+            nomeInput.value = elementName;
+            hiddenCssInput.value = cssSelector || '';
+            hiddenXpathInput.value = xpath || '';
+
+            // Limpar
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('click', handleClick, true);
+            highlight.remove();
+
+            // Restaurar modal
+            modal.style.display = 'flex';
+            modalBg.style.background = '';
+            modalBg.style.pointerEvents = '';
+
+            showFeedback(`Elemento "${elementName}" capturado!`, 'success');
+        };
+
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('click', handleClick, true);
+
+        // Cancelar com ESC
+        const handleEsc = (e) => {
+            if (e.key === 'Escape') {
+                document.removeEventListener('mousemove', handleMouseMove);
+                document.removeEventListener('click', handleClick, true);
+                document.removeEventListener('keydown', handleEsc);
+                highlight.remove();
+
+                modal.style.display = 'flex';
+                modalBg.style.background = '';
+                modalBg.style.pointerEvents = '';
+
+                showFeedback('Inspeção cancelada', 'info');
+            }
+        };
+        document.addEventListener('keydown', handleEsc);
+    };
+
+    // Botões
+    const btns = document.createElement('div');
+    btns.className = 'gherkin-modal-footer';
+
+    const saveBtn = document.createElement('button');
+    saveBtn.innerHTML = '➕ Adicionar Passo';
+    saveBtn.className = 'gherkin-btn gherkin-btn-success gherkin-flex-1';
+    saveBtn.onclick = () => {
+        const action = actionSelect.value;
+        const target = nomeInput.value.trim();
+        const value = valorInput.value.trim();
+        const cssSelector = hiddenCssInput.value;
+        const xpath = hiddenXpathInput.value;
+
+        // Validações
+        if (action === 'acessa_url' && !value) {
+            alert('Por favor, informe a URL.');
+            return;
+        }
+        if (action === 'espera_segundos' && !value) {
+            alert('Por favor, informe o número de segundos.');
+            return;
+        }
+        if ((action === 'preenche' || action === 'seleciona') && (!target || !value)) {
+            alert('Por favor, preencha o elemento e o valor.');
+            return;
+        }
+        if (!['acessa_url', 'espera_segundos'].includes(action) && !target) {
+            alert('Por favor, informe o nome ou seletor do elemento.');
+            return;
+        }
+
+        const store = getStore();
+
+        let interaction = {
+            acao: action,
+            timestamp: Date.now()
+        };
+
+        if (action === 'acessa_url') {
+            interaction.url = value;
+            interaction.valorPreenchido = value;
+            interaction.nomeElemento = 'página';
+        } else if (action === 'espera_segundos') {
+            interaction.valorPreenchido = value;
+            interaction.nomeElemento = `${value} segundos`;
+        } else {
+            interaction.nomeElemento = target;
+            if (value) {
+                interaction.valorPreenchido = value;
+            }
+
+            // Usar seletores capturados se disponíveis
+            if (cssSelector) {
+                interaction.cssSelector = cssSelector;
+            }
+            if (xpath) {
+                interaction.xpath = xpath;
+            }
+
+            // Se não tiver seletores capturados, inferir do texto
+            if (!cssSelector && !xpath) {
+                if (target.startsWith('/') || target.startsWith('(')) {
+                    interaction.xpath = target;
+                } else if (target.includes('[') || target.includes('.') || target.includes('#')) {
+                    interaction.cssSelector = target;
+                }
+            }
+        }
+
+        store.addInteraction(interaction);
+        modalBg.remove();
+        showFeedback('Passo adicionado com sucesso!', 'success');
+    };
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.textContent = 'Cancelar';
+    cancelBtn.className = 'gherkin-btn gherkin-btn-danger gherkin-flex-1';
+    cancelBtn.onclick = () => modalBg.remove();
+
+    btns.appendChild(saveBtn);
+    btns.appendChild(cancelBtn);
+    modal.appendChild(btns);
+
+    modalBg.appendChild(modal);
+    document.body.appendChild(modalBg);
+
+    // Inicializar estado dos campos
+    updateFieldsForAction();
+
+    setTimeout(() => actionSelect.focus(), 50);
+}

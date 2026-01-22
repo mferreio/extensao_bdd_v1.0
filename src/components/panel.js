@@ -2,7 +2,7 @@
 import { injectGherkinStyles } from './styles.js';
 import { FormValidator } from './form-validation.js';
 import { getStore } from '../state/store.js';
-import { showEditModal, showLogDetailsModal, showXPathModal, showPostExportModal } from './modals.js';
+import { showEditModal, showLogDetailsModal, showXPathModal, showPostExportModal, showAddStepModal } from './modals.js';
 
 export function createPanel() {
     const oldPanel = document.getElementById('gherkin-panel');
@@ -36,50 +36,6 @@ export function renderPanelContent(panel) {
     const state = store.getState();
     const { panelState, isPaused, currentFeature, currentScenario, elapsedSeconds, interactions, features } = state;
 
-
-    // Funções auxiliares de renderização de inputs manuais
-    // Mapeamento de quais campos mostrar para cada ação
-    const getActionParamsHTML = (action) => {
-        let inputs = '';
-        const btnStyle = "padding: 0; width: 28px; height: 28px; border-radius: 4px; display: flex; align-items: center; justify-content: center; min-width: 28px;";
-        const addBtn = `<button id="gherkin-add-step" class="gherkin-btn gherkin-btn-success" title="Adicionar passo manualmente" style="${btnStyle}">
-            <span style="font-weight: bold; font-size: 16px;">+</span>
-        </button>`;
-
-        const inputStyle = "flex: 1; padding: 2px 6px; height: 28px; font-size: 0.8rem; border: 1px solid #ced4da; border-radius: 4px;";
-
-        if (action === 'navega' || action === 'acessa_url') {
-            inputs = `<input type="text" id="manual-value" placeholder="URL (https://...)" style="${inputStyle}">`;
-        } else if (action === 'espera_segundos') {
-            inputs = `<input type="number" id="manual-value" placeholder="Segundos" style="${inputStyle}">`;
-        } else if (action === 'preenche' || action === 'seleciona') {
-            inputs = `
-                <input type="text" id="manual-target" placeholder="Seletor/Nome" style="${inputStyle}">
-                <input type="text" id="manual-value" placeholder="Valor" style="${inputStyle}">
-            `;
-        } else if (action === 'radio' || action === 'caixa') {
-            inputs = `<input type="text" id="manual-target" placeholder="Seletor/Nome" style="${inputStyle}">`;
-        } else if (action.startsWith('valida_')) {
-            if (action === 'valida_existe' || action === 'valida_nao_existe') {
-                inputs = `<input type="text" id="manual-target" placeholder="Seletor/Nome" style="${inputStyle}">`;
-            } else {
-                inputs = `
-                    <input type="text" id="manual-target" placeholder="Seletor/Nome" style="${inputStyle}">
-                    <input type="text" id="manual-value" placeholder="Valor esperado" style="${inputStyle}">
-                `;
-            }
-        } else if (action.startsWith('espera_')) {
-            inputs = `<input type="text" id="manual-target" placeholder="Seletor/Nome" style="${inputStyle}">`;
-        } else {
-            // Default (clica, etc)
-            inputs = `<input type="text" id="manual-target" placeholder="Seletor/Nome" style="${inputStyle}">`;
-        }
-
-        return `
-            ${inputs}
-            ${addBtn}
-        `;
-    };
 
     let html = '';
     html += `
@@ -160,51 +116,15 @@ export function renderPanelContent(panel) {
                     </div>
                 </div>
 
-                <div class="gherkin-flex-row gherkin-items-center gherkin-gap-xs gherkin-mb-sm gherkin-flex-wrap">
-                    <label for="gherkin-action-select" class="gherkin-label" style="margin:0; white-space:nowrap;">Ação:</label>
-                    <select id="gherkin-action-select" style="flex:1; min-width:90px; max-width:160px; padding:2px 4px; height:28px;">
-                        <optgroup label="Ações">
-                            <option value="clica" ${state.selectedAction === 'clica' ? 'selected' : ''}>Clicar</option>
-                            <option value="altera" ${state.selectedAction === 'altera' ? 'selected' : ''}>Alterar</option>
-                            <option value="preenche" ${state.selectedAction === 'preenche' ? 'selected' : ''}>Preencher</option>
-                            <option value="seleciona" ${state.selectedAction === 'seleciona' ? 'selected' : ''}>Selecionar</option>
-                            <option value="radio" ${state.selectedAction === 'radio' ? 'selected' : ''}>Botão de rádio</option>
-                            <option value="caixa" ${state.selectedAction === 'caixa' ? 'selected' : ''}>Caixa de seleção</option>
-                            <option value="navega" ${state.selectedAction === 'navega' ? 'selected' : ''}>Navegar</option>
-                            <option value="login" ${state.selectedAction === 'login' ? 'selected' : ''}>Login</option>
-                            <option value="upload" ${state.selectedAction === 'upload' ? 'selected' : ''}>Upload de arquivo</option>
-                        </optgroup>
-                        <optgroup label="Validações">
-                            <option value="valida_existe" ${state.selectedAction === 'valida_existe' ? 'selected' : ''}>Validar que existe</option>
-                            <option value="valida_nao_existe" ${state.selectedAction === 'valida_nao_existe' ? 'selected' : ''}>Validar que não existe</option>
-                            <option value="valida_contem" ${state.selectedAction === 'valida_contem' ? 'selected' : ''}>Validar que contém</option>
-                            <option value="valida_nao_contem" ${state.selectedAction === 'valida_nao_contem' ? 'selected' : ''}>Validar que não contém</option>
-                            <option value="valida_deve_ser" ${state.selectedAction === 'valida_deve_ser' ? 'selected' : ''}>Validar que deve ser</option>
-                            <option value="valida_nao_deve_ser" ${state.selectedAction === 'valida_nao_deve_ser' ? 'selected' : ''}>Validar que não deve ser</option>
-                        </optgroup>
-                        <optgroup label="Esperas">
-                            <option value="espera_segundos" ${state.selectedAction === 'espera_segundos' ? 'selected' : ''}>Esperar segundos</option>
-                            <option value="espera_elemento" ${state.selectedAction === 'espera_elemento' ? 'selected' : ''}>Esperar elemento aparecer</option>
-                            <option value="espera_nao_existe" ${state.selectedAction === 'espera_nao_existe' ? 'selected' : ''}>Esperar elemento desaparecer</option>
-                            <option value="espera_existe" ${state.selectedAction === 'espera_existe' ? 'selected' : ''}>Esperar que o elemento exista</option>
-                            <option value="espera_habilitado" ${state.selectedAction === 'espera_habilitado' ? 'selected' : ''}>Esperar que o elemento esteja habilitado</option>
-                            <option value="espera_desabilitado" ${state.selectedAction === 'espera_desabilitado' ? 'selected' : ''}>Esperar que o elemento esteja desabilitado</option>
-                        </optgroup>
-                    </select>
-                    
-                    <div class="gherkin-flex gherkin-items-center gherkin-gap-xs" style="margin-left:4px;">
-                        <input type="checkbox" id="gherkin-force-click" style="margin:0; transform:scale(0.9);" ${state.forceClick ? 'checked' : ''}>
-                        <label for="gherkin-force-click" title="Força o registro do próximo clique, ignorando filtros" style="font-size: 0.75rem; margin:0; cursor:pointer;">Forçar clique</label>
-                    </div>
-                    
-                    <div class="gherkin-flex gherkin-items-center gherkin-gap-xs" style="margin-left:4px;">
+                <div class="gherkin-flex-row gherkin-items-center gherkin-gap-xs gherkin-mb-sm">
+                    <div class="gherkin-flex gherkin-items-center gherkin-gap-xs">
                         <button id="gherkin-inspect-toggle" class="gherkin-btn ${state.isInspecting ? 'gherkin-btn-danger' : 'gherkin-btn-info'}" style="padding:2px 8px; font-size:0.75rem; height:28px; background-color: ${state.isInspecting ? '' : '#17a2b8'}; color: #fff;" title="Ativar/desativar modo de inspeção">
                             ${state.isInspecting ? '🔍 Parar' : '🔍 Inspecionar'}
                         </button>
+                        <button id="gherkin-add-step" class="gherkin-btn gherkin-btn-success" style="padding:2px 8px; font-size:0.75rem; height:28px;" title="Adicionar passo manualmente">
+                            ➕ Adicionar Passo
+                        </button>
                     </div>
-                <div id="gherkin-action-params" class="gherkin-flex" style="flex: 2; min-width: 150px; align-items: center; gap: 4px;">
-                    ${getActionParamsHTML(state.selectedAction || 'clica')}
-                </div>
                 </div>
 
                 <div id="gherkin-log" class="gherkin-flex-1 gherkin-mb-md" style="min-height:80px; max-height:380px; overflow-x:hidden; overflow-y:auto; display:flex; flex-direction:column;"></div>
@@ -515,13 +435,6 @@ function attachFunctionalListeners(panel, store) {
         });
     }
 
-    // Force Click Toggle
-    const forceClickChk = panel.querySelector('#gherkin-force-click');
-    if (forceClickChk) {
-        forceClickChk.addEventListener('change', (e) => {
-            store.setState({ forceClick: e.target.checked });
-        });
-    }
 
     // Inspect Toggle
     const inspectBtn = panel.querySelector('#gherkin-inspect-toggle');
@@ -531,72 +444,11 @@ function attachFunctionalListeners(panel, store) {
         });
     }
 
-    // Action Select Change
-    const actionSelect = panel.querySelector('#gherkin-action-select');
-    if (actionSelect) {
-        actionSelect.addEventListener('change', (e) => {
-            store.setState({ selectedAction: e.target.value });
-        });
-    }
-
-    // Add Step Manually
+    // Add Step Button
     const addStepBtn = panel.querySelector('#gherkin-add-step');
     if (addStepBtn) {
         addStepBtn.addEventListener('click', () => {
-            const action = state.selectedAction || 'clica';
-            const targetInput = panel.querySelector('#manual-target');
-            const valueInput = panel.querySelector('#manual-value');
-
-            const target = targetInput ? targetInput.value.trim() : '';
-            const value = valueInput ? valueInput.value.trim() : '';
-
-            // Validações básicas
-            if ((action === 'preenche' || action === 'seleciona') && (!target || !value)) {
-                alert('Preencha o seletor e o valor.');
-                return;
-            }
-            if ((action === 'navega' || action === 'acessa_url') && !value) {
-                alert('Informe a URL.');
-                return;
-            }
-            if ((action === 'clica' || action.startsWith('espera_') || action === 'radio' || action === 'caixa') && !target) {
-                // Permitir target vazio? Geralmente não.
-                alert('Informe o seletor/nome do elemento.');
-                return;
-            }
-
-            let interaction = {
-                acao: action,
-                timestamp: Date.now()
-            };
-
-            if (action === 'navega' || action === 'acessa_url') {
-                interaction.acao = 'acessa_url'; // Normalizar
-                interaction.url = value;
-                interaction.valorPreenchido = value;
-                interaction.step = 'Given';
-            } else if (action === 'espera_segundos') {
-                interaction.valorPreenchido = value;
-                interaction.step = 'When'; // Ou And
-            } else {
-                interaction.selector = target;
-                interaction.nomeElemento = target; // Fallback
-                interaction.valorPreenchido = value;
-                interaction.step = action.startsWith('valida_') ? 'Then' : 'When';
-
-                // Tenta inferir tipo de seletor (se começa com // ou contém [ é provavel que seja técnico)
-                if (target.startsWith('/') || target.startsWith('(')) {
-                    interaction.xpath = target;
-                } else if (target.includes('[') || target.includes('.') || target.includes('#')) {
-                    interaction.cssSelector = target;
-                }
-            }
-
-            store.addInteraction(interaction);
-
-            // Limpa inputs
-            if (targetInput) targetInput.value = '';
-            if (valueInput) valueInput.value = '';
+            showAddStepModal();
         });
     }
 

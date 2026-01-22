@@ -1901,7 +1901,14 @@ six==1.16.0
     }
 
     generateStepDefinition(interaction, className, featureName) {
-        const stepType = interaction.step || interaction.stepType || 'When';
+        let stepType = interaction.step || interaction.stepType || 'When';
+
+        // CORREÇÃO CRÍTICA: Behave não aceita @and ou @but
+        // Garante que o decorator seja sempre given, when ou then
+        if (['And', 'But', 'and', 'but'].includes(stepType)) {
+            stepType = 'When'; // Default seguro se a info semântica falhar
+        }
+
         const stepText = interaction.stepText;
         const methodBaseName = this.toSnakeCase(this.sanitizeMethodName(interaction.nomeElemento || 'elemento'));
 
