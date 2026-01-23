@@ -52,28 +52,12 @@ function isExtensionElement(target) {
 }
 
 
-// Função para aplicar a regra correta dos steps BDD
-function applyCorrectStepOrder(interactions) {
-    if (!interactions || interactions.length === 0) return interactions;
-
-    return interactions.map((interaction, index) => {
-        let step = 'When';
-        if (index === 0) {
-            step = 'Given';
-        } else if (index === interactions.length - 1) {
-            step = 'Then';
-        }
-        return { ...interaction, step };
-    });
-}
-
+// Função para adicionar interação usando o store centralizado
+// Nota: A lógica de recálculo de steps BDD está em store.addInteraction() 
+// que usa recalculateSteps() de bdd.js para manter consistência
 function processAndAddInteraction(interaction) {
     const store = getStore();
-    const state = store.getState();
-    const currentInteractions = [...state.interactions, interaction];
-    const updatedInteractions = applyCorrectStepOrder(currentInteractions);
-
-    store.setState({ interactions: updatedInteractions });
+    store.addInteraction(interaction);
 }
 
 export function handleClickEvent(event) {
