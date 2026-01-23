@@ -301,33 +301,101 @@ export class ExcelGenerator {
     }
 
     /**
-     * Formata o texto de um step para exibição
+     * Formata o texto de um step para exibição em linguagem natural BDD
      * @param {Object} interaction - Interação/step
-     * @returns {string} Texto formatado
+     * @returns {string} Texto formatado em linguagem natural
      */
     formatStepText(interaction) {
         const action = interaction.acao || '';
         const element = interaction.nomeElemento || '';
         const value = interaction.valorPreenchido || '';
+        const stepType = interaction.step || interaction.realStepType || 'When';
 
-        // Mapeamento de ações para texto legível
-        const actionMap = {
-            'clica': `Clicar em "${element}"`,
-            'preenche': `Preencher "${element}" com "${value}"`,
-            'seleciona': `Selecionar "${value}" em "${element}"`,
-            'acessa_url': `Acessar URL: ${value || element}`,
-            'valida_texto': `Validar texto "${value}" em "${element}"`,
-            'valida_visivel': `Validar que "${element}" está visível`,
-            'valida_nao_visivel': `Validar que "${element}" não está visível`,
-            'espera_segundos': `Aguardar ${value} segundos`,
-            'espera_elemento': `Aguardar elemento "${element}" aparecer`,
-            'radio': `Selecionar opção "${element}"`,
-            'caixa': `Marcar checkbox "${element}"`,
-            'upload': `Fazer upload de arquivo em "${element}"`,
-            'navega': `Navegar para "${value || element}"`
+        // Truncar URLs muito longas para melhor visualização
+        const truncateUrl = (url, maxLen = 50) => {
+            if (!url || url.length <= maxLen) return url;
+            return url.substring(0, maxLen) + '...';
         };
 
-        return actionMap[action] || `${action}: ${element} ${value}`.trim();
+        // Limpar valor para exibição (remover quebras de linha, etc.)
+        const cleanValue = (val) => {
+            if (!val) return '';
+            return String(val).replace(/\n/g, ' ').trim();
+        };
+
+        // Templates por tipo de ação - Linguagem Natural BDD em Português
+        const templates = {
+            // Navegação
+            'acessa_url': () => {
+                if (stepType === 'Given') {
+                    return `Estou na página "${element || 'inicial'}"`;
+                }
+                return `Acesso a URL ${truncateUrl(value || element)}`;
+            },
+            'navega': () => `Navego para a página "${cleanValue(value) || element}"`,
+
+            // Ações de clique
+            'clica': () => `Clico no botão/link "${element}"`,
+
+            // Preenchimento
+            'preenche': () => `Preencho o campo "${element}" com "${cleanValue(value)}"`,
+
+            // Seleção
+            'seleciona': () => `Seleciono a opção "${cleanValue(value)}" no campo "${element}"`,
+            'seleciona_radio': () => `Seleciono a opção "${element}"`,
+            'marca_checkbox': () => `Marco a caixa de seleção "${element}"`,
+            'desmarca_checkbox': () => `Desmarco a caixa de seleção "${element}"`,
+            'radio': () => `Seleciono a opção "${element}"`,
+            'caixa': () => `Marco a caixa de seleção "${element}"`,
+
+            // Validações (Then)
+            'valida_contem': () => `Devo ver o texto "${cleanValue(value)}" ${element ? `em "${element}"` : 'na página'}`,
+            'valida_nao_contem': () => `Não devo ver o texto "${cleanValue(value)}" ${element ? `em "${element}"` : 'na página'}`,
+            'valida_existe': () => `O elemento "${element}" deve estar visível`,
+            'valida_nao_existe': () => `O elemento "${element}" não deve estar visível`,
+            'valida_texto': () => `Devo ver o texto "${cleanValue(value)}" em "${element}"`,
+            'valida_visivel': () => `O elemento "${element}" deve estar visível na tela`,
+            'valida_nao_visivel': () => `O elemento "${element}" não deve estar visível`,
+
+            // Esperas
+            'espera_segundos': () => `Aguardo ${value || '5'} segundos`,
+            'espera_elemento': () => `Aguardo o elemento "${element}" aparecer`,
+            'espera_nao_existe': () => `Aguardo o elemento "${element}" desaparecer`,
+            'espera_carregamento': () => `Aguardo a página carregar completamente`,
+
+            // Upload
+            'upload': () => `Faço upload do arquivo em "${element}"`,
+
+            // Teclas
+            'pressiona_enter': () => `Pressiono a tecla Enter em "${element}"`,
+            'pressiona_tecla': () => `Pressiono a tecla ${value} em "${element}"`
+        };
+
+        // Buscar template ou usar fallback
+        if (templates[action]) {
+            return templates[action]();
+        }
+
+        // Fallback: formatar de forma genérica mas legível
+        const actionName = action.replace(/_/g, ' ');
+        if (value && element) {
+            return `${this.capitalizeFirst(actionName)}: "${element}" com "${cleanValue(value)}"`;
+        } else if (element) {
+            return `${this.capitalizeFirst(actionName)}: "${element}"`;
+        } else if (value) {
+            return `${this.capitalizeFirst(actionName)}: "${cleanValue(value)}"`;
+        }
+        return this.capitalizeFirst(actionName);
+    }
+
+    /**
+     * Capitaliza a primeira letra de uma string
+     * @param {string} str - String a capitalizar
+     * @returns {string} String com primeira letra maiúscula
+     */
+    capitalizeFirst(str) {
+        if (!str) return '';
+        return str.charAt(0).toUpperCase() + str.slice(1);
     }
 
     /**
