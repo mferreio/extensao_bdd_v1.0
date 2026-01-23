@@ -221,6 +221,9 @@ export function renderPanelContent(panel) {
                 <button id="export-zip" class="gherkin-btn gherkin-btn-success gherkin-w-full" style="height: 38px;">
                     📦 Exportar Projeto Completo (.zip)
                 </button>
+                <button id="export-excel" class="gherkin-btn gherkin-btn-excel gherkin-w-full" style="height: 38px;">
+                    📊 Exportar Caderno de Testes (.xlsx)
+                </button>
                 <div class="gherkin-divider"></div>
                  <button id="new-feature" class="gherkin-btn gherkin-w-full" style="height: 32px; font-size: 0.9rem; background: #6c757d; color: white;">
                     + Nova Feature
@@ -567,6 +570,35 @@ function attachFunctionalListeners(panel, store) {
     const exportZipBtn = panel.querySelector('#export-zip');
     if (exportZipBtn) {
         exportZipBtn.addEventListener('click', () => handleExport(true));
+    }
+
+    // Export Excel - Caderno de Testes
+    const exportExcelBtn = panel.querySelector('#export-excel');
+    if (exportExcelBtn) {
+        exportExcelBtn.addEventListener('click', async () => {
+            const checkboxes = panel.querySelectorAll('input[name="feature-export"]:checked');
+            const selectedIndexes = Array.from(checkboxes).map(cb => parseInt(cb.value));
+
+            if (selectedIndexes.length === 0) {
+                alert('Selecione pelo menos uma feature para exportar.');
+                return;
+            }
+
+            const featuresToExport = store.exportFeatures(selectedIndexes);
+
+            try {
+                const { getExcelGenerator } = await import('../export/excel-generator.js');
+                const { showFeedback } = await import('../../utils.js');
+
+                const excelGenerator = getExcelGenerator();
+                excelGenerator.download(featuresToExport, 'caderno_de_testes');
+
+                showFeedback('📊 Caderno de Testes exportado com sucesso!', 'success');
+            } catch (err) {
+                console.error('Erro ao exportar Excel:', err);
+                alert('Erro ao exportar Excel: ' + err.message);
+            }
+        });
     }
 
     const newFeatureBtn = panel.querySelector('#new-feature');

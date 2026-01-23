@@ -295,6 +295,16 @@ export function injectGherkinStyles() {
   color: #ffffff;
 }
 
+.gherkin-btn-excel {
+  background: linear-gradient(135deg, #217346 0%, #2e8b57 100%);
+  color: #ffffff;
+}
+
+.gherkin-btn-excel:hover {
+  background: linear-gradient(135deg, #1d6b3f 0%, #267349 100%);
+  box-shadow: 0 4px 12px rgba(33, 115, 70, 0.4);
+}
+
 .gherkin-status-bar {
   background: var(--bg-glass);
   border-radius: var(--radius-md);
