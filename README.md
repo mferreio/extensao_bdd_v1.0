@@ -237,8 +237,8 @@ Este projeto foi desenvolvido por **Matheus Ferreira de Oliveira**.
 
 ---
 
-**Versão**: 1.1.0 (Corrigida)  
-**Data**: 15 de Janeiro de 2026  
+**Versão**: 1.2.0  
+**Data**: 21 de Janeiro de 2026  
 **Status**: ✅ **PRODUÇÃO**
 
 **⭐ Se este projeto foi útil, considere dar uma estrela no GitHub!**

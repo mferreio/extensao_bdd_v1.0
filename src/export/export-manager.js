@@ -2395,6 +2395,16 @@ def generate_evidence_report(context):
                 pdf.ln(2)
                 
                 for step in scenario['steps']:
+                    # START - KEEP TOGETHER LOGIC
+                    # Calcula espaço necessário (Texto + Imagem) para evitar quebra
+                    required_space = 15 # Espaço mínimo para o texto
+                    if step.get('screenshot') and os.path.exists(step['screenshot']):
+                        required_space += 75 # Espaço para imagem + label
+                    
+                    if pdf.get_y() + required_space > pdf.h - 15:
+                         pdf.add_page()
+                    # END - KEEP TOGETHER LOGIC
+
                     status_text = step['status'].upper()
                     badge_bg = (40, 167, 69) if step['status'] == 'passed' else (220, 53, 69)
                     
@@ -2420,8 +2430,7 @@ def generate_evidence_report(context):
                             img_w = 110 
                             x_pos = (pdf.w - img_w) / 2
                             
-                            if pdf.get_y() + 65 > pdf.h - 15: 
-                                pdf.add_page()
+                            # (Check removido pois já validamos antes)
                             
                             pdf.image(step['screenshot'], x=x_pos, w=img_w)
                             pdf.ln(5) 
@@ -2429,7 +2438,7 @@ def generate_evidence_report(context):
                             pdf.cell(0, 5, f"[Erro ao inserir imagem]", 0, 1)
                     
                     pdf.ln(3) 
-                
+
                 pdf.ln(5)
                 pdf.set_draw_color(230, 230, 230)
                 pdf.line(10, pdf.get_y(), 200, pdf.get_y())
@@ -2479,6 +2488,12 @@ def generate_bug_report(context):
         for feature in context.pdf_data['features']:
             for scenario in feature['scenarios']:
                 if scenario['status'] == 'failed':
+                    # START - KEEP TOGETHER LOGIC
+                    # Estima altura do bloco de bug (Titulo + Passo + Erro + Imagem) -> Aprox 130
+                    if pdf.get_y() + 130 > pdf.h - 15:
+                        pdf.add_page()
+                    # END - KEEP TOGETHER LOGIC
+
                     # Título do Defeito
                     pdf.set_font('Arial', 'B', 14)
                     pdf.set_fill_color(248, 215, 218) # Rosa claro
@@ -2524,8 +2539,7 @@ def generate_bug_report(context):
                                 img_w = 140
                                 x_pos = (pdf.w - img_w) / 2
                                 
-                                if pdf.get_y() + 80 > pdf.h - 15: 
-                                    pdf.add_page()
+                                # (Check removido/redundante)
                                 
                                 pdf.image(failed_step['screenshot'], x=x_pos, w=img_w)
                                 pdf.ln(5)

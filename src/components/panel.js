@@ -42,9 +42,17 @@ export function renderPanelContent(panel) {
         <div class="gherkin-panel-header">
             <h3>GERADOR DE TESTES AUTOMATIZADOS EM PYTHON</h3>
             <div class="button-container-top">
-                <button id="gherkin-help" title="Ajuda / Manual" style="margin-right: 8px; width: auto; padding: 4px 12px; font-size: 12px; font-weight: bold; background-color: #e3f2fd; color: #0d47a1; border: 1px solid #90caf9; border-radius: 12px; cursor: pointer; transition: all 0.2s;">
+                <button id="gherkin-help" title="Ajuda / Manual" style="margin-right: 12px; width: auto; padding: 6px 14px; font-size: 13px; font-weight: 500; background-color: rgba(255,255,255,0.2); color: #fff; border: 1px solid rgba(255,255,255,0.3); border-radius: 20px; cursor: pointer; transition: all 0.2s;">
                     Manual
                 </button>
+                <div style="display: flex; gap: 6px; margin-right: 12px; align-items: center;">
+                    <button id="gherkin-undo" title="Desfazer (Voltar)" style="width: 30px; height: 30px; border: 1px solid rgba(255,255,255,0.3); background: ${store.historyIndex > 0 ? 'rgba(255,255,255,0.1)' : 'transparent'}; border-radius: 50%; color: white; display: flex; align-items: center; justify-content: center; cursor: ${store.historyIndex > 0 ? 'pointer' : 'not-allowed'}; opacity: ${store.historyIndex > 0 ? '1' : '0.3'}; transition: all 0.2s;" ${store.historyIndex > 0 ? '' : 'disabled'}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+                    </button>
+                    <button id="gherkin-redo" title="Refazer (Avançar)" style="width: 30px; height: 30px; border: 1px solid rgba(255,255,255,0.3); background: ${store.historyIndex < store.history.length - 1 ? 'rgba(255,255,255,0.1)' : 'transparent'}; border-radius: 50%; color: white; display: flex; align-items: center; justify-content: center; cursor: ${store.historyIndex < store.history.length - 1 ? 'pointer' : 'not-allowed'}; opacity: ${store.historyIndex < store.history.length - 1 ? '1' : '0.3'}; transition: all 0.2s;" ${store.historyIndex < store.history.length - 1 ? '' : 'disabled'}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>
+                    </button>
+                </div>
                 <button id="gherkin-reopen" title="Reabrir" style="display: none;">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="#28a745" viewBox="0 0 24 24"><path d="M3 3h6v2H5v4H3V3zm6 16H3v-6h2v4h4v2zm8-16v6h-2V5h-4V3h6zm-2 16v-4h2v6h-6v-2h4z"/></svg>
                 </button>
@@ -290,6 +298,20 @@ export function renderPanelContent(panel) {
         });
     }
 
+    const undoBtn = panel.querySelector('#gherkin-undo');
+    if (undoBtn) {
+        undoBtn.addEventListener('click', () => {
+            store.undo();
+        });
+    }
+
+    const redoBtn = panel.querySelector('#gherkin-redo');
+    if (redoBtn) {
+        redoBtn.addEventListener('click', () => {
+            store.redo();
+        });
+    }
+
     if (minimizeBtn) {
         minimizeBtn.addEventListener('click', () => {
             const content = panel.querySelector('.gherkin-content');
@@ -500,6 +522,14 @@ function attachFunctionalListeners(panel, store) {
     if (btnEndFeatureConfirm) {
         btnEndFeatureConfirm.addEventListener('click', () => {
             store.finishFeature();
+        });
+    }
+
+    // Add Manual Step Listener
+    const btnAddManualStep = panel.querySelector('#add-manual-step-btn');
+    if (btnAddManualStep) {
+        btnAddManualStep.addEventListener('click', () => {
+            createManualStepModal(store);
         });
     }
 
@@ -716,8 +746,12 @@ function renderLogs(container, interactions) {
                 <span class="gherkin-text-muted" style="margin-right: 4px; font-weight: 600;">${label}</span>
                 <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-primary);" title="${target}">${target}</span>
                 <span style="color: var(--text-secondary); font-style: italic; max-width: 60px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${value}</span>
-                <button class="gherkin-btn-icon remove-log" style="background: none; border: none; font-size: 1.1em; margin-left: 4px; cursor: pointer; color: #dc3545; opacity: 0.6;" title="Remover">×</button>
-            </div>
+                
+                <div style="display: flex; gap: 2px;">
+                     <button class="gherkin-btn-icon move-up" ${index === 0 ? 'disabled style="opacity:0.3"' : ''} style="background: none; border: none; font-size: 0.9em; cursor: pointer; color: #6c757d;" title="Mover para cima">⬆️</button>
+                     <button class="gherkin-btn-icon move-down" ${index === interactions.length - 1 ? 'disabled style="opacity:0.3"' : ''} style="background: none; border: none; font-size: 0.9em; cursor: pointer; color: #6c757d;" title="Mover para baixo">⬇️</button>
+                     <button class="gherkin-btn-icon remove-log" style="background: none; border: none; font-size: 1.1em; cursor: pointer; color: #dc3545; opacity: 0.7;" title="Remover">×</button>
+                </div>
             </div>
         `;
     }).join(''); // Ordem cronológica (sem reverse)
@@ -734,6 +768,25 @@ function renderLogs(container, interactions) {
             const index = parseInt(e.target.closest('.gherkin-log-item').dataset.index);
             const store = getStore();
             store.removeInteraction(index);
+        });
+    });
+
+    // Listeners para Mover Cima/Baixo
+    container.querySelectorAll('.move-up').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const index = parseInt(e.target.closest('.gherkin-log-item').dataset.index);
+            const store = getStore();
+            store.moveInteraction(index, index - 1);
+        });
+    });
+
+    container.querySelectorAll('.move-down').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const index = parseInt(e.target.closest('.gherkin-log-item').dataset.index);
+            const store = getStore();
+            store.moveInteraction(index, index + 1);
         });
     });
 
@@ -824,6 +877,7 @@ function renderLogs(container, interactions) {
         // Click normal (Esquerdo) - Agora abre o menu também
         item.addEventListener('click', (e) => {
             if (e.target.closest('.remove-log')) return; // Ignora se clicou no botão X
+            if (e.target.closest('.move-up') || e.target.closest('.move-down')) return; // Ignora botões de mover
             showInteractionMenu(e, interaction, index);
         });
 
@@ -832,5 +886,223 @@ function renderLogs(container, interactions) {
         item.addEventListener('contextmenu', (e) => {
             showInteractionMenu(e, interaction, index);
         });
+    });
+}
+
+// Modal para Adicionar Passo Manual
+function createManualStepModal(store, initialData = {}) {
+    // Remove existing modal if any
+    const existing = document.getElementById('gherkin-manual-modal');
+    if (existing) existing.remove();
+
+    const currentUrl = window.location.href;
+    const defaultAction = initialData.acao || 'clica';
+
+    const modal = document.createElement('div');
+    modal.id = 'gherkin-manual-modal';
+    modal.className = 'gherkin-modal-overlay';
+    modal.style.zIndex = '10001';
+
+    // HTML Estrutura Base
+    modal.innerHTML = `
+        <div class="gherkin-modal-content" style="max-width: 450px;">
+            <h3 class="gherkin-h3 gherkin-mb-md">Adicionar Passo Manual</h3>
+            
+            <div class="gherkin-mb-sm">
+                <label class="gherkin-label">Ação:</label>
+                <select id="manual-modal-action" class="gherkin-input">
+                    <option value="clica">Clicar</option>
+                    <option value="preenche">Preencher</option>
+                    <option value="seleciona">Selecionar</option>
+                    <option value="acessa_url">Acessar URL</option>
+                    <option value="espera_segundos">Esperar (segundos)</option>
+                    <option value="valida_existe">Validar que existe</option>
+                    <option value="valida_contem">Validar texto</option>
+                </select>
+            </div>
+
+            <div id="manual-modal-dynamic-fields">
+                <!-- Campos dinâmicos serão inseridos aqui -->
+            </div>
+
+            <div class="gherkin-flex-row gherkin-gap-sm gherkin-mt-auto">
+                <button id="manual-modal-cancel" class="gherkin-btn gherkin-btn-danger gherkin-flex-1">Cancelar</button>
+                <button id="manual-modal-save" class="gherkin-btn gherkin-btn-success gherkin-flex-1">Adicionar</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    const actionSelect = modal.querySelector('#manual-modal-action');
+    const dynamicContainer = modal.querySelector('#manual-modal-dynamic-fields');
+    const saveBtn = modal.querySelector('#manual-modal-save');
+    const cancelBtn = modal.querySelector('#manual-modal-cancel');
+
+    // Estado local do modal para manter dados enquanto troca de ação
+    let modalState = {
+        selector: initialData.selector || '',
+        value: initialData.value || '',
+        timeout: '5'
+    };
+
+    // Função para renderizar campos baseados na ação
+    const renderFields = (action) => {
+        let html = '';
+
+        if (['clica', 'preenche', 'seleciona', 'valida_existe', 'valida_contem'].includes(action)) {
+            // Campos de Seletor com botão de inspeção
+            html += `
+                <div class="gherkin-mb-sm">
+                    <label class="gherkin-label">Seletor / Elemento:</label>
+                    <div class="gherkin-flex-row gherkin-gap-xs">
+                        <input type="text" id="manual-modal-target" class="gherkin-input" value="${modalState.selector}" placeholder="Ex: #id ou .class">
+                        <button id="manual-modal-inspect" class="gherkin-btn gherkin-btn-warning" title="Inspecionar na página">🔍</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        if (['preenche', 'seleciona', 'valida_contem'].includes(action)) {
+            html += `
+                <div class="gherkin-mb-lg">
+                    <label class="gherkin-label">Valor / Texto:</label>
+                    <input type="text" id="manual-modal-value" class="gherkin-input" value="${modalState.value}" placeholder="Texto para preencher/validar">
+                </div>
+            `;
+        }
+
+        if (action === 'acessa_url') {
+            html += `
+                <div class="gherkin-mb-lg">
+                    <label class="gherkin-label">URL:</label>
+                    <div class="gherkin-flex-row gherkin-gap-xs">
+                        <input type="text" id="manual-modal-url" class="gherkin-input" value="${modalState.value || currentUrl}" placeholder="https://...">
+                        <button id="manual-modal-capture-url" class="gherkin-btn gherkin-btn-warning" title="Capturar URL atual">🔗</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        if (action === 'espera_segundos') {
+            html += `
+                <div class="gherkin-mb-lg">
+                    <label class="gherkin-label">Segundos:</label>
+                    <input type="number" id="manual-modal-seconds" class="gherkin-input" value="${modalState.timeout}" min="1" max="60">
+                </div>
+            `;
+        }
+
+        dynamicContainer.innerHTML = html;
+        setupDynamicListeners(action);
+    };
+
+    // Configurar listeners dos campos dinâmicos
+    const setupDynamicListeners = (action) => {
+        const targetInput = modal.querySelector('#manual-modal-target');
+        const valueInput = modal.querySelector('#manual-modal-value');
+        const urlInput = modal.querySelector('#manual-modal-url');
+        const secondsInput = modal.querySelector('#manual-modal-seconds');
+        const inspectBtn = modal.querySelector('#manual-modal-inspect');
+        const captureUrlBtn = modal.querySelector('#manual-modal-capture-url');
+
+        // Atualizar estado local ao digitar
+        if (targetInput) targetInput.addEventListener('input', (e) => modalState.selector = e.target.value);
+        if (valueInput) valueInput.addEventListener('input', (e) => modalState.value = e.target.value);
+        if (urlInput) urlInput.addEventListener('input', (e) => modalState.value = e.target.value);
+        if (secondsInput) secondsInput.addEventListener('input', (e) => modalState.timeout = e.target.value);
+
+        // Botão Inspecionar
+        if (inspectBtn) {
+            inspectBtn.addEventListener('click', () => {
+                // Salvar estado atual e iniciar inspeção
+                modal.remove(); // Remove modal temporariamente
+                store.startManualInspection();
+
+                // O store vai gerenciar o retorno. Precisamos de um listener temporário no store?
+                // Ou o createManualStepModal será rechamado?
+                // Melhor abordagem: subscribe no store para quando inspection terminar.
+                const unsubscribe = store.subscribe((newState, oldState) => {
+                    if (oldState.isInspecting && !newState.isInspecting && newState.manualInspectionResult) {
+                        unsubscribe(); // Remove listener
+                        // Reabre modal com os dados capturados
+                        createManualStepModal(store, {
+                            acao: action,
+                            selector: newState.manualInspectionResult.selector,
+                            value: modalState.value, // Mantém valor anterior
+                            tagName: newState.manualInspectionResult.tagName
+                        });
+                    }
+                });
+            });
+        }
+
+        // Botão Capturar URL
+        if (captureUrlBtn) {
+            captureUrlBtn.addEventListener('click', () => {
+                if (urlInput) {
+                    urlInput.value = window.location.href;
+                    modalState.value = window.location.href;
+                }
+            });
+        }
+    };
+
+    // Inicialização
+    actionSelect.value = defaultAction;
+    renderFields(defaultAction);
+
+    // Mudança de ação
+    actionSelect.addEventListener('change', (e) => {
+        const newAction = e.target.value;
+        renderFields(newAction);
+    });
+
+    // Cancelar
+    cancelBtn.addEventListener('click', () => {
+        modal.remove();
+    });
+
+    // Salvar
+    saveBtn.addEventListener('click', () => {
+        const action = actionSelect.value;
+        let interaction = {
+            acao: action,
+            timestamp: Date.now()
+        };
+
+        if (action === 'espera_segundos') {
+            const seconds = modalState.timeout || '5';
+            interaction.valorPreenchido = seconds;
+            interaction.step = 'When';
+            interaction.nomeElemento = `esperar ${seconds}s`;
+        } else if (action === 'acessa_url') {
+            const url = modalState.value || currentUrl;
+            interaction.url = url;
+            interaction.valorPreenchido = url;
+            interaction.step = 'Given';
+            interaction.nomeElemento = 'página';
+        } else {
+            // Ações de elemento
+            if (!modalState.selector) {
+                alert('Informe o Seletor do elemento.');
+                return;
+            }
+
+            interaction.selector = modalState.selector;
+            interaction.nomeElemento = modalState.selector;
+            interaction.valorPreenchido = modalState.value;
+            interaction.step = action.startsWith('valida_') ? 'Then' : 'When';
+
+            // Simple inference
+            if (interaction.selector.startsWith('/') || interaction.selector.startsWith('(')) {
+                interaction.xpath = interaction.selector;
+            } else {
+                interaction.cssSelector = interaction.selector;
+            }
+        }
+
+        store.addInteraction(interaction);
+        modal.remove();
     });
 }

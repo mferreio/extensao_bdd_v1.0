@@ -952,6 +952,39 @@ label {
     .gherkin-menu-item.danger:hover {
         background-color: #fff5f5;
     }
-`;
+      /* Modal Styles */
+    .gherkin-modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10001;
+        backdrop-filter: blur(4px);
+    }
+
+    .gherkin-modal-content {
+        background: var(--bg-primary);
+        padding: 24px;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-xl);
+        width: 90%;
+        max-width: 400px;
+        border: 1px solid var(--border-color);
+        animation: gherkinFadeIn 0.3s ease-out;
+    }
+    
+    .gherkin-h3 {
+        margin: 0;
+        color: var(--text-primary);
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+  `;
   document.head.appendChild(style);
 }
+
