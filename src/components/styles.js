@@ -181,14 +181,14 @@ export function injectGherkinStyles() {
 }
 
 .gherkin-panel-header {
-  background: var(--color-primary-gradient);
-  color: white;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
   padding: var(--spacing-md) var(--spacing-lg);
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-shrink: 0;
-  box-shadow: var(--shadow-sm);
+  border-bottom: 2px solid var(--color-primary);
 }
 
 .gherkin-panel-header h3 {
@@ -952,37 +952,830 @@ label {
     .gherkin-menu-item.danger:hover {
         background-color: #fff5f5;
     }
-      /* Modal Styles */
-    .gherkin-modal-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background: rgba(0, 0, 0, 0.5);
+
+
+    /* ========================================
+       RECORDING LAYOUT - Wide Mode
+       ======================================== */
+
+    /* Panel wide mode override */
+    .gherkin-panel--wide {
+        width: 900px !important;
+        max-width: 95vw !important;
+        min-width: 700px !important;
+        max-height: 85vh !important;
+        /* Remover top e right !important para permitir arrastar vertical e horizontalmente */
+    }
+
+    /* Estado minimizado (funciona bem com o wide onde temos a toolbar) */
+    .gherkin-panel--minimized {
+        height: auto !important;
+        min-height: auto !important;
+    }
+    
+    .gherkin-panel--minimized .gherkin-recording-layout,
+    .gherkin-panel--minimized .gherkin-content {
+        display: none !important;
+    }
+
+    /* Toolbar */
+    .gherkin-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: #2c3e50;
+        color: #fff;
+        padding: 8px 16px;
+        font-size: 0.85rem;
+        gap: 12px;
+        flex-wrap: wrap;
+        flex-shrink: 0;
+    }
+    .gherkin-toolbar-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-shrink: 0;
+    }
+    .gherkin-toolbar-brand {
+        font-weight: 700;
+        font-size: 1rem;
+        letter-spacing: -0.02em;
+    }
+    .gherkin-toolbar-separator {
+        color: rgba(255,255,255,0.3);
+        font-size: 0.9em;
+    }
+    .gherkin-toolbar-info {
+        font-size: 0.85em;
+        color: rgba(255,255,255,0.85);
+    }
+    .gherkin-toolbar-info strong {
+        color: #fff;
+    }
+    .gherkin-toolbar-center {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    .gherkin-toolbar-right {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .gherkin-toolbar-meta {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .gherkin-toolbar-badge {
+        background: rgba(255,255,255,0.15);
+        padding: 3px 10px;
+        border-radius: 12px;
+        font-size: 0.8em;
+        font-weight: 600;
+    }
+    .gherkin-toolbar-badge--count {
+        color: #f39c12;
+    }
+
+    /* Toolbar Buttons */
+    .gherkin-toolbar-btn {
+        border: 1px solid rgba(255,255,255,0.2);
+        border-radius: 6px;
+        padding: 5px 14px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        cursor: pointer;
+        color: #fff;
+        background: rgba(255,255,255,0.1);
+        transition: all 0.2s;
+        white-space: nowrap;
+    }
+    .gherkin-toolbar-btn:hover {
+        background: rgba(255,255,255,0.2);
+        transform: translateY(-1px);
+    }
+    .gherkin-toolbar-btn--success {
+        background: #27ae60;
+        border-color: #27ae60;
+    }
+    .gherkin-toolbar-btn--success:hover {
+        background: #219a52;
+    }
+    .gherkin-toolbar-btn--outline {
+        background: transparent;
+        border-color: rgba(255,255,255,0.4);
+    }
+    .gherkin-toolbar-btn--recording {
+        background: #e74c3c;
+        border-color: #e74c3c;
+        animation: recording-pulse 2s infinite;
+    }
+    .gherkin-toolbar-btn--warning {
+        background: #e67e22;
+        border-color: #e67e22;
+    }
+    .gherkin-toolbar-btn--export {
+        background: var(--color-primary-gradient);
+        border-color: var(--color-primary);
+    }
+    .gherkin-toolbar-btn--icon {
+        width: 32px;
+        height: 32px;
+        padding: 0;
         display: flex;
         align-items: center;
         justify-content: center;
-        z-index: 10001;
-        backdrop-filter: blur(4px);
+        border-radius: 50%;
+        font-size: 0.9rem;
+    }
+    .gherkin-toolbar-btn--close:hover {
+        background: #e74c3c;
     }
 
-    .gherkin-modal-content {
-        background: var(--bg-primary);
-        padding: 24px;
-        border-radius: var(--radius-lg);
-        box-shadow: var(--shadow-xl);
-        width: 90%;
-        max-width: 400px;
+    /* Recording Layout Grid */
+    .gherkin-recording-layout {
+        display: grid;
+        grid-template-columns: 1fr 380px;
+        grid-template-rows: 1fr auto;
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    /* Scenario Editor (Left Column) */
+    .gherkin-scenario-editor {
+        grid-row: 1;
+        grid-column: 1;
+        display: flex;
+        flex-direction: column;
+        border-right: 1px solid var(--border-color);
+        overflow: hidden;
+    }
+    .gherkin-scenario-editor__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border-color);
+        background: var(--bg-secondary);
+    }
+    .gherkin-scenario-editor__header h4 {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+    .gherkin-scenario-editor__header-actions {
+        display: flex;
+        gap: 4px;
+    }
+    .gherkin-scenario-editor__header-actions button {
+        background: none;
         border: 1px solid var(--border-color);
-        animation: gherkinFadeIn 0.3s ease-out;
+        border-radius: 4px;
+        width: 28px;
+        height: 28px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.85em;
+        color: var(--text-secondary);
+        transition: all 0.15s;
+    }
+    .gherkin-scenario-editor__header-actions button:hover {
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+    }
+
+    /* Step Items (BDD steps) */
+    .gherkin-step-list {
+        flex: 1;
+        overflow-y: auto;
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        max-height: 540px;
+        overflow-x: hidden;
+    }
+    .gherkin-step-list::-webkit-scrollbar { width: 6px; }
+    .gherkin-step-list::-webkit-scrollbar-track { background: transparent; }
+    .gherkin-step-list::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 4px; }
+    [data-theme="dark"] .gherkin-step-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); }
+    
+    .gherkin-step-item.is-dragging {
+        opacity: 0.5;
+        transform: scale(0.98);
+        border: 2px dashed var(--color-primary) !important;
+    }
+    .gherkin-step-item.drag-over-top {
+        border-top: 2px solid var(--color-primary) !important;
+    }
+    .gherkin-step-item.drag-over-bottom {
+        border-bottom: 2px solid var(--color-primary) !important;
+    }
+    .gherkin-step-item {
+        display: flex;
+        align-items: center;
+        padding: 10px 12px;
+        border-radius: 8px;
+        border-left: 4px solid #ccc;
+        background: var(--bg-primary);
+        box-shadow: var(--shadow-xs);
+        cursor: pointer;
+        transition: all 0.15s;
+        gap: 8px;
+        font-size: 0.88rem;
+    }
+    .gherkin-step-item:hover {
+        box-shadow: var(--shadow-sm);
+        transform: translateX(2px);
+    }
+    .gherkin-step-item--selected {
+        box-shadow: 0 0 0 2px var(--color-primary-light), var(--shadow-sm);
+    }
+    .gherkin-step-item--given  { border-left-color: #27ae60; background: #f0faf4; }
+    .gherkin-step-item--when   { border-left-color: #e67e22; background: #fef8f0; }
+    .gherkin-step-item--and    { border-left-color: #3498db; background: #f0f7fe; }
+    .gherkin-step-item--then   { border-left-color: #2ecc71; background: #f0fdf4; }
+
+    [data-theme="dark"] .gherkin-step-item--given  { background: rgba(39, 174, 96, 0.08); }
+    [data-theme="dark"] .gherkin-step-item--when   { background: rgba(230, 126, 34, 0.08); }
+    [data-theme="dark"] .gherkin-step-item--and    { background: rgba(52, 152, 219, 0.08); }
+    [data-theme="dark"] .gherkin-step-item--then   { background: rgba(46, 204, 113, 0.08); }
+
+    .gherkin-step-item__keyword {
+        font-weight: 700;
+        font-size: 0.85em;
+        min-width: 42px;
+    }
+    .gherkin-step-item--given .gherkin-step-item__keyword { color: #27ae60; }
+    .gherkin-step-item--when .gherkin-step-item__keyword  { color: #e67e22; }
+    .gherkin-step-item--and .gherkin-step-item__keyword   { color: #3498db; }
+    .gherkin-step-item--then .gherkin-step-item__keyword  { color: #2ecc71; }
+
+    .gherkin-step-item__text {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: var(--text-primary);
+    }
+    .gherkin-step-item__text em {
+        color: var(--color-primary);
+        font-style: normal;
+        font-weight: 600;
+    }
+    .gherkin-step-item__actions {
+        display: flex;
+        gap: 2px;
+        opacity: 0;
+        transition: opacity 0.15s;
+    }
+    .gherkin-step-item:hover .gherkin-step-item__actions {
+        opacity: 1;
     }
     
-    .gherkin-h3 {
-        margin: 0;
+    /* Reorder Mode Toggles */
+    .gherkin-step-item__actions .reorder-only { display: none; }
+    .gherkin-step-list.is-reordering .gherkin-step-item__actions .reorder-only { display: inline-block; }
+    .gherkin-step-list.is-reordering .gherkin-step-item__actions .default-only { display: none; }
+    .gherkin-step-list.is-reordering .gherkin-step-item__actions { opacity: 1 !important; }
+
+    .gherkin-step-item__actions button {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 2px 4px;
+        font-size: 0.9em;
+        color: var(--text-secondary);
+        border-radius: 4px;
+        transition: all 0.15s;
+    }
+    .gherkin-step-item__actions button:hover {
+        background: var(--bg-tertiary);
         color: var(--text-primary);
+    }
+    .gherkin-step-item__actions button.danger:hover {
+        color: #e74c3c;
+        background: #ffeaea;
+    }
+
+    /* Scenario Editor Footer */
+    .gherkin-scenario-editor__footer {
+        padding: 10px 16px;
+        border-top: 1px solid var(--border-color);
+        background: var(--bg-secondary);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .gherkin-scenario-editor__footer select {
+        padding: 4px 8px;
+        font-size: 0.82rem;
+        border-radius: 4px;
+        border: 1px solid var(--border-color);
+    }
+
+    /* Step Editor Sidebar (Right Column) */
+    .gherkin-step-editor {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        background: var(--bg-primary);
+    }
+    .gherkin-step-editor--empty {
+        align-items: center;
+        justify-content: center;
+    }
+    .gherkin-step-editor__placeholder {
+        text-align: center;
+        color: var(--text-tertiary);
+        padding: 40px;
+    }
+    .gherkin-step-editor__placeholder p {
+        margin-top: 8px;
+        font-size: 0.9rem;
+    }
+    .gherkin-step-editor__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border-color);
+        background: var(--bg-secondary);
+    }
+    .gherkin-step-editor__header h4 {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+    .gherkin-step-editor__close {
+        background: none;
+        border: none;
         font-size: 1.1rem;
+        cursor: pointer;
+        color: var(--text-secondary);
+        padding: 4px;
+        border-radius: 4px;
+    }
+    .gherkin-step-editor__close:hover {
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+    }
+    .gherkin-step-editor__body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    .gherkin-step-editor__field {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+    .gherkin-step-editor__field label {
+        font-size: 0.85rem;
         font-weight: 600;
+        color: var(--text-secondary);
+    }
+    .gherkin-step-editor__field input,
+    .gherkin-step-editor__field select {
+        padding: 8px 10px;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        font-size: 0.9rem;
+        background: var(--bg-primary);
+        width: 100%;
+        box-sizing: border-box;
+        max-width: 100%;
+        color: var(--text-primary);
+    }
+    .gherkin-step-editor__field select {
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+    .gherkin-step-editor__divider {
+        height: 1px;
+        background: var(--border-color);
+        margin: 4px 0;
+    }
+    .gherkin-step-editor__section label {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        margin-bottom: 8px;
+        display: block;
+    }
+    .gherkin-step-editor__footer {
+        padding: 12px 16px;
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        background: var(--bg-secondary);
+    }
+
+    /* XPath Options */
+    .gherkin-xpath-options {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+    .gherkin-xpath-option {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px;
+        border-radius: 6px;
+        border: 1px solid var(--border-color);
+        cursor: pointer;
+        font-size: 0.82rem;
+        transition: all 0.15s;
+        background: var(--bg-primary);
+    }
+    .gherkin-xpath-option:hover {
+        border-color: var(--color-primary-light);
+        background: rgba(59, 130, 246, 0.04);
+    }
+    .gherkin-xpath-option--recommended {
+        border-color: #27ae60;
+        background: #f0faf4;
+    }
+    .gherkin-xpath-option input[type="radio"] {
+        display: none;
+    }
+    .gherkin-xpath-option__check {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        border: 2px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.7em;
+        color: transparent;
+        flex-shrink: 0;
+        transition: all 0.15s;
+    }
+    .gherkin-xpath-option input[type="radio"]:checked ~ .gherkin-xpath-option__check {
+        background: #27ae60;
+        border-color: #27ae60;
+        color: #fff;
+    }
+    .gherkin-xpath-option__text {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-family: var(--font-mono);
+    }
+    .gherkin-xpath-option__actions {
+        display: flex;
+        gap: 2px;
+        margin-left: auto;
+        opacity: 0.6;
+        transition: opacity 0.2s;
+    }
+    .gherkin-xpath-option:hover .gherkin-xpath-option__actions {
+        opacity: 1;
+    }
+    .gherkin-btn-icon {
+        flex-shrink: 0;
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: transparent;
+        color: var(--text-secondary);
+        border: none;
+        transition: all 0.15s;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+    .gherkin-btn-icon:hover {
+        background: var(--border-color);
+        color: var(--color-primary-dark);
+    }
+    .gherkin-xpath-custom-label {
+        font-size: 0.82rem !important;
+        color: var(--color-primary) !important;
+        cursor: pointer;
+    }
+    .gherkin-xpath-custom-label em {
+        color: var(--color-primary-light);
+    }
+
+    /* Code Preview */
+    .gherkin-code-preview {
+        background: #2c3e50;
+        border-radius: 8px;
+        padding: 10px 14px;
+        margin-top: 8px;
+    }
+    .gherkin-code-preview code {
+        color: #ecf0f1;
+        font-family: var(--font-mono);
+        font-size: 0.82rem;
+        word-break: break-all;
+    }
+
+    /* Element Details (Below Scenario Editor) */
+    .gherkin-element-details {
+        padding: 12px 16px;
+    }
+    .gherkin-element-details__title {
+        margin: 0 0 10px 0;
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+    .gherkin-element-details__grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+    }
+    .gherkin-element-details__field {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .gherkin-element-details__label {
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        min-width: 50px;
+    }
+    .gherkin-element-details__input {
+        flex: 1;
+        padding: 6px 10px !important;
+        font-size: 0.82rem !important;
+        border: 1px solid transparent !important;
+        border-radius: 6px !important;
+        background: var(--bg-secondary) !important;
+        color: var(--text-primary);
+        font-family: var(--font-mono);
+        transition: all 0.2s;
+    }
+    .gherkin-element-details__input:focus {
+        outline: none !important;
+        border-color: var(--color-primary-light) !important;
+        background: var(--bg-primary) !important;
+    }
+    .gherkin-element-details__code {
+        background: #2c3e50;
+        border-radius: 8px;
+        padding: 8px 12px;
+        margin-top: 10px;
+        display: inline-block;
+    }
+    .gherkin-element-details__code code {
+        color: #ecf0f1;
+        font-family: var(--font-mono);
+        font-size: 0.8rem;
+    }
+
+    /* Element Details Bottom Section */
+    .gherkin-element-details-container {
+        grid-column: 1;
+        grid-row: 2;
+        border-top: 1px solid var(--border-color);
+        background: var(--bg-secondary);
+    }
+
+    /* Step Editor Container (spans right column) */
+    .gherkin-step-editor-container {
+        grid-column: 2;
+        grid-row: 1 / 3;
+        border-left: 1px solid var(--border-color);
+        overflow-y: auto;
+    }
+
+    /* Minimized state */
+    .gherkin-panel--minimized .gherkin-recording-layout,
+    .gherkin-panel--minimized .gherkin-content,
+    .gherkin-panel--minimized #gherkin-footer {
+        display: none !important;
+    }
+
+    /* Responsive - Recording Layout */
+    @media (max-width: 900px) {
+        .gherkin-panel--wide {
+            min-width: auto !important;
+            width: calc(100vw - 20px) !important;
+        }
+        .gherkin-recording-layout {
+            grid-template-columns: 1fr;
+            grid-template-rows: 1fr auto;
+        }
+        .gherkin-step-editor-container {
+            grid-column: 1;
+            grid-row: auto;
+            border-left: none;
+            border-top: 1px solid var(--border-color);
+            max-height: 300px;
+        }
+        .gherkin-toolbar-center {
+            order: 3;
+            width: 100%;
+            justify-content: center;
+        }
+    }
+
+    /* Modificadores de Estado de Replay (Dry-Run Nativo) */
+    .gherkin-step-item.is-playing {
+        border-left: 6px solid var(--color-warning) !important;
+        background-color: rgba(251, 191, 36, 0.1) !important;
+        animation: gherkinPulsePlay 1.5s infinite;
+    }
+    .gherkin-step-item.is-success {
+        border-left-color: var(--color-success) !important;
+        opacity: 0.8;
+    }
+    .gherkin-step-item.is-error {
+        border-left: 6px solid var(--color-danger) !important;
+        background-color: rgba(248, 113, 113, 0.1) !important;
+    }
+
+    @keyframes gherkinPulsePlay {
+        0% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.4); }
+        70% { box-shadow: 0 0 0 6px rgba(251, 191, 36, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0); }
+    }
+
+    /* XPath Live Validation UI */
+    input.gherkin-xpath-valid {
+        border-color: var(--color-success) !important;
+        background-color: rgba(46, 204, 113, 0.05) !important;
+        box-shadow: 0 0 0 2px rgba(46, 204, 113, 0.2) !important;
+    }
+    
+    input.gherkin-xpath-invalid {
+        border-color: var(--color-danger) !important;
+        background-color: rgba(231, 76, 60, 0.05) !important;
+        box-shadow: 0 0 0 2px rgba(231, 76, 60, 0.2) !important;
+    }
+    
+    /* Destaque Element Spotlight no DOM Original */
+    .gherkin-spotlight {
+        outline: 3px solid var(--color-primary) !important;
+        outline-offset: 2px !important;
+        background-color: rgba(52, 152, 219, 0.2) !important;
+        box-shadow: 0 0 10px rgba(52, 152, 219, 0.6) !important;
+        transition: all 0.2s ease-in-out !important;
+        z-index: 999999 !important;
+    }
+
+    /* Replay Progress Bar */
+    .gherkin-replay-progress {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        margin-bottom: 8px;
+        border-radius: 8px;
+        font-size: 0.82rem;
+    }
+    .gherkin-replay-progress--running {
+        flex-direction: column;
+        gap: 6px;
+        background: rgba(251, 191, 36, 0.1);
+        border: 1px solid rgba(251, 191, 36, 0.3);
+    }
+    .gherkin-replay-progress__bar-container {
+        width: 100%;
+        height: 6px;
+        background: var(--border-color);
+        border-radius: 3px;
+        overflow: hidden;
+    }
+    .gherkin-replay-progress__bar {
+        height: 100%;
+        background: var(--color-warning);
+        border-radius: 3px;
+        transition: width 0.3s ease;
+    }
+    .gherkin-replay-progress__info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        flex: 1;
+        min-width: 0;
+    }
+    .gherkin-replay-progress__info strong {
+        font-size: 0.85rem;
+    }
+    .gherkin-replay-progress__info span {
+        font-size: 0.78rem;
+        color: var(--text-secondary);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .gherkin-replay-progress__icon {
+        font-size: 1.2em;
+        flex-shrink: 0;
+    }
+    .gherkin-replay-progress--success {
+        background: rgba(46, 204, 113, 0.1);
+        border: 1px solid rgba(46, 204, 113, 0.3);
+    }
+    .gherkin-replay-progress--error {
+        background: rgba(231, 76, 60, 0.1);
+        border: 1px solid rgba(231, 76, 60, 0.3);
+    }
+
+    /* Replay Config Modal */
+    .gherkin-replay-config-overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(0,0,0,0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 100;
+        border-radius: 12px;
+    }
+    .gherkin-replay-config {
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        padding: 20px;
+        width: 280px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    }
+    .gherkin-replay-config__title {
+        margin: 0 0 14px 0;
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+    .gherkin-replay-config__field {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+    }
+    .gherkin-replay-config__field label {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        font-weight: 500;
+    }
+    .gherkin-replay-config__info {
+        margin-bottom: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+    .gherkin-replay-config__total {
+        padding: 8px 12px;
+        background: var(--bg-secondary);
+        border-radius: 6px;
+        font-size: 0.85rem;
+        color: var(--text-primary);
+        margin-bottom: 14px;
+        text-align: center;
+    }
+    .gherkin-replay-config__actions {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+    }
+
+    /* Bulk Paste */
+    .gherkin-bulk-textarea {
+        width: 100%;
+        resize: vertical;
+        padding: 8px 10px;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background: var(--bg-secondary);
+        color: var(--text-primary);
+        font-family: var(--font-mono);
+        font-size: 0.82rem;
+        line-height: 1.5;
+        box-sizing: border-box;
+    }
+    .gherkin-bulk-textarea:focus {
+        outline: none;
+        border-color: var(--color-primary-light);
+    }
+    .gherkin-bulk-badge {
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--color-primary);
+        background: rgba(52, 152, 219, 0.1);
+        padding: 3px 8px;
+        border-radius: 10px;
     }
   `;
   document.head.appendChild(style);

@@ -6,6 +6,7 @@ import { handleClickEvent, handleInputEvent, handleBlurEvent, handleChangeEvent,
 import { getThemeManager } from './utils/theme.js';
 import { getCSSSelector, getRobustXPath, testSelectorInRealTime, highlightElements, removeAllHighlights } from './utils/dom.js';
 import { showFeedback } from '../utils.js';
+import { initReplayEngine } from './replay/replay-engine.js';
 
 // Variáveis de controle local
 let panel = null;
@@ -128,6 +129,9 @@ async function initializeExtension() {
 
     // Configura listeners de eventos de captura
     setupEventListeners();
+
+    // Inicializa Motor de Replay (Dry-Run Nativo)
+    initReplayEngine(store);
 }
 
 // Timer Loop

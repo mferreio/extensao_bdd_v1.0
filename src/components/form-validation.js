@@ -25,11 +25,7 @@ export class FormValidator {
 
     const labelEl = document.createElement('label');
     labelEl.htmlFor = id;
-    labelEl.style.cssText = `
-      font-weight: 600;
-      color: #333;
-      font-size: 14px;
-    `;
+    labelEl.className = 'gherkin-label';
     labelEl.textContent = label;
     if (required) {
       labelEl.innerHTML += ' <span aria-label="obrigatório">*</span>';
@@ -40,6 +36,7 @@ export class FormValidator {
       position: relative;
       display: flex;
       align-items: center;
+      width: 100%;
     `;
 
     const input = document.createElement('input');
@@ -47,16 +44,12 @@ export class FormValidator {
     input.type = 'text';
     input.placeholder = placeholder;
     input.required = required;
+    input.className = 'gherkin-input';
     input.setAttribute('role', 'textbox');
     input.setAttribute('aria-required', required.toString());
     input.setAttribute('aria-label', label);
     input.style.cssText = `
-      width: 100%;
-      padding: 10px 12px 10px 40px;
-      border: 2px solid #DDD;
-      border-radius: 6px;
-      font-size: 14px;
-      transition: border-color 0.2s;
+      padding-left: 40px;
     `;
 
     const statusIcon = document.createElement('span');
@@ -95,24 +88,24 @@ export class FormValidator {
       const isValid = validate(value);
 
       if (isValid) {
-        input.style.borderColor = '#28A745';
+        input.style.borderColor = 'var(--color-success, #28A745)';
         statusIcon.innerHTML = getIcon('success');
-        statusIcon.style.color = '#28A745';
+        statusIcon.style.color = 'var(--color-success, #28A745)';
         statusIcon.style.display = 'flex';
         errorMsg.style.display = 'none';
         input.setAttribute('aria-invalid', 'false');
         onValid?.(value);
       } else if (value) {
-        input.style.borderColor = '#DC3545';
+        input.style.borderColor = 'var(--color-danger, #DC3545)';
         statusIcon.innerHTML = getIcon('error');
-        statusIcon.style.color = '#DC3545';
+        statusIcon.style.color = 'var(--color-danger, #DC3545)';
         statusIcon.style.display = 'flex';
         errorMsg.textContent = errorMessage;
         errorMsg.style.display = 'block';
         input.setAttribute('aria-invalid', 'true');
         onInvalid?.(value);
       } else {
-        input.style.borderColor = '#DDD';
+        input.style.borderColor = 'var(--border-color, #DDD)';
         statusIcon.style.display = 'none';
         errorMsg.style.display = 'none';
         input.setAttribute('aria-invalid', 'false');

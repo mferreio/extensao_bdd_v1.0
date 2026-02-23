@@ -58,6 +58,20 @@ function isExtensionElement(target) {
 function processAndAddInteraction(interaction) {
     const store = getStore();
     store.addInteraction(interaction);
+
+    try {
+        chrome.runtime.sendMessage({ action: 'CAPTURE_SCREENSHOT' }, (response) => {
+            if (response && response.dataUrl) {
+                const { interactions } = store.getState();
+                const index = interactions.findIndex(i => i.timestamp === interaction.timestamp);
+                if (index !== -1) {
+                    store.updateInteraction(index, { screenshot: response.dataUrl });
+                }
+            }
+        });
+    } catch (e) {
+        console.warn('Screenshot capture failed', e);
+    }
 }
 
 export function handleClickEvent(event) {

@@ -17,6 +17,19 @@ class Store {
       manualInspectionMode: false, // Modo de inspeção manual (para o modal)
       manualInspectionResult: null, // Resultado da inspeção manual
 
+      // Replay State
+      isReplaying: false,
+      replayStepIndex: 0,
+      replayStatus: 'idle', // 'idle', 'running', 'paused', 'success', 'error'
+      replayError: null,
+      replayConfig: {
+          repeatCount: 1,
+          currentRepeat: 0,
+          currentDataIndex: 0,
+          totalRuns: 0,
+          completedRuns: 0
+      },
+
       // Data
       features: [],
       currentFeature: null,
@@ -252,6 +265,61 @@ class Store {
 
     this.setState({
       interactions: recalculated
+    });
+  }
+
+  // ==========================================
+  // REPLAY ENGINE STATE MUTATORS
+  // ==========================================
+
+  startReplay() {
+    this.startReplayWithConfig({ repeatCount: 1 });
+  }
+
+  /**
+   * Iniciar replay com configuração de repetições e massa
+   * @param {{ repeatCount: number }} config
+   */
+  startReplayWithConfig(config) {
+    const { repeatCount = 1 } = config;
+    // Detectar massa de dados nos passos
+    const interactions = this.state.interactions || [];
+    let maxDataItems = 0;
+    for (const inter of interactions) {
+        if (Array.isArray(inter.bulkData) && inter.bulkData.length > 1) {
+            maxDataItems = Math.max(maxDataItems, inter.bulkData.length);
+        }
+    }
+    const dataRuns = maxDataItems > 0 ? maxDataItems : 1;
+    const totalRuns = repeatCount * dataRuns;
+
+    this.setState({
+      isReplaying: true,
+      replayStepIndex: 0,
+      replayStatus: 'running',
+      replayError: null,
+      replayConfig: {
+          repeatCount,
+          currentRepeat: 0,
+          currentDataIndex: 0,
+          totalRuns,
+          completedRuns: 0
+      }
+    });
+  }
+
+  stopReplay() {
+    this.setState({
+      isReplaying: false,
+      replayStepIndex: 0,
+      replayStatus: 'idle',
+      replayError: null
+    });
+  }
+
+  updateReplayState(options) {
+    this.setState({
+      ...options
     });
   }
 

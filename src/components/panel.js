@@ -2,7 +2,11 @@
 import { injectGherkinStyles } from './styles.js';
 import { FormValidator } from './form-validation.js';
 import { getStore } from '../state/store.js';
-import { showEditModal, showLogDetailsModal, showXPathModal, showPostExportModal, showAddStepModal } from './modals.js';
+import { showEditModal, showLogDetailsModal, showXPathModal, showPostExportModal, showAddStepModal, showScreenshotModal } from './modals.js';
+import { renderToolbar, attachToolbarListeners } from './toolbar.js';
+import { renderStepEditor, clearStepEditor } from './step-editor.js';
+import { renderElementDetails } from './element-details.js';
+import { renderReplayProgress, attachReplayProgressListeners } from './replay-progress.js';
 
 export function createPanel() {
     const oldPanel = document.getElementById('gherkin-panel');
@@ -36,8 +40,14 @@ export function renderPanelContent(panel) {
     const state = store.getState();
     const { panelState, isPaused, currentFeature, currentScenario, elapsedSeconds, interactions, features } = state;
 
+    // Gerenciar classe wide (apenas no estado gravando)
+    if (panelState !== 'gravando') {
+        panel.classList.remove('gherkin-panel--wide');
+    }
 
     let html = '';
+    // No estado gravando, a toolbar substitui o header padrão
+    if (panelState !== 'gravando') {
     html += `
         <div class="gherkin-panel-header">
             <h3>GERADOR DE TESTES AUTOMATIZADOS EM PYTHON</h3>
@@ -65,6 +75,7 @@ export function renderPanelContent(panel) {
             </div>
         </div>
     `;
+    } // end if (panelState !== 'gravando')
     if (panelState === 'feature') {
         html += `
             <div class="gherkin-content gherkin-decision-state">
@@ -86,82 +97,31 @@ export function renderPanelContent(panel) {
             </div>
         `;
     } else if (panelState === 'gravando') {
-        // Cálculo do tempo em XX:XX
-        const minutes = Math.floor((elapsedSeconds || 0) / 60);
-        const seconds = (elapsedSeconds || 0) % 60;
-        const timeText = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        // No estado gravando, usamos layout wide
+        panel.classList.add('gherkin-panel--wide');
 
         html += `
-            <div class="gherkin-content gherkin-flex-col gherkin-p-sm gherkin-gap-none" style="flex:1; min-height:0;">
-                <div class="gherkin-status-bar gherkin-flex-row gherkin-items-center gherkin-flex-wrap gherkin-gap-xs gherkin-mb-sm">
-                    <div class="gherkin-badge ${isPaused ? 'gherkin-badge-warning' : 'gherkin-badge-primary'}">
-                        <span>${isPaused ? '⏸️' : '🎬'}</span>
-                        <span id="gherkin-status">${isPaused ? 'Pausado' : 'Gravando'}</span>
+            <div id="gherkin-toolbar-container"></div>
+            <div class="gherkin-recording-layout">
+                <div class="gherkin-scenario-editor">
+                    <div class="gherkin-scenario-editor__header">
+                        <h4>Edição de Cenário</h4>
+                        <div class="gherkin-scenario-editor__header-actions">
+                            <button id="gherkin-inspect-toggle" title="${state.isInspecting ? 'Parar inspeção' : 'Inspecionar elemento'}">${state.isInspecting ? '🔍' : '🔎'}</button>
+                            <button id="scenario-settings" title="Configurações">⚙</button>
+                            <button id="scenario-import" title="Importar">⬇</button>
+                        </div>
                     </div>
-                    
-                    <span class="gherkin-text-muted">|</span>
-                    
-                    <div class="gherkin-flex gherkin-items-center gherkin-gap-xs gherkin-flex-1" style="min-width:80px; max-width:140px;" title="Feature: ${currentFeature ? currentFeature.name : 'Nenhuma'}">
-                        <span>📋</span>
-                        <span class="gherkin-text-muted" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:0.75rem;">${currentFeature ? currentFeature.name : 'Nenhuma'}</span>
-                    </div>
-                    
-                    <div class="gherkin-flex gherkin-items-center gherkin-gap-xs gherkin-flex-1" style="min-width:80px; max-width:140px;" title="Cenário: ${currentScenario ? currentScenario.name : 'Nenhum'}">
-                        <span>🎯</span>
-                        <span class="gherkin-text-muted" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:0.75rem;">${currentScenario ? currentScenario.name : 'Nenhum'}</span>
-                    </div>
-                    
-                    <span class="gherkin-text-muted">|</span>
-                    
-                    <div class="gherkin-badge gherkin-badge-primary" style="background: transparent; border: 1px solid var(--border-color);">
-                        <span>⏱️</span>
-                        <span id="gherkin-timer" style="font-weight:600; min-width:35px;">${timeText}</span>
-                    </div>
-                    
-                    <div class="gherkin-badge gherkin-badge-danger" style="background: transparent; border: 1px solid var(--border-color); color: var(--color-danger);">
-                        <span>📊</span>
-                        <span title="Número de ações registradas">${(interactions || []).length}</span>
+                    <div id="gherkin-step-list" class="gherkin-step-list"></div>
+                    <div class="gherkin-scenario-editor__footer">
+                        <button id="gherkin-add-step" class="gherkin-btn gherkin-btn-success" style="padding:4px 12px; font-size:0.82rem; height:30px;">+ Adicionar Passo</button>
+                        <button id="gherkin-reorder" class="gherkin-btn" style="padding:4px 10px; font-size:0.82rem; height:30px; background:#6c757d; color:#fff;">↕ Reordenar</button>
                     </div>
                 </div>
-
-                <div class="gherkin-flex-row gherkin-items-center gherkin-gap-xs gherkin-mb-sm">
-                    <div class="gherkin-flex gherkin-items-center gherkin-gap-xs">
-                        <button id="gherkin-inspect-toggle" class="gherkin-btn ${state.isInspecting ? 'gherkin-btn-danger' : 'gherkin-btn-info'}" style="padding:2px 8px; font-size:0.75rem; height:28px; background-color: ${state.isInspecting ? '' : '#17a2b8'}; color: #fff;" title="Ativar/desativar modo de inspeção">
-                            ${state.isInspecting ? '🔍 Parar' : '🔍 Inspecionar'}
-                        </button>
-                        <button id="gherkin-add-step" class="gherkin-btn gherkin-btn-success" style="padding:2px 8px; font-size:0.75rem; height:28px;" title="Adicionar passo manualmente">
-                            ➕ Adicionar Passo
-                        </button>
-                    </div>
-                </div>
-
-                <div id="gherkin-log" class="gherkin-flex-1 gherkin-mb-md" style="min-height:80px; max-height:380px; overflow-x:hidden; overflow-y:auto; display:flex; flex-direction:column;"></div>
-                
-                <div class="gherkin-actions-bar gherkin-flex-col gherkin-gap-sm gherkin-mt-auto gherkin-w-full">
-                    <!-- Botões principais de finalização -->
-                    <div class="gherkin-flex-row gherkin-gap-sm gherkin-w-full">
-                        <button id="end-cenario" class="gherkin-btn gherkin-btn-danger gherkin-flex-1 gherkin-text-center" style="height:40px; padding:10px;" title="Finalizar este cenário">
-                            <span style="font-size:1.1em; margin-right:4px;">✓</span> Finalizar Cenário
-                        </button>
-                        <button id="end-feature" class="gherkin-btn gherkin-flex-1 gherkin-text-center" style="background:#6c757d; color:#fff; height:40px; padding:10px;" disabled title="Encerrar feature completa e exportar">
-                            <span style="font-size:1.1em; margin-right:4px;">⏹</span> Finalizar Feature
-                        </button>
-                    </div>
-                    <!-- Botões secundários de ações -->
-                    <div class="gherkin-flex-row gherkin-gap-xs gherkin-w-full">
-                        <button id="gherkin-pause" class="gherkin-btn gherkin-btn-warning gherkin-flex-1" style="height:36px; padding:8px;">
-                            ${isPaused ? '▶ Continuar' : '⏸ Pausar'}
-                        </button>
-                        <button id="gherkin-clear" class="gherkin-btn gherkin-btn-danger gherkin-flex-1" style="height:36px; padding:8px;">
-                            🗑 Limpar
-                        </button>
-                        <button id="gherkin-export" class="gherkin-btn gherkin-btn-main gherkin-flex-1" style="height:36px; padding:8px;">
-                            📤 Exportar
-                        </button>
-                    </div>
-                </div>
-            </div >
-            `;
+                <div id="gherkin-step-editor-container" class="gherkin-step-editor-container"></div>
+                <div id="gherkin-element-details-container" class="gherkin-element-details-container"></div>
+            </div>
+        `;
     } else if (panelState === 'cenario_finalizado') {
         // Estado de Decisão: Cenário Finalizado
         html += `
@@ -223,6 +183,13 @@ export function renderPanelContent(panel) {
             </div>
             
             <div class="gherkin-flex-col gherkin-gap-sm gherkin-mt-auto">
+                <div class="gherkin-flex-col gherkin-gap-xs" style="margin-bottom: 8px;">
+                    <label class="gherkin-label" style="font-size: 0.9em;">Linguagem de Exportação:</label>
+                    <select id="export-language" class="gherkin-input">
+                        <option value="python" selected>🐍 Python + Behave</option>
+                        <option value="cypress">🟩 Node + Cypress</option>
+                    </select>
+                </div>
                 <button id="export-individual" class="gherkin-btn gherkin-btn-main gherkin-w-full" style="height: 38px;">
                     📄 Exportar Arquivos Individuais
                 </button>
@@ -347,11 +314,31 @@ export function renderPanelContent(panel) {
         // Verificar se o painel ainda existe
         if (!document.body.contains(panel)) return;
 
-        // Renderizar logs se o container existir (estado 'gravando')
+        // Renderizar componentes do layout de gravação
         if (panelState === 'gravando') {
-            const logContainer = panel.querySelector('#gherkin-log');
-            if (logContainer) {
-                renderLogs(logContainer, interactions);
+            // Toolbar
+            const toolbarContainer = panel.querySelector('#gherkin-toolbar-container');
+            if (toolbarContainer) {
+                renderToolbar(toolbarContainer);
+                attachToolbarListeners(toolbarContainer);
+            }
+
+            // Step list (dentro do scenario editor)
+            const stepListContainer = panel.querySelector('#gherkin-step-list');
+            if (stepListContainer) {
+                renderStepList(stepListContainer, interactions);
+            }
+
+            // Step editor sidebar (vazio por padrão)
+            const stepEditorContainer = panel.querySelector('#gherkin-step-editor-container');
+            if (stepEditorContainer) {
+                clearStepEditor(stepEditorContainer);
+            }
+
+            // Element details (vazio por padrão)
+            const elementDetailsContainer = panel.querySelector('#gherkin-element-details-container');
+            if (elementDetailsContainer) {
+                renderElementDetails(elementDetailsContainer, null);
             }
         }
 
@@ -477,6 +464,31 @@ function attachFunctionalListeners(panel, store) {
         });
     }
 
+    // Reorder Button Toggle
+    const reorderBtn = panel.querySelector('#gherkin-reorder');
+    if (reorderBtn) {
+        reorderBtn.addEventListener('click', () => {
+            const list = panel.querySelector('#gherkin-step-list');
+            if (list) {
+                list.classList.toggle('is-reordering');
+                const isReordering = list.classList.contains('is-reordering');
+                reorderBtn.style.background = isReordering ? 'var(--color-primary, #3b82f6)' : '#6c757d';
+                reorderBtn.style.color = '#fff';
+            }
+        });
+    }
+
+    // Settings Button
+    const settingsBtn = panel.querySelector('#scenario-settings');
+    if (settingsBtn) {
+        settingsBtn.addEventListener('click', () => {
+            // Se showScenarioSettingsModal não estiver importado no topo, podemos importar dinamicamente ou usar o que tem
+            import('./modals.js').then(mod => {
+                if(mod.showScenarioSettingsModal) mod.showScenarioSettingsModal(store);
+            }).catch(e => console.warn('showScenarioSettingsModal not found', e));
+        });
+    }
+
     // Export actions
     const exportBtn = panel.querySelector('#gherkin-export'); // In recording view
     if (exportBtn) {
@@ -552,6 +564,8 @@ function attachFunctionalListeners(panel, store) {
     const handleExport = async (useZip) => {
         const checkboxes = panel.querySelectorAll('input[name="feature-export"]:checked');
         const selectedIndexes = Array.from(checkboxes).map(cb => parseInt(cb.value));
+        const languageSelect = panel.querySelector('#export-language');
+        const exportLanguage = languageSelect ? languageSelect.value : 'python';
 
         if (selectedIndexes.length === 0) {
             alert('Selecione pelo menos uma feature para exportar.');
@@ -569,7 +583,8 @@ function attachFunctionalListeners(panel, store) {
             const result = await exportBridge.exportWithEnhancements(featuresToExport, {
                 useZip: useZip,
                 includeMetadata: true,
-                includeLogs: true
+                includeLogs: true,
+                language: exportLanguage
             });
 
             if (result) {
@@ -648,33 +663,54 @@ function attachFunctionalListeners(panel, store) {
     }
 }
 
+// Escopo global para handlers para permitir remoção garantida
+let _activeDragHandler = null;
+let _activeMoveHandler = null;
+let _activeUpHandler = null;
+
 export function makePanelDraggable(panel) {
     let isDragging = false;
     let offsetX, offsetY;
 
-    // Permite arrastar apenas pelo cabeçalho do painel
-    let header = panel.querySelector('.gherkin-panel-header');
-    if (!header) {
-        // fallback para o seletor antigo, caso não tenha sido atualizado
-        header = panel.querySelector('div[style*="display: flex"][style*="justify-content: space-between"]') || panel;
-    }
+    // Remove handlers antigos globais se existirem para evitar "fantasmas"
+    if (_activeDragHandler) panel.removeEventListener('mousedown', _activeDragHandler);
+    if (_activeMoveHandler) document.removeEventListener('mousemove', _activeMoveHandler);
+    if (_activeUpHandler) document.removeEventListener('mouseup', _activeUpHandler);
 
     function onMouseDown(event) {
-        // Só inicia o drag se for no header e não em botões
-        if (event.target.closest('.button-container-top')) return;
+        // Usa delegação de eventos: Verifica dinamicamente se o clique foi na área de Header/Toolbar
+        const isHeaderClick = event.target.closest('.gherkin-toolbar') || event.target.closest('.gherkin-panel-header');
+        
+        // Se o painel estiver minimizado e clicarmos em qualquer lugar nele que não seja botões, permitimos o drag
+        const isMinimized = panel.classList.contains('gherkin-panel--minimized');
+        
+        // Elementos interativos onde o drag NO DEVE iniciar
+        const isButton = event.target.closest('.button-container-top') || event.target.closest('.gherkin-toolbar-btn') || event.target.closest('.gherkin-step-editor__close') || event.target.closest('button');
+
+        if (!isHeaderClick && !isMinimized) return; // Se não for header nem minimizado, ignora
+        if (isButton) return; 
         if (event.button !== 0) return; // Apenas botão esquerdo
+
         isDragging = true;
-        offsetX = event.clientX - panel.getBoundingClientRect().left;
-        offsetY = event.clientY - panel.getBoundingClientRect().top;
+        
+        const rect = panel.getBoundingClientRect();
+        offsetX = event.clientX - rect.left;
+        offsetY = event.clientY - rect.top;
+        
         panel.style.cursor = 'move';
         document.body.style.userSelect = 'none';
+        
+        // Bloqueia a propagação para evitar que o HTML Drag&Drop nativo e outros scripts iniciem acidentalmente
+        if (event.target.tagName !== 'INPUT' && event.target.tagName !== 'TEXTAREA') {
+            event.preventDefault();
+        }
     }
 
     function onMouseMove(event) {
         if (!isDragging) return;
         panel.style.left = `${event.clientX - offsetX}px`;
         panel.style.top = `${event.clientY - offsetY}px`;
-        panel.style.right = 'auto';
+        panel.style.right = 'auto'; // Remove ancoragem direita (se houver) para evitar conflitos
         panel.style.bottom = 'auto';
     }
 
@@ -686,207 +722,303 @@ export function makePanelDraggable(panel) {
         }
     }
 
-    // Remove listeners antigos para evitar impedir múltiplos binds
-    // Verificação defensiva para evitar erro "removeEventListener is not a function"
-    if (header && typeof header.removeEventListener === 'function') {
-        try {
-            header.removeEventListener('mousedown', onMouseDown);
-        } catch (e) {
-            console.warn('Erro ao remover listener mousedown:', e);
-        }
-        header.addEventListener('mousedown', onMouseDown);
-    }
+    _activeDragHandler = onMouseDown;
+    _activeMoveHandler = onMouseMove;
+    _activeUpHandler = onMouseUp;
 
-    if (document && typeof document.removeEventListener === 'function') {
-        try {
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', onMouseUp);
-        } catch (e) {
-            console.warn('Erro ao remover listeners globais:', e);
-        }
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
-    }
+    panel.addEventListener('mousedown', _activeDragHandler);
+    document.addEventListener('mousemove', _activeMoveHandler);
+    document.addEventListener('mouseup', _activeUpHandler);
 }
 
 // Helper para renderizar logs
-function renderLogs(container, interactions) {
+/**
+ * Renderiza a lista de passos no formato de cards coloridos (novo layout)
+ */
+function renderStepList(container, interactions) {
     if (!container || !interactions) return;
 
-    // ACTION_META local para exibição
-    const ACTION_ICONS = {
-        'clica': '🖱️',
-        'altera': '✏️',
-        'preenche': '📝',
-        'seleciona': '📋',
-        'radio': '🔘',
-        'caixa': '☑️',
-        'navega': '🧭',
-        'login': '🔑',
-        'upload': '📁',
-        'acessa_url': '🌐'
-    };
+    const store = getStore();
+    const state = store.getState();
+    const { isReplaying, replayStepIndex, replayStatus } = state;
+
+    const escapeHtml = (str) => String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
     container.innerHTML = interactions.map((interaction, index) => {
-        const icon = ACTION_ICONS[interaction.acao] || (interaction.acao.startsWith('valida_') ? '✅' : (interaction.acao.startsWith('espera_') ? '⏳' : '🔹'));
+        const step = (interaction.step || 'Then').toLowerCase();
+        const stepLabel = interaction.step || 'Then';
         const label = interaction.acaoTexto || interaction.acao;
         const target = interaction.nomeElemento || interaction.selector || 'Elemento';
-        const value = interaction.valorPreenchido ? `"${interaction.valorPreenchido}"` : '';
-        const step = interaction.step || 'Then';
+        const value = interaction.valorPreenchido ? ` "${escapeHtml(interaction.valorPreenchido)}"` : '';
 
-        // Estilo step badge
-        let stepColor = '#17a2b8'; // Default And/Then
-        if (step === 'Given') stepColor = '#28a745';
-        if (step === 'When') stepColor = '#ffc107';
+        const screenshotNode = interaction.screenshot ? `
+            <div class="step-thumbnail" style="margin-top: 6px; cursor: pointer; display: inline-block;">
+                <img src="${interaction.screenshot}" style="height: 32px; border-radius: 4px; border: 1px solid var(--border-color);" title="Clique para ampliar" class="step-screenshot-img" />
+            </div>
+        ` : '';
+
+        let replayClass = '';
+        if (isReplaying) {
+            if (index < replayStepIndex) replayClass = ' is-success';
+            else if (index === replayStepIndex) {
+                replayClass = replayStatus === 'error' ? ' is-error' : ' is-playing';
+            }
+        }
 
         return `
-            <div data-index="${index}" class="gherkin-log-item gherkin-flex-row gherkin-items-center gherkin-p-xs" style="border-bottom: 1px solid #eee; font-size: 0.8rem; cursor: pointer;">
-                <span class="gherkin-badge" style="background-color: ${stepColor}; padding: 2px 4px; font-size: 0.7em; margin-right: 6px; min-width: 35px; text-align: center;">${step}</span>
-                <span style="font-size: 1.1em; margin-right: 6px;" title="${interaction.acao}">${icon}</span>
-                <span class="gherkin-text-muted" style="margin-right: 4px; font-weight: 600;">${label}</span>
-                <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-primary);" title="${target}">${target}</span>
-                <span style="color: var(--text-secondary); font-style: italic; max-width: 60px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${value}</span>
-                
-                <div style="display: flex; gap: 2px;">
-                     <button class="gherkin-btn-icon move-up" ${index === 0 ? 'disabled style="opacity:0.3"' : ''} style="background: none; border: none; font-size: 0.9em; cursor: pointer; color: #6c757d;" title="Mover para cima">⬆️</button>
-                     <button class="gherkin-btn-icon move-down" ${index === interactions.length - 1 ? 'disabled style="opacity:0.3"' : ''} style="background: none; border: none; font-size: 0.9em; cursor: pointer; color: #6c757d;" title="Mover para baixo">⬇️</button>
-                     <button class="gherkin-btn-icon remove-log" style="background: none; border: none; font-size: 1.1em; cursor: pointer; color: #dc3545; opacity: 0.7;" title="Remover">×</button>
+            <div data-index="${index}" class="gherkin-step-item gherkin-step-item--${step}${replayClass}" ${!isReplaying ? 'draggable="true"' : ''}>
+                <div class="gherkin-step-item__header" style="display: flex; flex-direction: column;">
+                    <div>
+                        <span class="gherkin-step-item__keyword">${stepLabel}</span>
+                        <span class="gherkin-step-item__text">
+                            ${escapeHtml(label)} <em>${escapeHtml(target)}</em>${value}
+                        </span>
+                    </div>
+                    ${screenshotNode}
                 </div>
+                ${!isReplaying ? `<div class="gherkin-step-item__actions">
+                    <button class="step-up reorder-only" title="Mover para cima">🔼</button>
+                    <button class="step-down reorder-only" title="Mover para baixo">🔽</button>
+                    <button class="step-edit default-only" title="Editar">✏️</button>
+                    <button class="step-xpath default-only" title="Ver XPath">🔍</button>
+                    <button class="step-details default-only" title="Detalhes">ℹ️</button>
+                    <button class="step-delete danger default-only" title="Excluir">🗑️</button>
+                </div>` : ''}
             </div>
         `;
-    }).join(''); // Ordem cronológica (sem reverse)
+    }).join('');
 
-    // Auto-scroll para a última interação (a mais recente fica visível)
+    // Prepend replay progress bar
+    const progressHtml = renderReplayProgress(state);
+    if (progressHtml) {
+        container.insertAdjacentHTML('afterbegin', progressHtml);
+        attachReplayProgressListeners(container);
+    }
+
+    // Auto-scroll: durante replay, acompanha o passo ativo
     setTimeout(() => {
-        container.scrollTop = container.scrollHeight;
+        if (isReplaying) {
+            const activeStep = container.querySelector('.gherkin-step-item.is-playing');
+            if (activeStep) activeStep.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        } else {
+            container.scrollTop = container.scrollHeight;
+        }
     }, 0);
 
-    // Adicionar listeners para remoção e edição
-    container.querySelectorAll('.remove-log').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const index = parseInt(e.target.closest('.gherkin-log-item').dataset.index);
-            const store = getStore();
-            store.removeInteraction(index);
-        });
-    });
+    // Attach listeners
 
-    // Listeners para Mover Cima/Baixo
-    container.querySelectorAll('.move-up').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const index = parseInt(e.target.closest('.gherkin-log-item').dataset.index);
-            const store = getStore();
-            store.moveInteraction(index, index - 1);
-        });
-    });
-
-    container.querySelectorAll('.move-down').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const index = parseInt(e.target.closest('.gherkin-log-item').dataset.index);
-            const store = getStore();
-            store.moveInteraction(index, index + 1);
-        });
-    });
-
-    // Helper para fechar menu de contexto
-    const closeContextMenu = () => {
-        const existingMenu = document.querySelector('.gherkin-context-menu');
-        if (existingMenu) existingMenu.remove();
-    };
-
-    // Função para mostrar o menu de interações (Unificado)
-    const showInteractionMenu = (e, interaction, index) => {
-        e.preventDefault();
-        e.stopPropagation(); // Impede propagação para evitar fechamento imediato
-        closeContextMenu();
-
-        const menu = document.createElement('div');
-        menu.className = 'gherkin-context-menu';
-        menu.style.left = `${e.clientX}px`;
-        menu.style.top = `${e.clientY}px`;
-
-        // Opção Editar
-        const editOption = document.createElement('div');
-        editOption.className = 'gherkin-menu-item';
-        editOption.innerHTML = '✏️ Editar';
-        editOption.onclick = () => {
-            showEditModal(index);
-            closeContextMenu();
-        };
-        menu.appendChild(editOption);
-
-        // Opção Ver Detalhes (XPath e outros)
-        const xpathOption = document.createElement('div');
-        xpathOption.className = 'gherkin-menu-item';
-        xpathOption.innerHTML = '🔍 Ver XPath/Seletores';
-        xpathOption.onclick = () => {
-            showXPathModal(interaction.xpath, interaction.selector || interaction.cssSelector, interaction);
-            closeContextMenu();
-        };
-        menu.appendChild(xpathOption);
-
-        // Opção Ver Detalhes Completo
-        const detailsOption = document.createElement('div');
-        detailsOption.className = 'gherkin-menu-item';
-        detailsOption.innerHTML = 'ℹ️ Detalhes do Log';
-        detailsOption.onclick = () => {
-            showLogDetailsModal(interaction);
-            closeContextMenu();
-        };
-        menu.appendChild(detailsOption);
-
-        // Separator
-        const separator = document.createElement('div');
-        separator.style.height = '1px';
-        separator.style.backgroundColor = '#ddd';
-        separator.style.margin = '4px 0';
-        menu.appendChild(separator);
-
-        // Opção Excluir
-        const deleteOption = document.createElement('div');
-        deleteOption.className = 'gherkin-menu-item danger';
-        deleteOption.innerHTML = '🗑️ Excluir';
-        deleteOption.onclick = () => {
-            const store = getStore();
-            store.removeInteraction(index);
-            closeContextMenu();
-        };
-        menu.appendChild(deleteOption);
-
-        document.body.appendChild(menu);
-
-        // Ajustar posição se sair da tela
-        const rect = menu.getBoundingClientRect();
-        if (rect.right > window.innerWidth) {
-            menu.style.left = `${window.innerWidth - rect.width - 10}px`;
-        }
-        if (rect.bottom > window.innerHeight) {
-            menu.style.top = `${window.innerHeight - rect.height - 10}px`;
-        }
-    };
-
-    // Fechar menu ao clicar em qualquer lugar
-    document.addEventListener('click', closeContextMenu);
-
-    container.querySelectorAll('.gherkin-log-item').forEach(item => {
+    container.querySelectorAll('.gherkin-step-item').forEach(item => {
         const index = parseInt(item.dataset.index);
         const interaction = interactions[index];
+        if (!interaction) return;
 
-        // Click normal (Esquerdo) - Agora abre o menu também
+        // Native Drag and Drop Logic
+        if (!isReplaying) {
+            item.addEventListener('dragstart', (e) => {
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', index.toString());
+                setTimeout(() => item.classList.add('is-dragging'), 0);
+            });
+
+            item.addEventListener('dragend', () => {
+                item.classList.remove('is-dragging');
+                container.querySelectorAll('.gherkin-step-item').forEach(el => {
+                    el.classList.remove('drag-over-top', 'drag-over-bottom');
+                });
+            });
+
+            item.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                
+                const rect = item.getBoundingClientRect();
+                const midpoint = rect.top + rect.height / 2;
+                
+                if (e.clientY < midpoint) {
+                    item.classList.add('drag-over-top');
+                    item.classList.remove('drag-over-bottom');
+                } else {
+                    item.classList.add('drag-over-bottom');
+                    item.classList.remove('drag-over-top');
+                }
+            });
+
+            item.addEventListener('dragleave', () => {
+                item.classList.remove('drag-over-top', 'drag-over-bottom');
+            });
+
+            item.addEventListener('drop', (e) => {
+                e.preventDefault();
+                item.classList.remove('drag-over-top', 'drag-over-bottom');
+                
+                const fromIndexStr = e.dataTransfer.getData('text/plain');
+                if (!fromIndexStr) return;
+                
+                const fromIndex = parseInt(fromIndexStr);
+                const targetIndex = index;
+                
+                if (fromIndex === targetIndex) return;
+                
+                const rect = item.getBoundingClientRect();
+                const midpoint = rect.top + rect.height / 2;
+                const dropAfter = e.clientY > midpoint;
+                
+                let finalIndex = targetIndex;
+                if (dropAfter) finalIndex++;
+                
+                if (fromIndex < finalIndex) {
+                    finalIndex--;
+                }
+                
+                if (fromIndex !== finalIndex) {
+                    store.moveInteraction(fromIndex, finalIndex);
+                }
+            });
+        }
+
+        // Click no card -> abrir step editor sidebar
         item.addEventListener('click', (e) => {
-            if (e.target.closest('.remove-log')) return; // Ignora se clicou no botão X
-            if (e.target.closest('.move-up') || e.target.closest('.move-down')) return; // Ignora botões de mover
-            showInteractionMenu(e, interaction, index);
+            if (e.target.closest('.gherkin-step-item__actions')) return;
+
+            // Marcar como selecionado
+            container.querySelectorAll('.gherkin-step-item').forEach(el => el.classList.remove('gherkin-step-item--selected'));
+            item.classList.add('gherkin-step-item--selected');
+
+            // Renderizar step editor
+            const editorContainer = document.querySelector('#gherkin-step-editor-container');
+            if (editorContainer) {
+                renderStepEditor(editorContainer, interaction, index);
+            }
+
+            // Renderizar element details
+            const detailsContainer = document.querySelector('#gherkin-element-details-container');
+            if (detailsContainer) {
+                renderElementDetails(detailsContainer, interaction);
+            }
         });
 
-        // Click Direito - Menu de Contexto
-        // Click Direito - Mantém comportamento de abrir menu
+        // Right-click -> context menu (manter compatibilidade)
         item.addEventListener('contextmenu', (e) => {
-            showInteractionMenu(e, interaction, index);
+            e.preventDefault();
+            e.stopPropagation();
+            showContextMenu(e, interaction, index);
         });
+
+        // Botão editar
+        const editBtn = item.querySelector('.step-edit');
+        if (editBtn) {
+            editBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                showEditModal(index);
+            });
+        }
+
+        // Botão XPath
+        const xpathBtn = item.querySelector('.step-xpath');
+        if (xpathBtn) {
+            xpathBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                showXPathModal(interaction.xpath, interaction.selector || interaction.cssSelector, interaction);
+            });
+        }
+
+        // Botão detalhes
+        const detailsBtn = item.querySelector('.step-details');
+        if (detailsBtn) {
+            detailsBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                showLogDetailsModal(interaction);
+            });
+        }
+
+        // Botão excluir
+        const deleteBtn = item.querySelector('.step-delete');
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                store.removeInteraction(index);
+            });
+        }
+        
+        // Botões Reorder (Up/Down)
+        const upBtn = item.querySelector('.step-up');
+        if (upBtn) {
+            upBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (index > 0) store.moveInteraction(index, index - 1);
+            });
+        }
+        const downBtn = item.querySelector('.step-down');
+        if (downBtn) {
+            downBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (index < interactions.length - 1) store.moveInteraction(index, index + 1);
+            });
+        }
+
+        // Thumbnail Click
+        const thumbnailBtn = item.querySelector('.step-thumbnail');
+        if (thumbnailBtn) {
+            thumbnailBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                showScreenshotModal(interaction.screenshot, interaction.nomeElemento);
+            });
+        }
     });
+}
+
+/**
+ * Menu de contexto (mantido para compatibilidade com right-click)
+ */
+function showContextMenu(e, interaction, index) {
+    // Fechar menus existentes
+    const existingMenu = document.querySelector('.gherkin-context-menu');
+    if (existingMenu) existingMenu.remove();
+
+    const menu = document.createElement('div');
+    menu.className = 'gherkin-context-menu';
+    menu.style.left = `${e.clientX}px`;
+    menu.style.top = `${e.clientY}px`;
+
+    const items = [
+        { icon: '✏️', label: 'Editar', action: () => showEditModal(index) },
+        { icon: '🔍', label: 'Ver XPath/Seletores', action: () => showXPathModal(interaction.xpath, interaction.selector || interaction.cssSelector, interaction) },
+        { icon: 'ℹ️', label: 'Detalhes do Log', action: () => showLogDetailsModal(interaction) },
+        { separator: true },
+        { icon: '🗑️', label: 'Excluir', danger: true, action: () => getStore().removeInteraction(index) }
+    ];
+
+    items.forEach(cfg => {
+        if (cfg.separator) {
+            const sep = document.createElement('div');
+            sep.style.cssText = 'height:1px;background:#ddd;margin:4px 0;';
+            menu.appendChild(sep);
+            return;
+        }
+        const opt = document.createElement('div');
+        opt.className = `gherkin-menu-item${cfg.danger ? ' danger' : ''}`;
+        opt.innerHTML = `${cfg.icon} ${cfg.label}`;
+        opt.onclick = () => { cfg.action(); menu.remove(); };
+        menu.appendChild(opt);
+    });
+
+    document.body.appendChild(menu);
+
+    // Ajustar posição
+    const rect = menu.getBoundingClientRect();
+    if (rect.right > window.innerWidth) menu.style.left = `${window.innerWidth - rect.width - 10}px`;
+    if (rect.bottom > window.innerHeight) menu.style.top = `${window.innerHeight - rect.height - 10}px`;
+
+    // Fechar ao clicar fora
+    const closeHandler = () => { menu.remove(); document.removeEventListener('click', closeHandler); };
+    setTimeout(() => document.addEventListener('click', closeHandler), 0);
+}
+
+/** 
+ * Mantida para compatibilidade com chamadas existentes
+ */
+function renderLogs(container, interactions) {
+    renderStepList(container, interactions);
 }
 
 // Modal para Adicionar Passo Manual
@@ -900,8 +1032,7 @@ function createManualStepModal(store, initialData = {}) {
 
     const modal = document.createElement('div');
     modal.id = 'gherkin-manual-modal';
-    modal.className = 'gherkin-modal-overlay';
-    modal.style.zIndex = '10001';
+    modal.className = 'gherkin-modal-bg';
 
     // HTML Estrutura Base
     modal.innerHTML = `

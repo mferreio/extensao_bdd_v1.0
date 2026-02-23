@@ -13,6 +13,7 @@
 
 import { downloadFile, showFeedback } from '../../utils.js';
 import { FileCompressor } from './compressor.js';
+import { CypressGenerator } from './cypress-generator.js';
 
 /**
  * ExportLogger - Gerencia logging de auditoria
@@ -359,8 +360,15 @@ export class ExportManager {
             const exportData = [];
 
             // Adicionar arquivos do projeto primeiro (environment.py, requirements.txt, etc.)
-            this.progress.update(1, 'Gerando arquivos do projeto...');
-            const projectFiles = this.generateProjectFiles();
+            let projectFiles = [];
+            if (options.language === 'cypress') {
+                this.progress.update(1, 'Gerando arquivos do projeto Cypress...');
+                const cyGen = new CypressGenerator();
+                projectFiles = cyGen.generateProjectFiles();
+            } else {
+                this.progress.update(1, 'Gerando arquivos base do projeto...');
+                projectFiles = this.generateProjectFiles();
+            }
             exportData.push({
                 featureName: 'PROJECT',
                 files: projectFiles
@@ -373,7 +381,13 @@ export class ExportManager {
                 try {
                     this.progress.update(i + 2, `Exportando: ${feature.name}`);
 
-                    const files = this.generateFeatureFiles(feature);
+                    let files = [];
+                    if (options.language === 'cypress') {
+                        const cyGen = new CypressGenerator();
+                        files = cyGen.generateFeatureFiles(feature);
+                    } else {
+                        files = this.generateFeatureFiles(feature);
+                    }
                     exportData.push({
                         featureName: feature.name,
                         files: files

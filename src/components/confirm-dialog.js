@@ -14,84 +14,37 @@ export function showConfirmDialog(config) {
   } = config;
 
   const overlay = document.createElement('div');
-  overlay.style.cssText = `
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 10001;
-    animation: gherkinFadeIn 0.2s ease;
-  `;
+  overlay.className = 'gherkin-modal-bg';
 
   const dialog = document.createElement('div');
+  dialog.className = 'gherkin-modal-content';
+  dialog.style.maxWidth = '480px';
   dialog.role = 'alertdialog';
   dialog.setAttribute('aria-modal', 'true');
   dialog.setAttribute('aria-labelledby', 'dialog-title');
-  dialog.style.cssText = `
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-    max-width: 480px;
-    width: 90%;
-    padding: 28px;
-    animation: gherkinSlideUp 0.3s ease;
-  `;
 
-  const titleEl = document.createElement('h2');
+  const titleEl = document.createElement('h3');
   titleEl.id = 'dialog-title';
+  titleEl.className = 'gherkin-h3 gherkin-mb-md';
   titleEl.textContent = title;
-  titleEl.style.cssText = `
-    margin: 0 0 16px 0;
-    color: #212529;
-    font-size: 20px;
-    font-weight: 700;
-  `;
 
   const messageEl = document.createElement('div');
   messageEl.innerHTML = message; // Permite HTML
-  messageEl.style.cssText = `
-    margin: 0 0 28px 0;
-    color: #495057;
-    line-height: 1.6;
-    font-size: 15px;
-  `;
+  messageEl.className = 'gherkin-mb-lg';
+  messageEl.style.color = 'var(--text-secondary)';
+  messageEl.style.lineHeight = '1.6';
 
   const buttonContainer = document.createElement('div');
-  buttonContainer.style.cssText = `
-    display: flex;
-    gap: 10px;
-    justify-content: flex-end;
-    flex-wrap: wrap;
-  `;
+  buttonContainer.className = 'gherkin-flex-row gherkin-gap-sm';
+  buttonContainer.style.justifyContent = 'flex-end';
 
   const cancelBtn = document.createElement('button');
   cancelBtn.textContent = cancelText;
-  cancelBtn.style.cssText = `
-    padding: 12px 24px;
-    border: 2px solid #DDD;
-    background: white;
-    color: #495057;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: 600;
-    font-size: 14px;
-    transition: all 0.2s;
-    flex: 1;
-    min-width: ${showThirdButton ? '110px' : '130px'};
-  `;
-  cancelBtn.onmouseover = () => {
-    cancelBtn.style.borderColor = '#999';
-    cancelBtn.style.background = '#f8f9fa';
-  };
-  cancelBtn.onmouseout = () => {
-    cancelBtn.style.borderColor = '#DDD';
-    cancelBtn.style.background = 'white';
-  };
+  cancelBtn.className = 'gherkin-btn gherkin-btn-outline';
+  // Fallback for outline style in case it's not defined
+  cancelBtn.style.background = 'transparent';
+  cancelBtn.style.border = '1px solid var(--border-color)';
+  cancelBtn.style.color = 'var(--text-primary)';
   cancelBtn.onclick = () => {
     overlay.remove();
     onCancel?.();
@@ -100,28 +53,14 @@ export function showConfirmDialog(config) {
   const confirmBtn = document.createElement('button');
   confirmBtn.textContent = confirmText;
   
-  const colorMap = {
-    default: '#0D47A1',
-    danger: '#DC3545',
-    warning: '#FFC107',
-    success: '#28A745'
+  const typeClassMap = {
+    default: 'gherkin-btn-main',
+    danger: 'gherkin-btn-danger',
+    warning: 'gherkin-btn-warning',
+    success: 'gherkin-btn-success'
   };
-
-  confirmBtn.style.cssText = `
-    padding: 12px 24px;
-    background: ${colorMap[type] || colorMap.default};
-    color: white;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: 600;
-    font-size: 14px;
-    transition: all 0.2s;
-    flex: 1;
-    min-width: ${showThirdButton ? '110px' : '130px'};
-  `;
-  confirmBtn.onmouseover = () => confirmBtn.style.opacity = '0.9';
-  confirmBtn.onmouseout = () => confirmBtn.style.opacity = '1';
+  
+  confirmBtn.className = `gherkin-btn ${typeClassMap[type] || typeClassMap.default}`;
   confirmBtn.onclick = () => {
     overlay.remove();
     onConfirm?.();
@@ -132,21 +71,7 @@ export function showConfirmDialog(config) {
   if (showThirdButton && onThirdButton) {
     const thirdBtn = document.createElement('button');
     thirdBtn.textContent = thirdButtonText;
-    thirdBtn.style.cssText = `
-      padding: 12px 24px;
-      background: #17A2B8;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      font-weight: 600;
-      font-size: 14px;
-      transition: all 0.2s;
-      flex: 1;
-      min-width: 110px;
-    `;
-    thirdBtn.onmouseover = () => thirdBtn.style.opacity = '0.9';
-    thirdBtn.onmouseout = () => thirdBtn.style.opacity = '1';
+    thirdBtn.className = 'gherkin-btn gherkin-btn-warning'; // or whatever fits best
     thirdBtn.onclick = () => {
       overlay.remove();
       onThirdButton();

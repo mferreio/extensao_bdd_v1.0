@@ -29,4 +29,4 @@ Se você é um usuário no Brasil, tem direitos sob a Lei Geral de Proteção de
 
 ## Contato
 
-Se tiver dúvidas sobre esta política de privacidade, entre em contato.
+Se tiver dúvidas sobre esta política de privacidade, entre em contato com o email mferreio.qa@gmail.com

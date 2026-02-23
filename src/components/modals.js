@@ -1262,3 +1262,120 @@ export function showAddStepModal() {
 
     setTimeout(() => actionSelect.focus(), 50);
 }
+
+// Modal de Configurações do Cenário
+export function showScenarioSettingsModal(store) {
+    const oldModal = document.getElementById('gherkin-modal');
+    if (oldModal) oldModal.remove();
+
+    const state = store.getState();
+    const currentGlobalTimeout = state.globalTimeout || 10; // Default de exibição
+    
+    const modalBg = document.createElement('div');
+    modalBg.id = 'gherkin-modal';
+    modalBg.className = 'gherkin-modal-bg';
+
+    const modal = document.createElement('div');
+    modal.className = 'gherkin-modal-content gherkin-flex-col gherkin-gap-md';
+    modal.style.maxWidth = '450px';
+
+    const title = document.createElement('h3');
+    title.textContent = 'Configurações de Cenário';
+    title.className = 'gherkin-modal-title gherkin-text-center';
+    modal.appendChild(title);
+
+    // Corpo de config
+    const body = document.createElement('div');
+    body.className = 'gherkin-w-full gherkin-flex-col gherkin-gap-md';
+    body.innerHTML = `
+        <div class="gherkin-flex-col gherkin-gap-xs">
+            <label class="gherkin-label">Timeout Global (s):</label>
+            <input type="number" id="settings-timeout" class="gherkin-input gherkin-w-full" value="${currentGlobalTimeout}" min="1" max="60">
+            <span class="gherkin-text-muted" style="font-size:0.8rem">Tempo máximo de espera antes da automação falhar ao buscar elementos.</span>
+        </div>
+        <!-- Espaço para mais configs no futuro, ex: URL Base -->
+    `;
+    modal.appendChild(body);
+
+    const footer = document.createElement('div');
+    footer.className = 'gherkin-modal-footer';
+
+    const saveBtn = document.createElement('button');
+    saveBtn.textContent = 'Salvar';
+    saveBtn.className = 'gherkin-btn gherkin-btn-main gherkin-flex-1';
+    saveBtn.onclick = () => {
+        const tObj = modal.querySelector('#settings-timeout');
+        if (tObj && tObj.value) {
+            store.setState({ globalTimeout: parseInt(tObj.value, 10) });
+        }
+        modalBg.remove();
+        showFeedback('Configurações salvas!', 'success');
+    };
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.textContent = 'Cancelar';
+    cancelBtn.className = 'gherkin-btn gherkin-btn-danger gherkin-flex-1';
+    cancelBtn.onclick = () => modalBg.remove();
+
+    footer.appendChild(saveBtn);
+    footer.appendChild(cancelBtn);
+    modal.appendChild(footer);
+
+    modalBg.appendChild(modal);
+    document.body.appendChild(modalBg);
+}
+
+// Visualizador de Screenshot
+export function showScreenshotModal(screenshotDataUrl, titleText = "Screenshot") {
+    const oldModal = document.getElementById('gherkin-modal');
+    if (oldModal) oldModal.remove();
+
+    const modalBg = document.createElement('div');
+    modalBg.id = 'gherkin-modal';
+    modalBg.className = 'gherkin-modal-bg gherkin-modal-overlay';
+    
+    // Clicar fora fecha
+    modalBg.addEventListener('click', (e) => {
+        if (e.target === modalBg) modalBg.remove();
+    });
+
+    const modal = document.createElement('div');
+    modal.className = 'gherkin-modal-content gherkin-flex-col';
+    // Maximizando uso da tela
+    modal.style.maxWidth = '90vw';
+    modal.style.maxHeight = '90vh';
+    modal.style.padding = '0';
+    modal.style.overflow = 'hidden';
+
+    // Header fixo escuro no estilo da extensão
+    const header = document.createElement('div');
+    header.style.cssText = 'padding: 12px 20px; background: var(--bg-secondary); border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; color: var(--text-primary);';
+    
+    const title = document.createElement('h3');
+    title.textContent = "Interação: " + titleText;
+    title.style.margin = '0';
+    title.style.fontSize = '16px';
+    
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = '✕';
+    closeBtn.style.cssText = 'background: transparent; border: none; color: white; font-size: 18px; cursor: pointer;';
+    closeBtn.onclick = () => modalBg.remove();
+    
+    header.appendChild(title);
+    header.appendChild(closeBtn);
+
+    // Area da imagem com scroll
+    const imgContainer = document.createElement('div');
+    imgContainer.style.cssText = 'flex: 1; overflow: auto; padding: 20px; text-align: center; background: #000;';
+    
+    const img = document.createElement('img');
+    img.src = screenshotDataUrl;
+    img.style.cssText = 'max-width: 100%; border: 1px solid #444; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); object-fit: contain;';
+    
+    imgContainer.appendChild(img);
+    modal.appendChild(header);
+    modal.appendChild(imgContainer);
+    modalBg.appendChild(modal);
+    document.body.appendChild(modalBg);
+}
+

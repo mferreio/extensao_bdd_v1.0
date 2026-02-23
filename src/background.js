@@ -19,3 +19,19 @@ chrome.action.onClicked.addListener(async (tab) => {
         });
     }
 });
+
+// Listener para solicitações vindas dos content scripts
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === 'CAPTURE_SCREENSHOT') {
+        // Captura a aba atualmente visível na janela atual
+        chrome.tabs.captureVisibleTab(null, { format: 'jpeg', quality: 40 }, (dataUrl) => {
+            if (chrome.runtime.lastError) {
+                console.warn('Erro ao capturar screenshot:', chrome.runtime.lastError);
+                sendResponse({ error: chrome.runtime.lastError.message });
+            } else {
+                sendResponse({ dataUrl });
+            }
+        });
+        return true; // Retornar true indica que a resposta será enviada de forma assíncrona
+    }
+});
