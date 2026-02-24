@@ -32,17 +32,48 @@ function downloadFile(filename, content) {
 
 function showFeedback(message, type = 'success') {
     // Remove feedback antigo se existir
-    const old = document.querySelector('.feedback');
+    const old = document.querySelector('.gherkin-feedback');
     if (old) old.remove();
+    
     const feedback = document.createElement('div');
-    feedback.className = 'feedback';
+    feedback.className = 'gherkin-feedback';
     feedback.setAttribute('role', 'alert');
     feedback.setAttribute('aria-live', 'assertive');
     feedback.style.backgroundColor = type === 'success' ? '#28a745' : '#dc3545';
     feedback.style.color = '#fff';
+    feedback.style.padding = '12px 20px';
+    feedback.style.borderRadius = '8px';
+    feedback.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
+    feedback.style.zIndex = '999999';
+    feedback.style.display = 'flex';
+    feedback.style.alignItems = 'center';
+    feedback.style.gap = '10px';
+    feedback.style.fontFamily = 'Inter, sans-serif';
+    feedback.style.fontSize = '14px';
+    feedback.style.animation = 'gherkinSlideUp 0.3s ease-out';
+    
     feedback.innerHTML = `<span>${message}</span>
-        <button class="gherkin-feedback-close" aria-label="Fechar feedback" tabindex="0">&times;</button>`;
-    document.body.appendChild(feedback);
+        <button class="gherkin-feedback-close" aria-label="Fechar feedback" tabindex="0" style="background:none;border:none;color:white;cursor:pointer;font-size:18px;margin-left:10px;">&times;</button>`;
+    
+    // Anexa no painel, se ele existir, caso contrário no body
+    const painel = document.getElementById('gherkin-panel');
+    if (painel) {
+        feedback.style.position = 'absolute';
+        feedback.style.bottom = '20px';
+        feedback.style.right = '20px';
+        
+        // Garante que o painel é o container de referência para o absolute
+        if(window.getComputedStyle(painel).position === 'static') {
+            painel.style.position = 'relative';
+        }
+        painel.appendChild(feedback);
+    } else {
+        feedback.style.position = 'fixed';
+        feedback.style.bottom = '20px';
+        feedback.style.right = '20px';
+        document.body.appendChild(feedback);
+    }
+
     // Fechar manualmente
     feedback.querySelector('.gherkin-feedback-close').onclick = () => feedback.remove();
     // Fechar com ESC

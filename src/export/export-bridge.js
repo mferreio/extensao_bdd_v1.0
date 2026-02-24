@@ -30,7 +30,8 @@ class ExportBridge {
             format: useZip ? 'zip' : format,
             includeMetadata,
             includeLogs,
-            includeAudit: true
+            includeAudit: true,
+            language: options.language // Correção: repassando a linguagem para o manager
         });
     }
 
@@ -57,26 +58,24 @@ class ExportBridge {
             files.push(...featureFiles);
         });
 
-        // Criar estrutura de pasta
-        const folderStructure = {
-            'features': [],
-            'features/steps': [],
-            'features/pages': [],
-            'tests': []
-        };
+        // Criar estrutura de pasta dinamicamente baseada no file.name provido pelos geradores
+        const folderStructure = {};
 
         files.forEach(file => {
-            if (file.name.endsWith('.feature')) {
-                folderStructure['features'].push(file);
-            } else if (file.name.endsWith('_steps.py')) {
-                folderStructure['features/steps'].push(file);
-            } else if (file.name.endsWith('_pages.py')) {
-                folderStructure['features/pages'].push(file);
-            } else if (file.name.endsWith('.md')) {
-                folderStructure['tests'].push(file);
-            } else {
-                folderStructure['features'].push(file);
+            // Se o arquivo contém '/', usamos o prefixo como pasta
+            const parts = file.name.split('/');
+            const filename = parts.pop();
+            const targetFolder = parts.join('/');
+
+            if (!folderStructure[targetFolder]) {
+                folderStructure[targetFolder] = [];
             }
+            
+            // Clonar o arquivo atualizando apenas o nome (remoção das pastas do nome)
+            folderStructure[targetFolder].push({
+                name: filename,
+                content: file.content
+            });
         });
 
         // Compressor não comprime (simples armazenamento), apenas empacota

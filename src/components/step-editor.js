@@ -3,6 +3,8 @@ import { getStore } from '../state/store.js';
 import { showFeedback } from '../../utils.js';
 import { validateAndHighlightXPath, clearXPathSpotlights } from '../utils/xpath-validator.js';
 import { parseBulkData } from '../utils/bulk-data.js';
+import { FAKE_DATA_CATALOG } from '../utils/fake-data.js';
+import { PERFORMANCE_ACTION, PERFORMANCE_LABEL, PERFORMANCE_DEFAULTS } from '../utils/performance-config.js';
 
 /**
  * Renderiza o editor de passos na sidebar
@@ -37,6 +39,7 @@ export function renderStepEditor(container, interaction, index) {
         { value: 'valida_deve_ser', label: 'Validar deve ser' },
         { value: 'espera_segundos', label: 'Esperar segundos' },
         { value: 'espera_elemento', label: 'Esperar elemento' },
+        { value: PERFORMANCE_ACTION, label: PERFORMANCE_LABEL },
     ];
 
     const stepOptionsHtml = stepOptions.map(s =>
@@ -73,9 +76,12 @@ export function renderStepEditor(container, interaction, index) {
                 <div class="gherkin-step-editor__field">
                     <label style="display: flex; justify-content: space-between; align-items: center;">
                         <span>Valor:</span>
-                        <button type="button" id="step-editor-bulk-toggle" class="gherkin-btn-icon" title="Massa de dados em lote" style="width: 24px; height: 24px;">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-                        </button>
+                        <span style="display: flex; gap: 2px;">
+                            <button type="button" id="step-editor-faker-toggle" class="gherkin-btn-icon" title="Gerar dados falsos" style="width: 24px; height: 24px;">🎲</button>
+                            <button type="button" id="step-editor-bulk-toggle" class="gherkin-btn-icon" title="Massa de dados em lote" style="width: 24px; height: 24px;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                            </button>
+                        </span>
                     </label>
                     <input type="text" id="step-editor-value" value="${escapeHtml(interaction.valorPreenchido || '')}" />
                     <div id="step-editor-bulk-area" class="gherkin-bulk-area" style="display: ${interaction.bulkData && interaction.bulkData.length > 0 ? 'block' : 'none'}; margin-top: 6px;">
@@ -90,6 +96,21 @@ export function renderStepEditor(container, interaction, index) {
                     <input type="text" id="step-editor-file" value="${escapeHtml(interaction.nomeArquivo || '')}" />
                 </div>
                 ` : ''}
+
+                <div class="gherkin-step-editor__field">
+                    <label style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>⚡ Auditoria de Performance</span>
+                        <button type="button" id="step-editor-perf-toggle" class="gherkin-btn-icon gherkin-perf-toggle ${interaction.performanceCheck && interaction.performanceCheck.enabled ? 'active' : ''}" title="Ativar/Desativar Auditoria Lighthouse" style="width: 28px; height: 28px; font-size: 16px;">
+                            ⚡
+                        </button>
+                    </label>
+                    ${interaction.performanceCheck && interaction.performanceCheck.enabled ? `
+                    <div style="margin-top: 6px; display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 0.8rem; color: #666;">Nota mínima:</span>
+                        <input type="number" id="step-editor-perf-threshold" value="${interaction.performanceCheck.threshold || PERFORMANCE_DEFAULTS.threshold}" min="0" max="100" style="width: 60px; text-align: center;" class="gherkin-input" />
+                    </div>
+                    ` : ''}
+                </div>
 
                 <div class="gherkin-step-editor__divider"></div>
 
@@ -313,7 +334,10 @@ function attachStepEditorListeners(container, interaction, index) {
             const updates = {};
 
             const typeEl = container.querySelector('#step-editor-type');
-            if (typeEl) updates.step = typeEl.value;
+            if (typeEl) {
+                updates.step = typeEl.value;
+                updates.manualStepType = true;
+            }
 
             const actionEl = container.querySelector('#step-editor-action');
             if (actionEl) {
@@ -338,6 +362,17 @@ function attachStepEditorListeners(container, interaction, index) {
                 updates.bulkData = parsed.length > 0 ? parsed : null;
             }
 
+            // Performance Check
+            const perfToggle = container.querySelector('#step-editor-perf-toggle');
+            if (perfToggle) {
+                const isActive = perfToggle.classList.contains('active');
+                const thresholdEl = container.querySelector('#step-editor-perf-threshold');
+                updates.performanceCheck = {
+                    enabled: isActive,
+                    threshold: thresholdEl ? parseInt(thresholdEl.value) || PERFORMANCE_DEFAULTS.threshold : PERFORMANCE_DEFAULTS.threshold
+                };
+            }
+
             // XPath selection
             const selectedXpath = container.querySelector('input[name="step-xpath"]:checked');
             const customXpath = container.querySelector('#step-editor-custom-xpath');
@@ -350,6 +385,79 @@ function attachStepEditorListeners(container, interaction, index) {
             store.updateInteraction(index, updates);
             clearXPathSpotlights();
             showFeedback('Passo atualizado com sucesso!', 'success');
+        });
+    }
+
+    // Performance Toggle Listener
+    const perfToggle = container.querySelector('#step-editor-perf-toggle');
+    if (perfToggle) {
+        perfToggle.addEventListener('click', (e) => {
+            e.preventDefault();
+            const isActive = perfToggle.classList.contains('active');
+            const newEnabled = !isActive;
+            perfToggle.classList.toggle('active', newEnabled);
+            // Atualizar imediatamente na store e re-renderizar para mostrar/esconder o threshold input
+            store.updateInteraction(index, {
+                performanceCheck: {
+                    enabled: newEnabled,
+                    threshold: PERFORMANCE_DEFAULTS.threshold
+                }
+            });
+            // Re-render para mostrar/esconder campo de threshold
+            const updatedState = store.getState();
+            const currentScenario = updatedState.features[updatedState.currentFeatureIndex]?.scenarios[updatedState.currentScenarioIndex];
+            const updatedInteraction = currentScenario?.interactions?.[index];
+            if (updatedInteraction) {
+                renderStepEditor(container, updatedInteraction, index);
+            }
+        });
+    }
+
+    // Fake Data Generator Dropdown
+    const fakerToggle = container.querySelector('#step-editor-faker-toggle');
+    const valueInput = container.querySelector('#step-editor-value');
+    if (fakerToggle && valueInput) {
+        fakerToggle.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            // Remove dropdown anterior se existir
+            const old = container.querySelector('.gherkin-faker-dropdown');
+            if (old) { old.remove(); return; }
+
+            const dropdown = document.createElement('div');
+            dropdown.className = 'gherkin-faker-dropdown';
+            dropdown.innerHTML = FAKE_DATA_CATALOG.map(item =>
+                `<button type="button" class="gherkin-faker-item" data-faker-id="${item.id}">${item.icon} ${item.label}</button>`
+            ).join('');
+
+            // Posicionar abaixo do botão
+            fakerToggle.parentElement.style.position = 'relative';
+            fakerToggle.parentElement.appendChild(dropdown);
+
+            // Handler de clique nos itens
+            dropdown.addEventListener('click', (ev) => {
+                const btn = ev.target.closest('.gherkin-faker-item');
+                if (!btn) return;
+                const fakerId = btn.dataset.fakerId;
+                const catalogItem = FAKE_DATA_CATALOG.find(c => c.id === fakerId);
+                if (catalogItem) {
+                    valueInput.value = catalogItem.generate();
+                    valueInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    updateLivePreview();
+                }
+                dropdown.remove();
+            });
+
+            // Fechar ao clicar fora
+            setTimeout(() => {
+                const closeHandler = (ev) => {
+                    if (!dropdown.contains(ev.target) && ev.target !== fakerToggle) {
+                        dropdown.remove();
+                        document.removeEventListener('click', closeHandler);
+                    }
+                };
+                document.addEventListener('click', closeHandler);
+            }, 0);
         });
     }
 

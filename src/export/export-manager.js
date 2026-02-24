@@ -14,6 +14,9 @@
 import { downloadFile, showFeedback } from '../../utils.js';
 import { FileCompressor } from './compressor.js';
 import { CypressGenerator } from './cypress-generator.js';
+import { PlaywrightGenerator } from './playwright-generator.js';
+import { BDDExportValidator } from './pre-export-validator.js';
+import { generateCoverageSection } from './coverage-report.js';
 
 /**
  * ExportLogger - Gerencia logging de auditoria
@@ -334,7 +337,8 @@ export class ExportManager {
             includeMetadata = true,
             includeLogs = true,
             includeAudit = true,
-            onProgress = null
+            onProgress = null,
+            language = 'python'
         } = options;
 
         // Validação inicial
@@ -358,16 +362,22 @@ export class ExportManager {
 
         try {
             const exportData = [];
+            // Track global unique steps to prevent AmbiguousStep errors in BDD frameworks
+            const globalUniqueSteps = new Set();
 
             // Adicionar arquivos do projeto primeiro (environment.py, requirements.txt, etc.)
             let projectFiles = [];
-            if (options.language === 'cypress') {
-                this.progress.update(1, 'Gerando arquivos do projeto Cypress...');
+            if (language === 'playwright') {
+                this.progress.update(1, 'Gerando arquivos base Playwright...');
+                const pwGen = new PlaywrightGenerator();
+                projectFiles = pwGen.generateProjectFiles(features);
+            } else if (language === 'cypress') {
+                this.progress.update(1, 'Gerando arquivos base Cypress...');
                 const cyGen = new CypressGenerator();
-                projectFiles = cyGen.generateProjectFiles();
+                projectFiles = cyGen.generateProjectFiles(features);
             } else {
                 this.progress.update(1, 'Gerando arquivos base do projeto...');
-                projectFiles = this.generateProjectFiles();
+                projectFiles = this.generateProjectFiles(features);
             }
             exportData.push({
                 featureName: 'PROJECT',
@@ -382,11 +392,14 @@ export class ExportManager {
                     this.progress.update(i + 2, `Exportando: ${feature.name}`);
 
                     let files = [];
-                    if (options.language === 'cypress') {
+                    if (options.language === 'playwright') {
+                        const pwGen = new PlaywrightGenerator();
+                        files = pwGen.generateFeatureFiles(feature, globalUniqueSteps);
+                    } else if (options.language === 'cypress') {
                         const cyGen = new CypressGenerator();
-                        files = cyGen.generateFeatureFiles(feature);
+                        files = cyGen.generateFeatureFiles(feature, globalUniqueSteps);
                     } else {
-                        files = this.generateFeatureFiles(feature);
+                        files = this.generateFeatureFiles(feature, globalUniqueSteps);
                     }
                     exportData.push({
                         featureName: feature.name,
@@ -442,32 +455,41 @@ export class ExportManager {
         }
     }
 
-    generateFeatureFiles(feature) {
+    /**
+     * Gera todos os arquivos para uma feature específica (Python/Selenium)
+     * @param {Object} feature
+     * @param {Set} globalUniqueSteps
+     */
+    generateFeatureFiles(feature, globalUniqueSteps = new Set()) {
         const files = [];
-        const featureSlug = this.slugify(feature.name);
+        const featureName = this.slugify(feature.name);
 
         // Gherkin file
         files.push({
-            name: `${featureSlug}.feature`,
+            name: `features/${featureName}.feature`,
             content: this.generateGherkinContent(feature)
-        });
-
-        // Pages.py (dentro de features) - SEM o prefixo "features_"
-        files.push({
-            name: `pages/${featureSlug}_page.py`,
-            content: this.generatePagesContent(feature)
         });
 
         // Steps.py (dentro de features)
         files.push({
-            name: `steps/${featureSlug}_steps.py`,
-            content: this.generateStepsContent(feature)
+            name: `features/steps/${featureName}_steps.py`,
+            content: this.generateStepsContent(feature, globalUniqueSteps)
+        });
+
+        // Pages.py (dentro de features/pages) e init para pacote Python
+        files.push({
+            name: `features/pages/__init__.py`,
+            content: `# Arquivo de inicializacao do modulo pages\n`
+        });
+        files.push({
+            name: `features/pages/${featureName}_page.py`,
+            content: this.generatePagesContent(feature)
         });
 
         return files;
     }
 
-    generateProjectFiles() {
+    generateProjectFiles(features) {
         const files = [];
 
         // Environment.py (dentro de features para padrão behave)
@@ -491,7 +513,7 @@ export class ExportManager {
         // README.md
         files.push({
             name: `README.md`,
-            content: this.generateReadmeContent()
+            content: this.generateReadmeContent(features)
         });
 
         // Arquivos de Configuração e Scripts (QA/DevOps)
@@ -602,6 +624,26 @@ class BasePage:
             return self
         except TimeoutException:
             raise TimeoutException(f"Dropdown não encontrado: {locator}")
+
+    def _upload_file(self, locator: Tuple[str, str], file_path: str) -> 'BasePage':
+        """Faz upload de um arquivo para o elemento input[type='file']"""
+        element = self._find_element(locator)
+        element.send_keys(file_path)
+        return self
+
+    def _alter_value(self, locator: Tuple[str, str], value: str) -> 'BasePage':
+        """Altera o valor de um campo e tenta disparar eventos de mudança"""
+        element = self._find_element(locator)
+        element.clear()
+        element.send_keys(value)
+        # Tentar acionar os eventos onChange (comum em SPAs)
+        self.browser.execute_script("arguments[0].dispatchEvent(new Event('change', { bubbles: true }));", element)
+        return self
+
+    def _wait_element(self, locator: Tuple[str, str], timeout: int = 10) -> 'BasePage':
+        """Espera por um elemento estar presente na página"""
+        self._find_element(locator, timeout)
+        return self
 
     def verificar_carregamento(self) -> 'BasePage':
         """Verifica se a página foi carregada corretamente"""
@@ -732,7 +774,23 @@ class ${className}Locators:
             content += `        return element.text\n`;
             content += `    \n`;
 
-            // Método para verificar visibilidade
+            // Ações complexas mapeadas para métodos mais precisos no Python
+            const action = data.acao;
+            if (action === 'seleciona') {
+                content += `    def selecionar_${methodBaseName}(self, opcao: str) -> '${className}Page':\n`;
+                content += `        return self._select_option(self.locators.${locatorName}, opcao)\n\n`;
+            } else if (action === 'upload') {
+                content += `    def upload_${methodBaseName}(self, filepath: str) -> '${className}Page':\n`;
+                content += `        return self._upload_file(self.locators.${locatorName}, filepath)\n\n`;
+            } else if (action === 'altera') {
+                content += `    def alterar_${methodBaseName}(self, valor: str) -> '${className}Page':\n`;
+                content += `        return self._alter_value(self.locators.${locatorName}, valor)\n\n`;
+            } else if (action === 'espera_elemento') {
+                content += `    def esperar_elemento_${methodBaseName}(self, timeout: int = 10) -> '${className}Page':\n`;
+                content += `        return self._wait_element(self.locators.${locatorName}, timeout)\n\n`;
+            }
+
+            // Sempre gerar o método de visibilidade caso seja usado para asserções genéricas
             content += `    def elemento_visivel_${methodBaseName}(self) -> bool:\n`;
             content += `        """Verifica se ${element} está visível"""\n`;
             content += `        try:\n`;
@@ -797,8 +855,8 @@ class ${className}Locators:
         return content;
     }
 
-    generateReadmeContent() {
-        return `# Projeto de Testes Automatizados BDD
+    generateReadmeContent(features = []) {
+        let content = `# Projeto de Testes Automatizados BDD
         
 Testes automatizados gerados pela extensão **Gerador de Testes Automatizados em Python**.
 
@@ -873,10 +931,14 @@ O projeto usa \`webdriver-manager\` para baixar o driver automaticamente. Se fal
 **Erro: ModuleNotFoundError**
 Certifique-se de ativar o ambiente virtual (\`venv\`) antes de rodar os comandos manuais.
 
----
-**Gerado por**: Extensão BDD Python Test Generator
-**Data**: ${new Date().toLocaleDateString('pt-BR')}
 `;
+
+        if (features && features.length > 0) {
+            content += `---\n\n`;
+            content += generateCoverageSection(features);
+        }
+
+        return content;
     }
 
     generateGitignoreContent() {
@@ -1371,7 +1433,7 @@ class ${className}Locators:
             .replace(/^_|_$/g, '');
     }
 
-    generateStepsContent(feature) {
+    generateStepsContent(feature, globalUniqueSteps = new Set()) {
         const featureName = this.slugify(feature.name);
         const className = this.toPascalCase(featureName);
 
@@ -1396,7 +1458,8 @@ import time
 
         // Coletar todas as interações únicas de todos os cenários
         const allInteractions = [];
-        const uniqueSteps = new Set();
+        // Se globalUniqueSteps não foi passado ou não é o Set global (fallback)
+        const trackerSet = globalUniqueSteps instanceof Set ? globalUniqueSteps : new Set();
 
         (feature.scenarios || []).forEach(scenario => {
             (scenario.interactions || []).forEach(interaction => {
@@ -1407,8 +1470,8 @@ import time
 
                 const stepKey = `${semanticType}_${stepText}`;
 
-                if (!uniqueSteps.has(stepKey)) {
-                    uniqueSteps.add(stepKey);
+                if (!trackerSet.has(stepKey)) {
+                    trackerSet.add(stepKey);
                     allInteractions.push({
                         ...interaction,
                         stepText: stepText,
@@ -1939,12 +2002,15 @@ six==1.16.0
 
         switch (interaction.acao) {
             case 'clica':
+            case 'caixa':
+            case 'radio':
                 pythonCode += `    context.page.clicar_${methodBaseName}()\n`;
                 break;
             case 'preenche':
                 pythonCode += `    context.page.preencher_${methodBaseName}(${param})\n`;
                 break;
             case 'acessa_url':
+            case 'navega':
                 const url = interaction.valorPreenchido || interaction.url || interaction.nomeElemento;
                 if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
                     pythonCode += `    context.browser.get("${url}")\n`;
@@ -1957,10 +2023,19 @@ six==1.16.0
             case 'seleciona':
                 pythonCode += `    context.page._select_option(context.page.locators.${this.generateValidLocatorName(interaction.nomeElemento)}, ${param})\n`;
                 break;
+            case 'upload':
+                pythonCode += `    context.page.upload_${methodBaseName}(${param})\n`;
+                break;
+            case 'altera':
+                pythonCode += `    context.page.alterar_${methodBaseName}(${param})\n`;
+                break;
             case 'espera_segundos':
                 // valorPreenchido contém os segundos
                 pythonCode += `    import time\n`;
                 pythonCode += `    time.sleep(${interaction.valorPreenchido || 1})\n`;
+                break;
+            case 'espera_elemento':
+                pythonCode += `    context.page.esperar_elemento_${methodBaseName}()\n`;
                 break;
             case 'valida_existe':
                 pythonCode += `    assert context.page.elemento_visivel_${methodBaseName}(), f"Elemento ${interaction.nomeElemento} deveria estar visível"\n`;
@@ -1975,6 +2050,14 @@ six==1.16.0
             case 'valida_nao_contem':
                 pythonCode += `    texto_obtido = context.page.obter_texto_${methodBaseName}()\n`;
                 pythonCode += `    assert ${param} not in texto_obtido, f"Não esperado '{${param}}' em '{texto_obtido}'"\n`;
+                break;
+            case 'valida_deve_ser':
+                pythonCode += `    texto_obtido = context.page.obter_texto_${methodBaseName}()\n`;
+                pythonCode += `    assert texto_obtido == ${param}, f"Esperado exato '{${param}}', mas veio '{texto_obtido}'"\n`;
+                break;
+            case 'login':
+                pythonCode += `    # TODO: Login action needs explicit implementation or custom steps\n`;
+                pythonCode += `    pass\n`;
                 break;
             default:
                 if (interaction.acao.startsWith('clica')) {
@@ -2143,8 +2226,11 @@ def after_step(context, step):
         # Tira screenshot e embeda no HTML (base64)
         screenshot_data = take_screenshot_base64(context)
         if screenshot_data:
-             # Mostra imagem no relatório HTML do behave-html-formatter
-             step.embed(mime_type='image/png', data=screenshot_data)
+             try:
+                 # Mostra imagem no relatório HTML do behave-html-formatter (se existir)
+                 step.embed(mime_type='image/png', data=screenshot_data)
+             except AttributeError:
+                 pass # Evita crash se o formatter HTML nao suportar embed
     
     # Limpar nome do step para arquivo seguro
     step_name_safe = step.name.replace('"', '').replace("'", "").replace(" ", "_")
@@ -2152,12 +2238,17 @@ def after_step(context, step):
     # Tira screenshot físico para o PDF
     screenshot_path = take_screenshot(context, f"STEP_{step_name_safe}")
     
+    # Resgata a exception se houver falha
+    error_msg = str(step.exception) if hasattr(step, 'exception') and step.exception else None
+    
     # Adiciona ao relatório PDF
     if hasattr(context, 'current_scenario_data'):
         context.current_scenario_data['steps'].append({
+            'keyword': step.keyword,
             'name': step.name,
             'status': step.status.name,
-            'screenshot': screenshot_path
+            'screenshot': screenshot_path,
+            'error_message': error_msg
         })
 
 def take_screenshot_base64(context):
@@ -2434,6 +2525,20 @@ def generate_evidence_report(context):
                     pdf.set_font('Arial', '', 10)
                     pdf.multi_cell(0, 6, f"{step['name']}")
                     
+                    if 'error_message' in step and step['error_message']:
+                        pdf.ln(1)
+                        pdf.set_font('Courier', '', 8)
+                        pdf.set_text_color(220, 53, 69)
+                        err_msg = str(step['error_message'])
+                        err_msg = err_msg.encode('latin-1', 'replace').decode('latin-1')
+                        if len(err_msg) > 400: err_msg = err_msg[:400] + "...[TRUNCADO]"
+                        try:
+                            pdf.set_x(10)
+                            pdf.multi_cell(190, 4, err_msg)
+                        except:
+                            pdf.multi_cell(190, 4, "[Erro ao renderizar mensagem]")
+                        pdf.set_text_color(0, 0, 0) # reset color
+                    
                     if step.get('screenshot') and os.path.exists(step['screenshot']):
                         try:
                             pdf.ln(1)
@@ -2466,7 +2571,7 @@ def generate_evidence_report(context):
         print(f"[ERRO] Falha ao gerar Relatório de Evidências: {e}")
 
 def generate_bug_report(context):
-    """Gera o Relatório de Bugs (Apenas Falhas)"""
+    \"\"\"Gera o Relatório de Bugs (Apenas Falhas)\"\"\"
     try:
         has_failures = False
         for feature in context.pdf_data['features']:
@@ -2480,6 +2585,14 @@ def generate_bug_report(context):
             print("[RELATORIO] Nenhum bug encontrado para gerar relatório de bugs.")
             return
 
+        def safe_text(text, max_len=200):
+            \"\"\"Sanitiza texto para FPDF (latin-1 only, trunca)\"\"\"
+            if not text: return ""
+            t = str(text)
+            t = t.encode('latin-1', 'replace').decode('latin-1')
+            if len(t) > max_len: t = t[:max_len] + "..."
+            return t
+
         pdf = PDFReport()
         pdf.add_page()
         pdf.set_auto_page_break(auto=True, margin=15)
@@ -2491,7 +2604,7 @@ def generate_bug_report(context):
         pdf.set_y(10)
         pdf.set_font('Arial', 'B', 20)
         pdf.set_text_color(255, 255, 255)
-        pdf.cell(0, 10, 'Relatório de Bugs', 0, 1, 'C')
+        pdf.cell(0, 10, 'Relatorio de Bugs', 0, 1, 'C')
         pdf.set_font('Arial', '', 12)
         pdf.cell(0, 10, f"Gerado em: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}", 0, 1, 'C')
         pdf.ln(20)
@@ -2502,76 +2615,95 @@ def generate_bug_report(context):
         for feature in context.pdf_data['features']:
             for scenario in feature['scenarios']:
                 if scenario['status'] == 'failed':
-                    # START - KEEP TOGETHER LOGIC
-                    # Estima altura do bloco de bug (Titulo + Passo + Erro + Imagem) -> Aprox 130
-                    if pdf.get_y() + 130 > pdf.h - 15:
-                        pdf.add_page()
-                    # END - KEEP TOGETHER LOGIC
+                    try:
+                        if pdf.get_y() + 100 > pdf.h - 15:
+                            pdf.add_page()
 
-                    # Título do Defeito
-                    pdf.set_font('Arial', 'B', 14)
-                    pdf.set_fill_color(248, 215, 218) # Rosa claro
-                    pdf.set_text_color(114, 28, 36) # Vermelho escuro
-                    pdf.cell(0, 10, f"#{count} - Falha em: {scenario['name']}", 0, 1, 'L', 1)
-                    pdf.ln(2)
-                    
-                    pdf.set_text_color(0, 0, 0)
-                    pdf.set_font('Arial', '', 11)
-                    pdf.multi_cell(0, 6, f"Funcionalidade: {feature['name']}")
-                    pdf.ln(2)
-                    
-                    # Passo que falhou
-                    failed_step = next((s for s in scenario['steps'] if s['status'] == 'failed'), None)
-                    if failed_step:
-                        pdf.set_font('Arial', 'B', 11)
-                        pdf.cell(0, 6, "Passo com Falha:", 0, 1)
-                        pdf.set_font('Arial', '', 11)
-                        pdf.set_text_color(220, 53, 69)
-                        step_text = f"{failed_step.get('keyword', '')} {failed_step['name']}"
-                        pdf.multi_cell(0, 6, step_text)
+                        # Titulo do Defeito
+                        pdf.set_font('Arial', 'B', 12)
+                        pdf.set_fill_color(248, 215, 218)
+                        pdf.set_text_color(114, 28, 36)
+                        pdf.set_x(10)
+                        pdf.cell(190, 10, safe_text(f"#{count} - Falha em: {scenario['name']}", 120), 0, 1, 'L', 1)
+                        pdf.ln(2)
                         
-                        # Mensagem de Erro
-                        if 'error_message' in failed_step and failed_step['error_message']:
-                            pdf.ln(2)
-                            pdf.set_font('Arial', 'B', 10)
-                            pdf.set_text_color(0, 0, 0)
-                            pdf.cell(0, 6, "Mensagem de Erro:", 0, 1)
+                        pdf.set_text_color(0, 0, 0)
+                        pdf.set_font('Arial', '', 10)
+                        pdf.set_x(10)
+                        pdf.cell(190, 6, safe_text(f"Funcionalidade: {feature['name']}", 150), 0, 1)
+                        pdf.ln(2)
+                        
+                        # Passos do Cenario
+                        pdf.set_font('Arial', 'B', 10)
+                        pdf.set_text_color(0, 0, 0)
+                        pdf.cell(0, 8, "Passos do Cenario:", 0, 1)
+                        
+                        failed_step = None
+                        pdf.set_font('Arial', '', 9)
+                        for step in scenario['steps']:
+                            if step['status'] == 'passed':
+                                pdf.set_text_color(40, 167, 69)
+                            elif step['status'] == 'failed':
+                                pdf.set_text_color(220, 53, 69)
+                                failed_step = step
+                            else:
+                                pdf.set_text_color(100, 100, 100)
                             
-                            pdf.set_font('Courier', '', 9)
-                            pdf.set_fill_color(240, 240, 240)
-                            pdf.set_text_color(100, 0, 0)
-                            pdf.multi_cell(0, 5, failed_step['error_message'], 1, 'L', 1)
-                        
-                        # Screenshot
-                        if 'screenshot' in failed_step and os.path.exists(failed_step['screenshot']):
-                            try:
-                                pdf.ln(5)
+                            step_line = safe_text(f"> {step.get('keyword', '')} {step['name']}", 160)
+                            pdf.set_x(10)
+                            pdf.cell(190, 5, step_line, 0, 1)
+                            
+                            if step['status'] == 'failed':
+                                break
+
+                        # Erro e Evidencia
+                        if failed_step:
+                            if failed_step.get('error_message'):
+                                pdf.ln(3)
                                 pdf.set_font('Arial', 'B', 10)
                                 pdf.set_text_color(0, 0, 0)
-                                pdf.cell(0, 6, "Evidência do Erro:", 0, 1)
+                                pdf.cell(0, 6, "Motivo da Falha:", 0, 1)
                                 
-                                img_w = 140
-                                x_pos = (pdf.w - img_w) / 2
+                                pdf.set_font('Courier', '', 7)
+                                pdf.set_fill_color(245, 245, 245)
+                                pdf.set_text_color(150, 0, 0)
                                 
-                                # (Check removido/redundante)
-                                
-                                pdf.image(failed_step['screenshot'], x=x_pos, w=img_w)
-                                pdf.ln(5)
-                            except:
-                                pass
-                    
-                    pdf.ln(5)
-                    pdf.set_draw_color(220, 53, 69)
-                    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-                    pdf.ln(10)
-                    count += 1
+                                err_msg = safe_text(failed_step['error_message'], 500)
+                                try:
+                                    pdf.set_x(10)
+                                    pdf.multi_cell(190, 4, err_msg, 0, 'L', 1)
+                                except:
+                                    pass
+                            
+                            if failed_step.get('screenshot') and os.path.exists(failed_step['screenshot']):
+                                try:
+                                    pdf.ln(3)
+                                    pdf.set_font('Arial', 'B', 9)
+                                    pdf.set_text_color(0, 0, 0)
+                                    pdf.cell(0, 6, "Evidencia (Screenshot):", 0, 1)
+                                    img_w = 140
+                                    x_pos = (pdf.w - img_w) / 2
+                                    pdf.image(failed_step['screenshot'], x=x_pos, w=img_w)
+                                    pdf.ln(5)
+                                except:
+                                    pass
+                        
+                        pdf.ln(5)
+                        pdf.set_draw_color(220, 53, 69)
+                        pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+                        pdf.ln(10)
+                        count += 1
+                    except Exception as bug_err:
+                        print(f"[AVISO] Erro ao renderizar bug #{count}: {bug_err}")
+                        count += 1
+                        continue
         
         output_file = 'relatorio_bugs.pdf'
         pdf.output(output_file)
-        print(f"[RELATORIO] Relatório de Bugs gerado: {output_file}")
+        print(f"[RELATORIO] Relatorio de Bugs gerado: {output_file}")
         
     except Exception as e:
-        print(f"[ERRO] Falha ao gerar Relatório de Bugs: {e}")
+        print(f"[ERRO] Falha ao gerar Relatorio de Bugs: {e}")
 `;
     }
 
@@ -2983,7 +3115,14 @@ echo "==================================================="
     }
 
     generateValidLocatorName(elementName) {
-        return this.toSnakeCase(this.sanitizeMethodName(elementName)).toUpperCase();
+        let name = this.toSnakeCase(this.sanitizeMethodName(elementName)).toUpperCase();
+        
+        // Python/JS Identifier Safeguard: Variáveis não podem começar com números
+        if (/^[0-9]/.test(name)) {
+            name = "ELEMENTO_" + name;
+        }
+        
+        return name;
     }
 
 }

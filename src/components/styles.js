@@ -181,23 +181,23 @@ export function injectGherkinStyles() {
 }
 
 .gherkin-panel-header {
-  background: var(--bg-secondary);
-  color: var(--text-primary);
+  background: #2c3e50;
+  color: #ffffff;
   padding: var(--spacing-md) var(--spacing-lg);
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-shrink: 0;
-  border-bottom: 2px solid var(--color-primary);
+  border-bottom: none;
 }
 
 .gherkin-panel-header h3 {
   margin: 0;
-  font-size: clamp(0.9rem, 2.5vw, 1.05rem);
-  font-weight: 700;
+  font-size: clamp(0.8rem, 2.2vw, 0.95rem);
+  font-weight: 600;
   line-height: 1.2;
-  letter-spacing: -0.02em;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  letter-spacing: -0.01em;
+  color: #ffffff;
 }
 
 .button-container-top {
@@ -238,41 +238,25 @@ export function injectGherkinStyles() {
 
 .gherkin-btn {
   border: none;
-  border-radius: var(--radius-md);
-  padding: 10px 20px;
+  border-radius: var(--radius-sm);
+  padding: 8px 16px;
   cursor: pointer;
-  transition: all var(--transition-base);
-  font-weight: 600;
-  font-size: 0.95rem;
+  transition: all var(--transition-fast);
+  font-weight: 500;
+  font-size: 0.875rem;
   letter-spacing: 0.01em;
-  box-shadow: var(--shadow-sm);
-  position: relative;
-  overflow: hidden;
-}
-
-.gherkin-btn::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-  transition: left var(--transition-slow);
-}
-
-.gherkin-btn:hover::before {
-  left: 100%;
+  box-shadow: none;
 }
 
 .gherkin-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+  filter: brightness(1.08);
 }
 
 .gherkin-btn:active {
   transform: translateY(0);
-  box-shadow: var(--shadow-sm);
+  box-shadow: none;
 }
 
 .gherkin-btn-main {
@@ -293,6 +277,18 @@ export function injectGherkinStyles() {
 .gherkin-btn-success {
   background: var(--color-success-gradient);
   color: #ffffff;
+}
+
+.gherkin-btn-outline {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  box-shadow: none;
+}
+
+.gherkin-btn-outline:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color-hover);
 }
 
 .gherkin-btn-excel {
@@ -979,15 +975,32 @@ label {
     }
 
     /* Toolbar */
-    .gherkin-toolbar {
+    .gherkin-toolbar-header {
         display: flex;
         align-items: center;
         justify-content: space-between;
         background: #2c3e50;
         color: #fff;
-        padding: 8px 16px;
+        padding: 6px 16px;
         font-size: 0.85rem;
-        gap: 12px;
+        flex-shrink: 0;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .gherkin-toolbar-window-controls {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        flex-shrink: 0;
+    }
+    .gherkin-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: #34495e;
+        color: #fff;
+        padding: 6px 16px;
+        font-size: 0.85rem;
+        gap: 10px;
         flex-wrap: wrap;
         flex-shrink: 0;
     }
@@ -1082,17 +1095,32 @@ label {
         border-color: var(--color-primary);
     }
     .gherkin-toolbar-btn--icon {
-        width: 32px;
-        height: 32px;
+        width: 28px;
+        height: 28px;
         padding: 0;
         display: flex;
         align-items: center;
         justify-content: center;
         border-radius: 50%;
-        font-size: 0.9rem;
+        font-size: 0.8rem;
+        background: transparent;
+        border-color: transparent;
+    }
+    .gherkin-toolbar-btn--icon:hover {
+        background: rgba(255,255,255,0.15);
     }
     .gherkin-toolbar-btn--close:hover {
         background: #e74c3c;
+    }
+    .gherkin-toolbar-btn--ghost {
+        background: transparent;
+        border-color: transparent;
+        color: rgba(255,255,255,0.7);
+        font-weight: 400;
+    }
+    .gherkin-toolbar-btn--ghost:hover {
+        color: #fff;
+        background: rgba(255,255,255,0.1);
     }
 
     /* Recording Layout Grid */
@@ -1103,6 +1131,7 @@ label {
         flex: 1;
         min-height: 0;
         overflow: hidden;
+        max-height: calc(100vh - 120px);
     }
 
     /* Scenario Editor (Left Column) */
@@ -1112,7 +1141,8 @@ label {
         display: flex;
         flex-direction: column;
         border-right: 1px solid var(--border-color);
-        overflow: hidden;
+        overflow-y: auto;
+        min-height: 0;
     }
     .gherkin-scenario-editor__header {
         display: flex;
@@ -1208,10 +1238,24 @@ label {
     [data-theme="dark"] .gherkin-step-item--and    { background: rgba(52, 152, 219, 0.08); }
     [data-theme="dark"] .gherkin-step-item--then   { background: rgba(46, 204, 113, 0.08); }
 
+    .gherkin-step-item__header {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .gherkin-step-item__title {
+        display: flex;
+        align-items: baseline;
+        gap: 6px;
+    }
+
     .gherkin-step-item__keyword {
         font-weight: 700;
         font-size: 0.85em;
         min-width: 42px;
+        flex-shrink: 0;
     }
     .gherkin-step-item--given .gherkin-step-item__keyword { color: #27ae60; }
     .gherkin-step-item--when .gherkin-step-item__keyword  { color: #e67e22; }
@@ -1220,6 +1264,7 @@ label {
 
     .gherkin-step-item__text {
         flex: 1;
+        min-width: 0;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -1235,6 +1280,7 @@ label {
         gap: 2px;
         opacity: 0;
         transition: opacity 0.15s;
+        flex-shrink: 0;
     }
     .gherkin-step-item:hover .gherkin-step-item__actions {
         opacity: 1;
@@ -1286,7 +1332,11 @@ label {
         display: flex;
         flex-direction: column;
         height: 100%;
+        min-height: 0;
+        overflow: hidden;
         background: var(--bg-primary);
+        grid-row: 1 / -1;
+        grid-column: 2;
     }
     .gherkin-step-editor--empty {
         align-items: center;
@@ -1776,6 +1826,56 @@ label {
         background: rgba(52, 152, 219, 0.1);
         padding: 3px 8px;
         border-radius: 10px;
+    }
+
+    /* Fake Data Generator Dropdown */
+    .gherkin-faker-dropdown {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        z-index: 50;
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+        padding: 4px;
+        min-width: 170px;
+        margin-top: 4px;
+        display: flex;
+        flex-direction: column;
+    }
+    .gherkin-faker-item {
+        background: none;
+        border: none;
+        padding: 7px 12px;
+        text-align: left;
+        font-size: 0.83rem;
+        color: var(--text-primary);
+        border-radius: 5px;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: background 0.15s;
+    }
+    .gherkin-faker-item:hover {
+        background: var(--bg-secondary);
+    }
+    /* Performance Audit Toggle */
+    .gherkin-perf-toggle {
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        background: #f9fafb;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .gherkin-perf-toggle:hover {
+        background: #fefce8;
+        border-color: #eab308;
+    }
+    .gherkin-perf-toggle.active {
+        background: linear-gradient(135deg, #fbbf24, #f59e0b);
+        border-color: #d97706;
+        color: #fff;
+        box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
     }
   `;
   document.head.appendChild(style);

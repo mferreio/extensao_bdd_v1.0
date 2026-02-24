@@ -15,7 +15,7 @@ export function renderToolbar(container) {
     const timeText = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 
     container.innerHTML = `
-        <div class="gherkin-toolbar">
+        <div class="gherkin-toolbar-header">
             <div class="gherkin-toolbar-left">
                 <span class="gherkin-toolbar-brand">Automação BDD</span>
                 <span class="gherkin-toolbar-separator">|</span>
@@ -27,40 +27,40 @@ export function renderToolbar(container) {
                     <strong>Cenário:</strong> ${currentScenario ? currentScenario.name : '—'}
                 </span>
             </div>
+            <div class="gherkin-toolbar-window-controls">
+                <button id="toolbar-minimize" class="gherkin-toolbar-btn gherkin-toolbar-btn--icon" title="Minimizar">▬</button>
+                <button id="toolbar-close" class="gherkin-toolbar-btn gherkin-toolbar-btn--icon gherkin-toolbar-btn--close" title="Fechar">✕</button>
+            </div>
+        </div>
+        <div class="gherkin-toolbar">
             <div class="gherkin-toolbar-center">
-                <button id="toolbar-new-feature" class="gherkin-toolbar-btn gherkin-toolbar-btn--success" title="Criar nova Feature">
+                <button id="toolbar-new-feature" class="gherkin-toolbar-btn gherkin-toolbar-btn--outline" title="Criar nova Feature">
                     + Nova Feature
                 </button>
                 <button id="toolbar-new-scenario" class="gherkin-toolbar-btn gherkin-toolbar-btn--outline" title="Criar novo Cenário">
                     Novo Cenário
                 </button>
                 <button id="toolbar-toggle-recording" class="gherkin-toolbar-btn gherkin-toolbar-btn--recording" title="${isPaused ? 'Continuar Gravação' : 'Pausar Gravação'}" ${state.isReplaying ? 'style="display:none"' : ''}>
-                    ${isPaused ? '▶ Continuar Gravação' : '⏺ Gravando'}
+                    ${isPaused ? '▶ Continuar' : '● Gravando'}
                 </button>
-                <button id="toolbar-end-scenario" class="gherkin-toolbar-btn gherkin-toolbar-btn--warning" title="Encerrar Cenário Atual" ${state.isReplaying ? 'style="display:none"' : ''}>
-                    ⏹ Encerrar Cenário
+                <button id="toolbar-end-scenario" class="gherkin-toolbar-btn gherkin-toolbar-btn--ghost" title="Encerrar Cenário Atual" ${state.isReplaying ? 'style="display:none"' : ''}>
+                    Encerrar Cenário
                 </button>
                 ${state.isReplaying ? 
-                    `<button id="toolbar-stop-replay" class="gherkin-toolbar-btn gherkin-toolbar-btn--danger" style="background-color: var(--color-danger); color: white;" title="Parar Reprodução Automática">⏹ Parar Replay</button>` :
-                    `<button id="toolbar-start-replay" class="gherkin-toolbar-btn gherkin-toolbar-btn--success" style="background-color: var(--color-success); color: white;" title="Reproduzir Cenário (Dry-Run)" ${(!interactions || interactions.length === 0) ? 'disabled' : ''}>▶ Reproduzir</button>`
+                    `<button id="toolbar-stop-replay" class="gherkin-toolbar-btn gherkin-toolbar-btn--recording" title="Parar Reprodução Automática">⏹ Parar Replay</button>` :
+                    `<button id="toolbar-start-replay" class="gherkin-toolbar-btn gherkin-toolbar-btn--success" title="Reproduzir Cenário (Dry-Run)" ${(!interactions || interactions.length === 0) ? 'disabled' : ''}>▶ Reproduzir</button>`
                 }
             </div>
             <div class="gherkin-toolbar-right">
                 <div class="gherkin-toolbar-meta">
                     <span class="gherkin-toolbar-badge">⏱ ${timeText}</span>
-                    <span class="gherkin-toolbar-badge gherkin-toolbar-badge--count">📊 ${(interactions || []).length}</span>
+                    <span class="gherkin-toolbar-badge gherkin-toolbar-badge--count">📋 ${(interactions || []).length}</span>
                 </div>
                 <button id="toolbar-export" class="gherkin-toolbar-btn gherkin-toolbar-btn--export" title="Exportar Testes">
-                    📤 Exportar Testes
+                    Exportar Testes
                 </button>
-                <button id="toolbar-help" class="gherkin-toolbar-btn gherkin-toolbar-btn--icon" title="Manual / Ajuda">
-                    ❓
-                </button>
-                <button id="toolbar-minimize" class="gherkin-toolbar-btn gherkin-toolbar-btn--icon" title="Minimizar">
-                    ▬
-                </button>
-                <button id="toolbar-close" class="gherkin-toolbar-btn gherkin-toolbar-btn--icon gherkin-toolbar-btn--close" title="Fechar">
-                    ✕
+                <button id="toolbar-help" class="gherkin-toolbar-btn gherkin-toolbar-btn--outline" title="Manual / Ajuda">
+                    Manual
                 </button>
             </div>
         </div>

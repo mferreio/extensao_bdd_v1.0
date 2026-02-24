@@ -47,14 +47,21 @@ export function recalculateSteps(interactions) {
 
         let finalStepLabel = stepType;
 
-        if (stepType === currentContext) {
-            if (i > 0) {
-                finalStepLabel = 'And';
+        if (interaction.manualStepType) {
+            finalStepLabel = interaction.step;
+            if (finalStepLabel !== 'And') {
+                currentContext = finalStepLabel;
             }
         } else {
-            // Mudança de contexto (ex: de Given para When, ou When para Then, ou Then de volta para When)
-            currentContext = stepType;
-            finalStepLabel = stepType;
+            if (stepType === currentContext) {
+                if (i > 0) {
+                    finalStepLabel = 'And';
+                }
+            } else {
+                // Mudança de contexto (ex: de Given para When, ou When para Then, ou Then de volta para When)
+                currentContext = stepType;
+                finalStepLabel = stepType;
+            }
         }
 
         newInteractions[i].step = finalStepLabel;

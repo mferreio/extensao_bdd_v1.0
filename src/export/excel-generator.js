@@ -10,6 +10,7 @@
  */
 
 import XLSX from 'xlsx-js-style';
+import { analyzeCoverage } from './coverage-report.js';
 
 // Definição de estilos reutilizáveis
 const STYLES = {
@@ -124,6 +125,20 @@ const STYLES = {
         border: {
             bottom: { style: 'thin', color: { rgb: 'E2E8F0' } }
         }
+    },
+    // Separador de Cenário
+    scenarioSeparator: {
+        fill: { fgColor: { rgb: 'DBEAFE' } }, // Azul bem clarinho
+        border: {
+            top: { style: 'medium', color: { rgb: '93C5FD' } },
+            bottom: { style: 'medium', color: { rgb: '93C5FD' } }
+        }
+    },
+    // Distintivo de Ação na matriz
+    actionBadge: {
+        font: { sz: 9, bold: true, color: { rgb: 'FFFFFF' } },
+        alignment: { horizontal: 'center', vertical: 'center' },
+        // Cor dinâmica atribuída via código
     }
 };
 
@@ -165,22 +180,24 @@ export class ExcelGenerator {
      * @param {Array} features - Lista de features
      */
     addSummarySheet(features) {
-        const totalFeatures = features.length;
-        const totalScenarios = features.reduce((sum, f) => sum + (f.scenarios?.length || 0), 0);
-        const totalSteps = features.reduce((sum, f) => {
-            return sum + (f.scenarios || []).reduce((sSum, s) => {
-                return sSum + (s.interactions?.length || 0);
-            }, 0);
-        }, 0);
+        // Obter métricas enriquecidas
+        const stats = analyzeCoverage(features);
 
         // Dados da planilha
         const data = [
             [{ v: '📊 RESUMO DO PROJETO DE TESTES', s: STYLES.title }],
             [''],
             [{ v: 'Métrica', s: STYLES.subtitle }, { v: 'Valor', s: STYLES.subtitle }],
-            [{ v: 'Total de Features', s: STYLES.metric }, { v: totalFeatures, s: STYLES.metricValue }],
-            [{ v: 'Total de Cenários', s: STYLES.metric }, { v: totalScenarios, s: STYLES.metricValue }],
-            [{ v: 'Total de Passos', s: STYLES.metric }, { v: totalSteps, s: STYLES.metricValue }],
+            [{ v: 'Total de Features', s: STYLES.metric }, { v: stats.totalFeatures, s: STYLES.metricValue }],
+            [{ v: 'Total de Cenários', s: STYLES.metric }, { v: stats.totalScenarios, s: STYLES.metricValue }],
+            [{ v: 'Total de Passos', s: STYLES.metric }, { v: stats.totalSteps, s: STYLES.metricValue }],
+            [{ v: 'Páginas Distintas', s: STYLES.metric }, { v: stats.uniquePages, s: STYLES.metricValue }],
+            [''],
+            [{ v: 'Distribuição de Ações', s: STYLES.subtitle }, { v: '', s: STYLES.subtitle }],
+            [{ v: 'Navegação (Acessos, Redirecionamentos)', s: STYLES.metric }, { v: stats.actionsDistribution?.navigation || 0, s: STYLES.metricValue }],
+            [{ v: 'Interação (Cliques, Digitação, etc)', s: STYLES.metric }, { v: stats.actionsDistribution?.interaction || 0, s: STYLES.metricValue }],
+            [{ v: 'Validação (Verificações visuais/texto)', s: STYLES.metric }, { v: stats.actionsDistribution?.validation || 0, s: STYLES.metricValue }],
+            [{ v: 'Espera (Tempo ou Elementos)', s: STYLES.metric }, { v: stats.actionsDistribution?.wait || 0, s: STYLES.metricValue }],
             [''],
             [{ v: '📅 Data de Geração', s: STYLES.metric }, { v: new Date().toLocaleDateString('pt-BR'), s: STYLES.metricValue }],
             [{ v: '⏰ Hora de Geração', s: STYLES.metric }, { v: new Date().toLocaleTimeString('pt-BR'), s: STYLES.metricValue }],
@@ -198,17 +215,31 @@ export class ExcelGenerator {
             ]);
         });
 
+        // Adicionar rodapé de assinatura
+        data.push(['']);
+        data.push(['']);
+        data.push([
+            { v: 'Responsável pela Execução:', s: { font: { bold: true, sz: 11 }, alignment: { horizontal: 'left' } } },
+            { v: '____________________________________', s: { font: { sz: 11 }, alignment: { horizontal: 'left' } } }
+        ]);
+        data.push([
+            { v: 'Data de Execução:', s: { font: { bold: true, sz: 11 }, alignment: { horizontal: 'left' } } },
+            { v: '__/__/____', s: { font: { sz: 11 }, alignment: { horizontal: 'left' } } }
+        ]);
+
         const ws = XLSX.utils.aoa_to_sheet(data);
 
         // Configurar largura das colunas
         ws['!cols'] = [
-            { wch: 35 },
-            { wch: 20 }
+            { wch: 45 },
+            { wch: 25 }
         ];
 
-        // Mesclar célula do título
+        // Mesclar células de título e subtítulos apropriados
         ws['!merges'] = [
-            { s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }
+            { s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }, // Titulo Principal
+            { s: { r: 8, c: 0 }, e: { r: 8, c: 1 } }, // Subtitulo Distr
+            { s: { r: 17, c: 0 }, e: { r: 17, c: 1 } } // Subtitulo Lista
         ];
 
         // Altura das linhas
@@ -229,9 +260,12 @@ export class ExcelGenerator {
             { v: 'ID', s: STYLES.header },
             { v: 'Feature', s: STYLES.header },
             { v: 'Cenário', s: STYLES.header },
+            { v: 'Pré-condições', s: STYLES.header },
             { v: 'Passo', s: STYLES.header },
             { v: 'Tipo', s: STYLES.header },
-            { v: 'Descrição do Passo', s: STYLES.header },
+            { v: 'Ação (Descrição)', s: STYLES.header },
+            { v: 'Dados de Teste', s: STYLES.header },
+            { v: 'Resultado Esperado', s: STYLES.header },
             { v: 'Status', s: STYLES.header },
             { v: 'Observações', s: STYLES.header }
         ];
@@ -240,14 +274,21 @@ export class ExcelGenerator {
         let testCaseId = 1;
         let rowIndex = 1;
 
-        features.forEach(feature => {
-            (feature.scenarios || []).forEach(scenario => {
+        features.forEach((feature, fIdx) => {
+            (feature.scenarios || []).forEach((scenario, sIdx) => {
                 const interactions = scenario.interactions || [];
-                const caseId = `CT-${String(testCaseId).padStart(3, '0')}`;
+                const baseId = `CT-${String(testCaseId).padStart(3, '0')}`;
+                
+                // Extrair pré-condições (todos os passos Given do cenário)
+                const preConditions = interactions
+                    .filter(i => (i.step || i.realStepType) === 'Given')
+                    .map(i => this.formatStepText(i))
+                    .join('\\n');
 
                 interactions.forEach((interaction, stepIndex) => {
                     const stepType = interaction.step || interaction.realStepType || 'When';
-                    const stepText = this.formatStepText(interaction);
+                    const caseId = `${baseId}.${String(stepIndex + 1).padStart(2, '0')}`; // Hierárquico
+                    
                     const isEven = rowIndex % 2 === 0;
                     const cellStyle = isEven ? STYLES.cellEven : STYLES.cellOdd;
 
@@ -257,19 +298,37 @@ export class ExcelGenerator {
                     else if (stepType === 'Then') typeStyle = STYLES.stepThen;
                     else if (stepType === 'And') typeStyle = STYLES.stepAnd;
 
+                    // Separar Ação de Resultado Esperado
+                    let acaoTexto = '';
+                    let resultadoEsperado = '';
+                    if (stepType === 'Then') {
+                        resultadoEsperado = this.formatStepText(interaction);
+                    } else {
+                        acaoTexto = this.formatStepText(interaction);
+                    }
+
                     data.push([
                         { v: caseId, s: cellStyle },
                         { v: feature.name, s: cellStyle },
                         { v: scenario.name, s: cellStyle },
+                        { v: preConditions, s: cellStyle },
                         { v: stepIndex + 1, s: { ...cellStyle, alignment: { horizontal: 'center', vertical: 'center' } } },
                         { v: stepType, s: typeStyle },
-                        { v: stepText, s: cellStyle },
+                        { v: acaoTexto, s: cellStyle },
+                        { v: interaction.valorPreenchido || '', s: cellStyle },
+                        { v: resultadoEsperado, s: cellStyle },
                         { v: '', s: cellStyle },
                         { v: '', s: cellStyle }
                     ]);
 
                     rowIndex++;
                 });
+
+                // Adicionar separador visual entre cenários (linha com fundo azulado)
+                if (sIdx < (feature.scenarios?.length || 0) - 1 || fIdx < features.length - 1) {
+                    data.push(Array(11).fill({ v: '', s: STYLES.scenarioSeparator }));
+                    rowIndex++;
+                }
 
                 testCaseId++;
             });
@@ -279,25 +338,116 @@ export class ExcelGenerator {
 
         // Configurar largura das colunas
         ws['!cols'] = [
-            { wch: 10 },  // ID
+            { wch: 12 },  // ID (Hierárquico)
             { wch: 20 },  // Feature
             { wch: 25 },  // Cenário
+            { wch: 30 },  // Pré-condições
             { wch: 8 },   // Passo
             { wch: 10 },  // Tipo
-            { wch: 55 },  // Descrição
-            { wch: 12 },  // Status
+            { wch: 45 },  // Ação
+            { wch: 20 },  // Dados de Teste
+            { wch: 40 },  // Resultado Esperado
+            { wch: 15 },  // Status
             { wch: 25 }   // Observações
         ];
 
-        // Altura das linhas
-        ws['!rows'] = data.map((_, idx) => {
-            return { hpt: idx === 0 ? 25 : 22 };
+        // Altura das linhas (Separadores ficam menores)
+        ws['!rows'] = data.map((row, idx) => {
+            if (idx === 0) return { hpt: 25 };
+            if (row[0] && row[0].s === STYLES.scenarioSeparator) return { hpt: 8 }; // Separador
+            return { hpt: 35 }; // Linhas de passo maiores para caber quebra de texto
         });
+
+        // Data Validation para a coluna Status (Passou, Falhou, Bloqueado, N/A)
+        // A biblioteca xlsx suporta basic data validation via !dataValidation
+        ws['!dataValidation'] = [];
+        for (let i = 1; i < data.length; i++) {
+            if (data[i][0] && data[i][0].s !== STYLES.scenarioSeparator) {
+                ws['!dataValidation'].push({
+                    sqref: `J${i + 1}`, // Coluna Status é a J (10ª coluna, 0-indexed I = 9, J = 9) -- Wait, A=0.. J=9. J é a 10ª.
+                    type: 'list',
+                    allowBlank: true,
+                    showInputMessage: true,
+                    showErrorMessage: true,
+                    formula1: '"Passou,Falhou,Bloqueado,N/A"'
+                });
+            }
+        }
 
         // Freeze panes (congelar cabeçalho)
         ws['!freeze'] = { xSplit: 0, ySplit: 1 };
 
         XLSX.utils.book_append_sheet(this.workbook, ws, 'Caderno de Testes');
+        
+        // Chamar geração da matriz
+        this.addTraceabilityMatrixSheet(features);
+    }
+
+    /**
+     * Adiciona a aba Matriz de Rastreabilidade
+     * @param {Array} features - Lista de features
+     */
+    addTraceabilityMatrixSheet(features) {
+        const headers = [
+            { v: 'Feature', s: STYLES.header },
+            { v: 'Cenário', s: STYLES.header },
+            { v: 'Página/Contexto', s: STYLES.header },
+            { v: 'Ações Físicas', s: STYLES.header },
+            { v: 'Validações (Asserções)', s: STYLES.header }
+        ];
+
+        const data = [headers];
+
+        features.forEach(feature => {
+            (feature.scenarios || []).forEach(scenario => {
+                const interactions = scenario.interactions || [];
+                
+                // Mapear interações do cenário
+                const items = {
+                    pages: new Set(),
+                    physical: [],
+                    validations: []
+                };
+
+                // Extrair páginas com base na URL ou contexto
+                const pageSteps = interactions.filter(i => i.acao === 'acessa_url' || i.acao === 'navega');
+                pageSteps.forEach(p => items.pages.add(p.valorPreenchido || p.nomeElemento || 'Home'));
+                if (items.pages.size === 0) items.pages.add('N/A');
+
+                // Classificar o resto
+                interactions.forEach(i => {
+                    if (i.acao === 'acessa_url' || i.acao === 'navega') return;
+                    if (i.acao.startsWith('valida_')) {
+                        items.validations.push(i.acao.replace('valida_', ''));
+                    } else {
+                        items.physical.push(i.acao);
+                    }
+                });
+
+                data.push([
+                    { v: feature.name, s: STYLES.cellEven },
+                    { v: scenario.name, s: STYLES.cellEven },
+                    { v: Array.from(items.pages).join(', '), s: STYLES.cellEven },
+                    { v: items.physical.join(', ') || '-', s: STYLES.cellEven },
+                    { v: items.validations.join(', ') || '-', s: STYLES.cellEven }
+                ]);
+            });
+        });
+
+        const ws = XLSX.utils.aoa_to_sheet(data);
+
+        ws['!cols'] = [
+            { wch: 25 }, // Feature
+            { wch: 35 }, // Cenário
+            { wch: 30 }, // Página
+            { wch: 40 }, // Físico
+            { wch: 40 }  // Validações
+        ];
+
+        ws['!rows'] = [{ hpt: 25 }];
+        ws['!freeze'] = { xSplit: 0, ySplit: 1 };
+
+        XLSX.utils.book_append_sheet(this.workbook, ws, 'Matriz Rastreabilidade');
     }
 
     /**

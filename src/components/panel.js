@@ -7,6 +7,7 @@ import { renderToolbar, attachToolbarListeners } from './toolbar.js';
 import { renderStepEditor, clearStepEditor } from './step-editor.js';
 import { renderElementDetails } from './element-details.js';
 import { renderReplayProgress, attachReplayProgressListeners } from './replay-progress.js';
+import { showPreExportValidation } from '../export/pre-export-validator.js';
 
 export function createPanel() {
     const oldPanel = document.getElementById('gherkin-panel');
@@ -63,14 +64,11 @@ export function renderPanelContent(panel) {
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>
                     </button>
                 </div>
-                <button id="gherkin-reopen" title="Reabrir" style="display: none;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="#28a745" viewBox="0 0 24 24"><path d="M3 3h6v2H5v4H3V3zm6 16H3v-6h2v4h4v2zm8-16v6h-2V5h-4V3h6zm-2 16v-4h2v6h-6v-2h4z"/></svg>
-                </button>
                 <button id="gherkin-minimize" title="Minimizar">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="#ffc107" viewBox="0 0 24 24"><path d="M19 13H5v-2h14v2z"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13H5v-2h14v2z"/></svg>
                 </button>
                 <button id="gherkin-close" title="Fechar">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="#dc3545" viewBox="0 0 24 24"><path d="M18.3 5.71L12 12l6.3 6.29-1.42 1.42L12 13.41l-6.29 6.3-1.42-1.42L10.59 12 4.29 5.71 5.71 4.29 12 10.59l6.29-6.3z"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.3 5.71L12 12l6.3 6.29-1.42 1.42L12 13.41l-6.29 6.3-1.42-1.42L10.59 12 4.29 5.71 5.71 4.29 12 10.59l6.29-6.3z"/></svg>
                 </button>
             </div>
         </div>
@@ -188,6 +186,7 @@ export function renderPanelContent(panel) {
                     <select id="export-language" class="gherkin-input">
                         <option value="python" selected>🐍 Python + Behave</option>
                         <option value="cypress">🟩 Node + Cypress</option>
+                        <option value="playwright">🎭 Node + Playwright</option>
                     </select>
                 </div>
                 <button id="export-individual" class="gherkin-btn gherkin-btn-main gherkin-w-full" style="height: 38px;">
@@ -574,6 +573,10 @@ function attachFunctionalListeners(panel, store) {
 
         const featuresToExport = store.exportFeatures(selectedIndexes);
 
+        // Validação de completude pré-export
+        const canProceed = await showPreExportValidation(featuresToExport);
+        if (!canProceed) return;
+
         try {
             // Import export bridge dynamically
             const { exportBridge } = await import('../export/export-bridge.js');
@@ -767,8 +770,8 @@ function renderStepList(container, interactions) {
 
         return `
             <div data-index="${index}" class="gherkin-step-item gherkin-step-item--${step}${replayClass}" ${!isReplaying ? 'draggable="true"' : ''}>
-                <div class="gherkin-step-item__header" style="display: flex; flex-direction: column;">
-                    <div>
+                <div class="gherkin-step-item__header">
+                    <div class="gherkin-step-item__title">
                         <span class="gherkin-step-item__keyword">${stepLabel}</span>
                         <span class="gherkin-step-item__text">
                             ${escapeHtml(label)} <em>${escapeHtml(target)}</em>${value}
@@ -1049,6 +1052,7 @@ function createManualStepModal(store, initialData = {}) {
                     <option value="espera_segundos">Esperar (segundos)</option>
                     <option value="valida_existe">Validar que existe</option>
                     <option value="valida_contem">Validar texto</option>
+                    <option value="performance_audit">⚡ Auditar Performance</option>
                 </select>
             </div>
 
@@ -1120,6 +1124,16 @@ function createManualStepModal(store, initialData = {}) {
                 <div class="gherkin-mb-lg">
                     <label class="gherkin-label">Segundos:</label>
                     <input type="number" id="manual-modal-seconds" class="gherkin-input" value="${modalState.timeout}" min="1" max="60">
+                </div>
+            `;
+        }
+
+        if (action === 'performance_audit') {
+            html += `
+                <div class="gherkin-mb-lg">
+                    <label class="gherkin-label">⚡ Nota mínima de Performance (Lighthouse):</label>
+                    <input type="number" id="manual-modal-perf-threshold" class="gherkin-input" value="90" min="0" max="100" placeholder="90">
+                    <small style="color: #888; display: block; margin-top: 4px;">O teste falhará se a nota do Lighthouse for inferior a este valor.</small>
                 </div>
             `;
         }
@@ -1213,6 +1227,14 @@ function createManualStepModal(store, initialData = {}) {
             interaction.valorPreenchido = url;
             interaction.step = 'Given';
             interaction.nomeElemento = 'página';
+        } else if (action === 'performance_audit') {
+            const thresholdEl = modal.querySelector('#manual-modal-perf-threshold');
+            const threshold = thresholdEl ? parseInt(thresholdEl.value) || 90 : 90;
+            interaction.step = 'Then';
+            interaction.nomeElemento = 'performance';
+            interaction.acaoTexto = '⚡ Auditar Performance (Lighthouse)';
+            interaction.valorPreenchido = String(threshold);
+            interaction.performanceCheck = { enabled: true, threshold: threshold };
         } else {
             // Ações de elemento
             if (!modalState.selector) {
