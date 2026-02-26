@@ -28,6 +28,9 @@ export function renderToolbar(container) {
                 </span>
             </div>
             <div class="gherkin-toolbar-window-controls">
+                <button id="toolbar-ghost" class="gherkin-toolbar-btn gherkin-toolbar-btn--icon" title="${state.isGhostMode ? 'Expandir Painel' : 'Modo Fantasma (Encolher)'}">
+                    ${state.isGhostMode ? '👁️' : '👻'}
+                </button>
                 <button id="toolbar-minimize" class="gherkin-toolbar-btn gherkin-toolbar-btn--icon" title="Minimizar">▬</button>
                 <button id="toolbar-close" class="gherkin-toolbar-btn gherkin-toolbar-btn--icon gherkin-toolbar-btn--close" title="Fechar">✕</button>
             </div>
@@ -129,6 +132,10 @@ export function attachToolbarListeners(container) {
 
     bind('toolbar-help', () => {
         window.open(chrome.runtime.getURL('src/help.html'), '_blank');
+    });
+
+    bind('toolbar-ghost', () => {
+        store.toggleGhostMode();
     });
 
     bind('toolbar-minimize', () => {

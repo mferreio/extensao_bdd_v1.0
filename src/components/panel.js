@@ -46,6 +46,13 @@ export function renderPanelContent(panel) {
         panel.classList.remove('gherkin-panel--wide');
     }
 
+    // Gerenciar classe Ghost Mode (Pílula)
+    if (state.isGhostMode) {
+        panel.classList.add('gherkin-panel--ghost');
+    } else {
+        panel.classList.remove('gherkin-panel--ghost');
+    }
+
     let html = '';
     // No estado gravando, a toolbar substitui o header padrão
     if (panelState !== 'gravando') {
@@ -208,7 +215,11 @@ export function renderPanelContent(panel) {
             </div>
         </div>`;
     }
-    html += `<p id="gherkin-footer">By: Matheus Ferreira de Oliveira</p>`;
+    html += `
+        <p id="gherkin-footer">
+            Desenvolvido por <a href="https://www.linkedin.com/in/matheus-ferreira-57380271/" target="_blank" style="color: var(--color-primary-light); text-decoration: none;">Matheus Ferreira</a>
+        </p>
+    `;
     // Snapshot inputs states to preserve across re-renders (timer updates)
     const activeElement = document.activeElement;
     const activeId = activeElement ? activeElement.id : null;
@@ -682,7 +693,7 @@ export function makePanelDraggable(panel) {
 
     function onMouseDown(event) {
         // Usa delegação de eventos: Verifica dinamicamente se o clique foi na área de Header/Toolbar
-        const isHeaderClick = event.target.closest('.gherkin-toolbar') || event.target.closest('.gherkin-panel-header');
+        const isHeaderClick = event.target.closest('.gherkin-toolbar') || event.target.closest('.gherkin-panel-header') || event.target.closest('.gherkin-toolbar-header');
         
         // Se o painel estiver minimizado e clicarmos em qualquer lugar nele que não seja botões, permitimos o drag
         const isMinimized = panel.classList.contains('gherkin-panel--minimized');

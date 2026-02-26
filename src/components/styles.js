@@ -1441,7 +1441,7 @@ label {
     }
     .gherkin-xpath-option {
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         gap: 8px;
         padding: 8px 10px;
         border-radius: 6px;
@@ -1482,10 +1482,10 @@ label {
     }
     .gherkin-xpath-option__text {
         flex: 1;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
+        word-break: break-all;
+        white-space: normal;
         font-family: var(--font-mono);
+        line-height: 1.4;
     }
     .gherkin-xpath-option__actions {
         display: flex;
@@ -1876,6 +1876,40 @@ label {
         border-color: #d97706;
         color: #fff;
         box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+    }
+    
+    /* ==========================================
+       GHOST MODE (MODO FANTASMA)
+       ========================================== */
+    .gherkin-panel--ghost {
+        height: auto !important;
+        width: 320px !important;
+        min-height: 0 !important;
+        overflow: hidden;
+        border-radius: var(--radius-lg);
+        opacity: 0.8;
+        transition: all 0.3s ease;
+    }
+
+    /* Quando o usuário passa o mouse por cima do painel fantasma, ele volta à visibilidade total */
+    .gherkin-panel--ghost:hover {
+        opacity: 1;
+        box-shadow: var(--shadow-xl);
+    }
+
+    /* Esconder áreas que não são a Toolbar enquanto estiver no Modo Fantasma */
+    .gherkin-panel--ghost .gherkin-panel-content,
+    .gherkin-panel--ghost .gherkin-footer,
+    .gherkin-panel--ghost .gherkin-panel-step-editor {
+        display: none !important;
+    }
+
+    /* Opicional: esconde alguns botões longos da toolbar para não quebrar linha na pílula */
+    .gherkin-panel--ghost #toolbar-new-feature,
+    .gherkin-panel--ghost #toolbar-new-scenario,
+    .gherkin-panel--ghost #toolbar-export,
+    .gherkin-panel--ghost #toolbar-help {
+        display: none !important;
     }
   `;
   document.head.appendChild(style);

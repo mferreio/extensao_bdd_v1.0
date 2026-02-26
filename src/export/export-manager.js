@@ -1438,6 +1438,10 @@ class ${className}Locators:
         const className = this.toPascalCase(featureName);
 
         let content = `# -*- coding: utf-8 -*-
+# ==============================================================================
+# BDD Test Generator Enterprise
+# Idealizado e desenvolvido por: Matheus Ferreira de Oliveira
+# ==============================================================================
 """
 Steps para a feature: ${feature.name}
 Gerado automaticamente pela extensão BDD Test Generator
@@ -1762,7 +1766,8 @@ lang = pt
     generateRunBatContent() {
         return `@echo off
 echo ===================================================
-echo      Execucao Automatica de Testes BDD
+echo      Automação BDD - BDD Test Generator Enterprise
+echo      Desenvolvido por: Matheus Ferreira
 echo ===================================================
 echo.
 
@@ -1792,7 +1797,8 @@ pause
     generateRunShContent() {
         return `#!/bin/bash
 echo "==================================================="
-echo "     Execucao Automatica de Testes BDD"
+echo "     Automação BDD - BDD Test Generator Enterprise"
+echo "     Desenvolvido por: Matheus Ferreira"
 echo "==================================================="
 echo ""
 
@@ -2075,6 +2081,10 @@ six==1.16.0
 
     generateEnvironmentContent() {
         return `# -*- coding: utf-8 -*-
+# ==============================================================================
+# BDD Test Generator Enterprise
+# Idealizado e desenvolvido por: Matheus Ferreira de Oliveira
+# ==============================================================================
 """
 Configurações de ambiente Behave com Relatório PDF e HTML Melhorado
 """

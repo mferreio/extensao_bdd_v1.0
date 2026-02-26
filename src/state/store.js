@@ -11,6 +11,7 @@ class Store {
       // UI State
       panelState: 'feature', // 'feature', 'cenario', 'gravando', 'exportar'
       isVisible: false, // Controle de visibilidade da UI (Novo)
+      isGhostMode: false, // Modo colapsado em pílula
       isPaused: false,
       isRecording: false,
       isInspecting: false,
@@ -180,6 +181,7 @@ class Store {
     this.setState({
       panelState: 'gravando',
       isRecording: true,
+      isGhostMode: true, // Auto-ativa o modo fantasma ao iniciar gravação
       isPaused: false,
       currentScenario: {
         name,
@@ -347,6 +349,7 @@ class Store {
         currentFeature: updatedFeature,
         panelState: 'cenario_finalizado', // Estado intermediário para decisão da UI
         isRecording: false,
+        isGhostMode: false, // Expande ao finalizar gravação
         isPaused: false,
         currentScenario: null,
         interactions: [],
@@ -478,14 +481,23 @@ class Store {
   }
 
   /**
+   * Alternar Modo Fantasma
+   */
+  toggleGhostMode() {
+    this.setState({
+      isGhostMode: !this.state.isGhostMode
+    });
+  }
+
+  /**
    * Persistir estado no chrome.storage
    */
   saveToStorage() {
     try {
-      // Salvar estado, exceto isVisible (controle de sessão) e isInspecting
+      // Salvar estado, exceto isVisible (controle de sessão), isInspecting e isGhostMode
       // Assim, ao abrir nova aba, começa oculta a menos que esteja gravando
       // eslint-disable-next-line no-unused-vars
-      const { isVisible, isInspecting, manualInspectionMode, ...stateToSave } = this.state;
+      const { isVisible, isInspecting, manualInspectionMode, isGhostMode, ...stateToSave } = this.state;
 
       if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
         chrome.storage.local.set({ 'gherkin-state': stateToSave }, () => {

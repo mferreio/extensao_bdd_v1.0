@@ -20,6 +20,19 @@ async function initializeExtension() {
     }
     window.gherkinExtensionInitialized = true;
 
+    // Easter Egg: Assinatura do Desenvolvedor
+    console.log(`%c
+  ___        _                                        ___  ___  ___  
+ / _ \\      | |                                       | ___ \\ |  _  \\ 
+/ /_\\ \\_   _| |_ ___  _ __ ___   __ _  ___ __ _  ___  | |_/ / | | | | 
+|  _  | | | | __/ _ \\| '_ \\ \`_ \\ / _\` |/ __/ _\` |/ _ \\ | ___ \\ | | | | 
+| | | | |_| | || (_) | | | | | | (_| | (_| (_| | (_) || |_/ / | |/ /  
+\\_| |_/\\__,_|\\__\\___/|_| |_| |_|\\__,_|\\___\\__,_|\\___/ \\____/|___/   
+----------------------------------------------------------------------
+        => Idealizado e Desenvolvido por Matheus Ferreira <=          
+----------------------------------------------------------------------
+    `, "color: #3b82f6; font-weight: bold; font-family: monospace;");
+
     // Inicializa Store (Async)
     const store = getStore();
     await store.init();
