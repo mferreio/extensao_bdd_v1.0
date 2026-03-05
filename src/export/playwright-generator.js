@@ -279,7 +279,7 @@ call npm run report`
                         let functionBody = ``;
 
                         if (hasValue || hasBulk) {
-                            stepRegex += ` "{string}"`;
+                            stepRegex += ` {string}`;
                             stepSignature = `({ page }, valor`;
                         } else {
                             functionBody += `  const valor = '';\n`;
