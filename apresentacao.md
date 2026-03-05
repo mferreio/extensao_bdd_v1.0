@@ -7,7 +7,7 @@ backgroundColor: #f4f7f6
 color: #333
 ---
 
-# 🚀 BDD Test Generator Enterprise
+# 🚀 BDD_PyTech Enterprise
 ## Automação E2E Low-Code para Scale-Ups e Enterprises
 ### Simplificando Testes Inteligentes
 
@@ -57,13 +57,8 @@ Não te obrigamos a usar UMA única linguagem. Sua empresa cresceu e migrou do l
 
 ---
 
-# 🎲 Utilitários de Resiliência: Fake Data & Stress Runner
-
-Construir automação corporativa não é dar cliques básicos. Injetamos **ferramentas vitais no Editor de Passos**:
-
-- **Faker Catalog Nativo:** Esqueça abrir abas de "Gerador de CPFs". Com o clique no botão 🎲 *(Dice)*, a plataforma preenche Instantaneamente com CPFs matematicamente válidos, E-mails, Telefones e CNPJs realistas. É clique e use.
-  
-- **Stress Runner (Data-Driven):** Quer cadastrar 1.000 clientes? Ative o *Bulk Mode (📑)*. Cole mil nomes em um textarea e, com 2 cliques, a Exportação empacotará este fluxo longo em um gigantesco **Scenario Outline + Examples**, blindando a resiliência da sua aplicação.
+# 🛡️ Utilitários de Resiliência
+Construir automação corporativa não é dar cliques básicos. Injetamos **ferramentas vitais no Editor de Passos**.
 
 ---
 
@@ -100,4 +95,4 @@ Chegou a hora de parar de reescrever testes toda sprint.
 
 ### **Escalabilidade • Clean Code • Confiabilidade**
 
-*A Extensão BDD Test Generator é a ponte entre o QA Manual Inteligente e a Engenharia de Automação Automatizada.*
+*A Extensão BDD_PyTech é a ponte entre o QA Manual Inteligente e a Engenharia de Automação Automatizada.*

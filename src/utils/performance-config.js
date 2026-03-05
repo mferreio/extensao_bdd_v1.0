@@ -1,9 +1,9 @@
 /**
- * Configurações centralizadas para auditoria de Performance (Lighthouse).
+ * Configurações centralizadas para monitoramento de Performance.
  * Mantém constantes isoladas para evitar strings soltas nos generators.
  */
 
-// Thresholds padrão para auditoria Lighthouse
+// Thresholds padrão para auditoria (mantidos para compatibilidade estrutural)
 export const PERFORMANCE_DEFAULTS = {
     threshold: 90,
     categories: {
@@ -20,10 +20,10 @@ export const PERFORMANCE_ACTION = 'performance_audit';
 // Texto Gherkin por idioma do gerador
 export const PERFORMANCE_GHERKIN = {
     // Cypress / Playwright (inglês)
-    en: (threshold) => `the current page should score at least "${threshold}" on Lighthouse performance audit`,
+    en: (threshold) => `the current page performance should be monitored`,
     // Python / Behave (português)
-    pt: (threshold) => `audita performance da pagina com nota minima "${threshold}"`
+    pt: (threshold) => `monitora performance da pagina`
 };
 
 // Label para a UI
-export const PERFORMANCE_LABEL = '⚡ Auditar Performance (Lighthouse)';
+export const PERFORMANCE_LABEL = '⚡ Monitorar Performance';

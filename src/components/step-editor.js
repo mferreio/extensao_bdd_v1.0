@@ -60,77 +60,73 @@ export function renderStepEditor(container, interaction, index) {
                 <button id="step-editor-close" class="gherkin-step-editor__close" title="Fechar">✕</button>
             </div>
             <div class="gherkin-step-editor__body">
-                <div class="gherkin-step-editor__field">
-                    <label>Tipo:</label>
-                    <select id="step-editor-type">${stepOptionsHtml}</select>
-                </div>
-                <div class="gherkin-step-editor__field">
-                    <label>Ação:</label>
-                    <select id="step-editor-action">${actionOptionsHtml}</select>
-                </div>
-                <div class="gherkin-step-editor__field">
-                    <label>Elemento:</label>
-                    <input type="text" id="step-editor-element" value="${escapeHtml(interaction.nomeElemento || '')}" />
-                </div>
-                ${interaction.valorPreenchido !== undefined ? `
-                <div class="gherkin-step-editor__field">
-                    <label style="display: flex; justify-content: space-between; align-items: center;">
-                        <span>Valor:</span>
-                        <span style="display: flex; gap: 2px;">
-                            <button type="button" id="step-editor-faker-toggle" class="gherkin-btn-icon" title="Gerar dados falsos" style="width: 24px; height: 24px;">🎲</button>
-                            <button type="button" id="step-editor-bulk-toggle" class="gherkin-btn-icon" title="Massa de dados em lote" style="width: 24px; height: 24px;">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-                            </button>
-                        </span>
-                    </label>
-                    <input type="text" id="step-editor-value" value="${escapeHtml(interaction.valorPreenchido || '')}" />
-                    <div id="step-editor-bulk-area" class="gherkin-bulk-area" style="display: ${interaction.bulkData && interaction.bulkData.length > 0 ? 'block' : 'none'}; margin-top: 6px;">
-                        <textarea id="step-editor-bulk-data" class="gherkin-bulk-textarea" rows="4" placeholder="Cole aqui sua lista (um item por linha)">${interaction.bulkData ? interaction.bulkData.join('\n') : ''}</textarea>
-                        <span id="step-editor-bulk-count" class="gherkin-bulk-badge" style="margin-top: 4px; display: inline-block;">${interaction.bulkData && interaction.bulkData.length > 0 ? `📑 ${interaction.bulkData.length} itens carregados` : ''}</span>
+                <div class="gherkin-step-editor-content">
+                    <div class="gherkin-step-editor__field">
+                        <label>Tipo:</label>
+                        <select id="step-editor-type">${stepOptionsHtml}</select>
                     </div>
-                </div>
-                ` : ''}
-                ${interaction.acao === 'upload' && interaction.nomeArquivo ? `
-                <div class="gherkin-step-editor__field">
-                    <label>Arquivo:</label>
-                    <input type="text" id="step-editor-file" value="${escapeHtml(interaction.nomeArquivo || '')}" />
-                </div>
-                ` : ''}
-
-                <div class="gherkin-step-editor__field">
-                    <label style="display: flex; justify-content: space-between; align-items: center;">
-                        <span>⚡ Auditoria de Performance</span>
-                        <button type="button" id="step-editor-perf-toggle" class="gherkin-btn-icon gherkin-perf-toggle ${interaction.performanceCheck && interaction.performanceCheck.enabled ? 'active' : ''}" title="Ativar/Desativar Auditoria Lighthouse" style="width: 28px; height: 28px; font-size: 16px;">
-                            ⚡
-                        </button>
-                    </label>
-                    ${interaction.performanceCheck && interaction.performanceCheck.enabled ? `
-                    <div style="margin-top: 6px; display: flex; align-items: center; gap: 8px;">
-                        <span style="font-size: 0.8rem; color: #666;">Nota mínima:</span>
-                        <input type="number" id="step-editor-perf-threshold" value="${interaction.performanceCheck.threshold || PERFORMANCE_DEFAULTS.threshold}" min="0" max="100" style="width: 60px; text-align: center;" class="gherkin-input" />
+                    <div class="gherkin-step-editor__field">
+                        <label>Ação:</label>
+                        <select id="step-editor-action">${actionOptionsHtml}</select>
+                    </div>
+                    <div class="gherkin-step-editor__field">
+                        <label>Elemento:</label>
+                        <input type="text" id="step-editor-element" value="${escapeHtml(interaction.nomeElemento || '')}" />
+                    </div>
+                    ${interaction.valorPreenchido !== undefined ? `
+                    <div class="gherkin-step-editor__field">
+                        <label style="display: flex; justify-content: space-between; align-items: center;">
+                            <span>Valor:</span>
+                            <span style="display: flex; gap: 2px;">
+                                <button type="button" id="step-editor-faker-toggle" class="gherkin-btn-icon" title="Gerar dados falsos" style="width: 24px; height: 24px;">🎲</button>
+                                <button type="button" id="step-editor-bulk-toggle" class="gherkin-btn-icon" title="Massa de dados em lote" style="width: 24px; height: 24px;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                                </button>
+                            </span>
+                        </label>
+                        <input type="text" id="step-editor-value" value="${escapeHtml(interaction.valorPreenchido || '')}" />
+                        <div id="step-editor-bulk-area" class="gherkin-bulk-area" style="display: ${interaction.bulkData && interaction.bulkData.length > 0 ? 'block' : 'none'}; margin-top: 6px;">
+                            <textarea id="step-editor-bulk-data" class="gherkin-bulk-textarea" rows="4" placeholder="Cole aqui sua lista (um item por linha)">${interaction.bulkData ? interaction.bulkData.join('\n') : ''}</textarea>
+                            <span id="step-editor-bulk-count" class="gherkin-bulk-badge" style="margin-top: 4px; display: inline-block;">${interaction.bulkData && interaction.bulkData.length > 0 ? `📑 ${interaction.bulkData.length} itens carregados` : ''}</span>
+                        </div>
                     </div>
                     ` : ''}
-                </div>
-
-                <div class="gherkin-step-editor__divider"></div>
-
-                <div class="gherkin-step-editor__section">
-                    <label>Selecione o XPath:</label>
-                    <div class="gherkin-xpath-options" id="step-editor-xpath-list">
-                        ${xpathOptions}
+                    ${interaction.acao === 'upload' && interaction.nomeArquivo ? `
+                    <div class="gherkin-step-editor__field">
+                        <label>Arquivo:</label>
+                        <input type="text" id="step-editor-file" value="${escapeHtml(interaction.nomeArquivo || '')}" />
                     </div>
-                    <div class="gherkin-step-editor__field" style="margin-top: 8px;">
-                        <label class="gherkin-xpath-custom-label" style="display: flex; justify-content: space-between;">
-                            <span>✏ Gerar XPath <em>Personalizado</em></span>
-                            <span id="step-editor-xpath-message" style="font-size: 0.75rem; font-weight: 500;"></span>
+                    ` : ''}
+
+                    <div class="gherkin-step-editor__field">
+                        <label style="display: flex; justify-content: space-between; align-items: center;">
+                            <span>⚡ Monitorar Performance</span>
+                            <button type="button" id="step-editor-perf-toggle" class="gherkin-btn-icon gherkin-perf-toggle ${interaction.performanceCheck && interaction.performanceCheck.enabled ? 'active' : ''}" title="Ativar/Desativar Monitoramento de Performance" style="width: 28px; height: 28px; font-size: 16px;">
+                                ⚡
+                            </button>
                         </label>
-                        <input type="text" id="step-editor-custom-xpath" 
-                               value="${escapeHtml(interaction.xpath || '')}" 
-                               placeholder="//div[@id='...']" />
                     </div>
-                </div>
 
-                ${buildCodePreview(interaction)}
+                    <div class="gherkin-step-editor__divider"></div>
+
+                    <div class="gherkin-step-editor__section">
+                        <label>Selecione o XPath:</label>
+                        <div class="gherkin-xpath-options" id="step-editor-xpath-list">
+                            ${xpathOptions}
+                        </div>
+                        <div class="gherkin-step-editor__field" style="margin-top: 8px;">
+                            <label class="gherkin-xpath-custom-label" style="display: flex; justify-content: space-between;">
+                                <span>✏ Gerar XPath <em>Personalizado</em></span>
+                                <span id="step-editor-xpath-message" style="font-size: 0.75rem; font-weight: 500;"></span>
+                            </label>
+                            <input type="text" id="step-editor-custom-xpath" 
+                                   value="${escapeHtml(interaction.xpath || '')}" 
+                                   placeholder="//div[@id='...']" />
+                        </div>
+                    </div>
+
+                    ${buildCodePreview(interaction)}
+                </div>
             </div>
             <div class="gherkin-step-editor__footer">
                 <button id="step-editor-save" class="gherkin-btn gherkin-btn-main">Salvar</button>
@@ -396,20 +392,13 @@ function attachStepEditorListeners(container, interaction, index) {
             const isActive = perfToggle.classList.contains('active');
             const newEnabled = !isActive;
             perfToggle.classList.toggle('active', newEnabled);
-            // Atualizar imediatamente na store e re-renderizar para mostrar/esconder o threshold input
+            
             store.updateInteraction(index, {
                 performanceCheck: {
                     enabled: newEnabled,
                     threshold: PERFORMANCE_DEFAULTS.threshold
                 }
             });
-            // Re-render para mostrar/esconder campo de threshold
-            const updatedState = store.getState();
-            const currentScenario = updatedState.features[updatedState.currentFeatureIndex]?.scenarios[updatedState.currentScenarioIndex];
-            const updatedInteraction = currentScenario?.interactions?.[index];
-            if (updatedInteraction) {
-                renderStepEditor(container, updatedInteraction, index);
-            }
         });
     }
 

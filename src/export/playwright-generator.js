@@ -23,8 +23,9 @@ export class PlaywrightGenerator {
     }
 
     /**
-     // Gera todos os arquivos de uma feature (Gherkin + Steps)
-    generateFeatureFiles(feature, globalUniqueSteps = new Set()) {
+     * Gera todos os arquivos de uma feature (Gherkin + Steps)
+     */
+    generateFeatureFiles(feature, globalUniqueSteps = new Set(), options = {}) {
         const files = [];
         const featureSlug = this.slugify(feature.name);
         const featureName = feature.name;
@@ -36,7 +37,7 @@ export class PlaywrightGenerator {
 
         files.push({
             name: `e2e/steps/${featureName}.steps.js`,
-            content: this.generateStepDefinitions(feature, globalUniqueSteps)
+            content: this.generateStepDefinitions(feature, globalUniqueSteps, options)
         });
 
         // Page Object Model
@@ -44,7 +45,7 @@ export class PlaywrightGenerator {
         if (allInteractions.length > 0) {
             files.push({
                 name: `tests/pages/${featureSlug}_page.js`,
-                content: generatePlaywrightPOM(feature.name, allInteractions)
+                content: generatePlaywrightPOM(feature.name, allInteractions, options)
             });
         }
 
@@ -54,34 +55,48 @@ export class PlaywrightGenerator {
     /**
      * Gera arquivos de configuração do projeto Playwright
      */
-    generateProjectFiles(features = []) {
+    generateProjectFiles(features = [], options = {}) {
         const files = [];
 
+        // Configuração principal do Playwright
         files.push({
             name: 'playwright.config.js',
-            content: `// @ts-check
-const { defineConfig, devices } = require('@playwright/test');
+            content: `const { defineConfig, devices } = require('@playwright/test');
+const { autoTestFixture } = require('./e2e/fixtures');
+const { defineBddConfig } = require('playwright-bdd');
+
+const testDir = defineBddConfig({
+    features: 'tests/features/**/*.feature',
+    steps: 'e2e/steps/**/*.steps.js',
+});
 
 module.exports = defineConfig({
-  testDir: './tests',
-  fullyParallel: true,
-  forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
-  reporter: 'html',
-  use: {
-    baseURL: process.env.BASE_URL || 'http://localhost:3000',
-    trace: 'on-first-retry',
-    screenshot: 'only-on-failure',
-  },
-  projects: [
-    {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+    testDir,
+    timeout: ${options.globalTimeout || 30} * 1000,
+    expect: {
+        timeout: 10000
     },
-  ],
-});
-`
+    fullyParallel: true,
+    forbidOnly: !!process.env.CI,
+    retries: process.env.CI ? 2 : 0,
+    workers: process.env.CI ? 1 : undefined,
+    reporter: [
+        ['html', { outputFolder: 'playwright-report' }],
+        ['json', { outputFile: 'test-results/results.json' }]
+    ],
+    use: {
+        actionTimeout: 0,
+        trace: 'on-first-retry',
+        video: 'retain-on-failure',
+        screenshot: 'only-on-failure'
+    },
+    projects: [
+        {
+            name: 'chromium',
+            use: { ...devices['Desktop Chrome'] },
+        }
+    ]
+});`
         });
 
         files.push({
@@ -90,14 +105,14 @@ module.exports = defineConfig({
   "name": "playwright-bdd-tests",
   "version": "1.0.0",
   "scripts": {
-    "test": "npx playwright test",
-    "test:headed": "npx playwright test --headed",
-    "test:ui": "npx playwright test --ui",
+    "test": "npx bddgen && npx playwright test",
+    "test:headed": "npx bddgen && npx playwright test --headed",
+    "test:ui": "npx bddgen && npx playwright test --ui",
     "report": "npx playwright show-report"
   },
   "devDependencies": {
     "@playwright/test": "^1.40.0",
-    "playwright-bdd": "^6.0.0",
+    "playwright-bdd": "^7.0.0",
     "playwright-lighthouse": "^4.0.0",
     "lighthouse": "^11.0.0"
   }
@@ -106,8 +121,12 @@ module.exports = defineConfig({
         });
 
         files.push({
-            name: 'tests/fixtures.js',
-            content: `// Fixtures compartilhadas para os testes Playwright\nconst { test as base } = require('@playwright/test');\n\nexports.test = base.extend({\n    // Adicione fixtures customizadas aqui\n});\n\nexports.expect = base.expect;\n`
+            name: 'e2e/fixtures.js',
+            content: `const { test: base } = require('@playwright/test');
+
+export const test = base.extend({
+    // Fixtures adicionais
+});`
         });
 
         let readmeContent = `# Projeto de Testes Playwright BDD\n\nEste projeto foi gerado automaticamente.\n\n## Como executar\n1. Certifique-se de ter o Node.js v16+ instalado.\n2. Execute \`npm install\`\n3. Execute \`npx playwright install\` para instalar os navegadores.\n4. Execute \`npm run test\` para rodar todos os testes em background.\n5. Execute \`npm run test:ui\` para abrir a interface.\n6. Execute \`npm run report\` para ver os relatórios após falhas.\n\n---\n\n`;
@@ -118,6 +137,34 @@ module.exports = defineConfig({
         files.push({
             name: 'README.md',
             content: readmeContent
+        });
+
+        // Batch script para facilitar a execução no Windows
+        files.push({
+            name: 'executar_testes.bat',
+            content: `@echo off
+echo =======================================================
+echo Iniciando Execucao dos Testes Playwright (BDD)
+echo =======================================================
+echo.
+echo Desabilitando a checagem rigorosa de certificados SSL (bypass de proxy/vpn corporativa)...
+set NODE_TLS_REJECT_UNAUTHORIZED=0
+echo.
+echo Instalando dependencias (se necessario)...
+call npm install
+echo.
+echo Instalando o navegador Chromium (muito mais rapido)...
+call npx playwright install chromium
+echo.
+echo Compilando BDDs e executando os testes automatizados...
+call npm run test
+echo.
+echo =======================================================
+echo Testes finalizados!
+echo Pressione qualquer tecla para abrir o relatorio HTML.
+echo =======================================================
+pause
+call npm run report`
         });
 
         return files;
@@ -135,6 +182,10 @@ module.exports = defineConfig({
                     i => Array.isArray(i.bulkData) && i.bulkData.length > 0
                 );
 
+                if (scenario.description) {
+                    content += `  # ${scenario.description.replace(/\n/g, '\n  # ')}\n`;
+                }
+
                 if (bulkInteraction) {
                     content += `  Scenario Outline: ${scenario.name}\n`;
 
@@ -148,7 +199,7 @@ module.exports = defineConfig({
                                 ? ' "<dado>"'
                                 : (interaction.valorPreenchido ? ` "${interaction.valorPreenchido}"` : '');
 
-                            content += `    ${stepType} ${actionText} "${elementName}"${value}\n`;
+                            content += `    ${stepType} ${actionText} ${elementName}${value}\n`;
                         });
                     }
 
@@ -166,7 +217,7 @@ module.exports = defineConfig({
                             const actionText = interaction.acaoTexto || interaction.acao;
                             const elementName = interaction.nomeElemento || 'elemento';
                             let value = interaction.valorPreenchido ? ` "${interaction.valorPreenchido}"` : '';
-                            content += `    ${stepType} ${actionText} "${elementName}"${value}\n`;
+                            content += `    ${stepType} ${actionText} ${elementName}${value}\n`;
 
                             // Injetar step de performance se marcado
                             if (interaction.performanceCheck && interaction.performanceCheck.enabled) {
@@ -184,11 +235,12 @@ module.exports = defineConfig({
 
     /**
      * Gera step definitions para Playwright com page.locator() nativo.
-     * Usa XPath quando disponível, CSS como fallback.
+     * Usa a estratégia preferida de seletores, fallback para os outros.
      */
-    generateStepDefinitions(feature, globalUniqueSteps = new Set()) {
+    generateStepDefinitions(feature, globalUniqueSteps = new Set(), options = {}) {
         let content = `const { test, expect } = require('@playwright/test');\n`;
-        content += `const { Given, When, Then } = require('playwright-bdd');\n\n`;
+        content += `const { createBdd } = require('playwright-bdd');\n`;
+        content += `const { Given, When, Then, And, But } = createBdd();\n\n`;
 
         const trackerSet = globalUniqueSteps instanceof Set ? globalUniqueSteps : new Set();
 
@@ -196,25 +248,41 @@ module.exports = defineConfig({
             feature.scenarios.forEach(scenario => {
                 if (scenario.interactions) {
                     scenario.interactions.forEach(interaction => {
-                        const stepType = interaction.step || 'Then';
+                        let stepType = interaction.step || 'Then';
+                        if (stepType === 'And' || stepType === 'But') {
+                            stepType = 'Then';
+                        }
                         const actionText = interaction.acaoTexto || interaction.acao;
                         const elementName = interaction.nomeElemento || 'elemento';
                         const hasValue = !!interaction.valorPreenchido;
                         const hasBulk = Array.isArray(interaction.bulkData) && interaction.bulkData.length > 0;
 
-                        // Resolver seletor: xpath tem prioridade no Playwright (suporte nativo!)
-                        const xpath = interaction.xpath || '';
-                        const cssSelector = interaction.cssSelector || interaction.selector || '';
-                        const selector = xpath || cssSelector || `[name="${elementName}"]`;
+                        // Extração robusta de seletores (lida com inconsistências de nomenclaturas)
+                        const xpath = interaction.xpath || interaction.xpathSelector || (interaction.isValid && interaction.isValid.xpath ? interaction.xpath : '');
+                        const cssSelector = interaction.cssSelector || interaction.selector || interaction.seletor || (interaction.isValid && interaction.isValid.css ? interaction.cssSelector : '');
+                        const preferred = options.preferredSelector || 'best';
+                        
+                        let selector = '';
+                        if (preferred === 'xpath' && xpath) {
+                            selector = xpath;
+                        } else if (preferred === 'css' && cssSelector) {
+                            selector = cssSelector;
+                        } else {
+                            // Default / Best (No playwright XPath e CSS funcionam bem nativamente)
+                            selector = xpath || cssSelector || `[name="${elementName}"]`;
+                        }
+
                         const escapedSelector = selector.replace(/'/g, "\\'");
 
-                        let stepRegex = `${actionText} "${elementName}"`;
+                        let stepRegex = `${actionText} ${elementName}`;
                         let stepSignature = `({ page }`;
-                        let functionBody = `  // TODO: implement step\n`;
+                        let functionBody = ``;
 
                         if (hasValue || hasBulk) {
                             stepRegex += ` "{string}"`;
                             stepSignature = `({ page }, valor`;
+                        } else {
+                            functionBody += `  const valor = '';\n`;
                         }
 
                         // Evitar passos duplicados
@@ -254,7 +322,7 @@ module.exports = defineConfig({
                             functionBody = `  // Login action needs manual implementation or a custom command\n  console.log('Login required');\n`;
                         }
 
-                        content += `${stepType}("${stepRegex}", async ${stepSignature}) => {\n`;
+                        content += `${stepType}('${stepRegex}', async ${stepSignature}) => {\n`;
                         content += functionBody;
                         content += `});\n\n`;
                     });

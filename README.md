@@ -1,17 +1,21 @@
-# Gerador de Testes Automatizados BDD em Python
+# Gerador de Testes Automatizados BDD
 
 ## 📋 Descrição
-O **Gerador de Testes Automatizados BDD** é uma extensão para navegador que captura automaticamente as interações do usuário em páginas web e gera um projeto completo de testes automatizados em Python usando **Selenium** e **Behave** (BDD - Behavior Driven Development).
+O **Gerador de Testes Automatizados BDD** é uma extensão para Chrome que captura automaticamente as interações do usuário em páginas web e gera projetos completos de testes automatizados usando **Page Object Model (POM)** em 3 frameworks: **Python/Behave**, **Cypress** e **Playwright**.
 
 ## ✨ Funcionalidades
-- ✅ Gravação automática de interações do usuário (cliques, preenchimentos, navegação)
-- ✅ Conversão automática para sintaxe Gherkin (Given, When, Then)
+- ✅ Gravação automática de interações (cliques, preenchimentos, navegação)
+- ✅ Conversão para sintaxe Gherkin (Given, When, Then)
 - ✅ Geração de Page Objects com seletores CSS/XPath reais
-- ✅ Geração de Step Definitions correspondentes ao Gherkin
-- ✅ Exportação de projeto completo e executável
+- ✅ Exportação multi-framework: **Python/Behave**, **Cypress**, **Playwright**
+- ✅ Exportação de **Caderno de Testes em Excel** (roteiros manuais + dicionário de seletores)
+- ✅ **Auditoria de Performance** (Lighthouse) integrada nos testes
+- ✅ **Replay Nativo** (dry-run no próprio browser antes de exportar)
+- ✅ **Validação Visual de Seletores** (Spotlight Tracker — aura verde no elemento)
 - ✅ Painel flutuante responsivo e acessível
 - ✅ Suporte a múltiplas features e cenários
-- ✅ Código limpo seguindo boas práticas
+- ✅ Código limpo seguindo boas práticas (POM)
+- ✅ Zero Vendor Lock-in: código 100% open-source
 
 ## 🎯 O Que é Gerado
 
@@ -77,7 +81,7 @@ npm run build
 1. Abra o navegador e acesse `chrome://extensions/`
 2. Ative o **Modo do desenvolvedor** (canto superior direito)
 3. Clique em **Carregar sem compactação**
-4. Selecione a pasta do projeto `C:\Matheus\extensao_bdd_v1.0`
+4. Selecione a pasta do projeto `c:\Matheus\Pessoal\extensao_bdd_testes`
 
 ## 📦 Distribuição
 
@@ -90,7 +94,7 @@ Para gerar uma versão da extensão pronta para distribuição (sem o código fo
    ```
 3. O script criará:
    - Uma pasta `release/` com os arquivos necessários
-   - Um arquivo `GherkinGenerator_Distribuicao.zip` pronto para envio
+   - Um arquivo `BDD_PyTech_Distribuicao.zip` pronto para envio
 
 **Nota**: Esta versão protege seu código fonte, enviando apenas o bundle compilado e minificado.
 
@@ -237,8 +241,8 @@ Este projeto foi desenvolvido por **Matheus Ferreira de Oliveira**.
 
 ---
 
-**Versão**: 1.2.0  
-**Data**: 21 de Janeiro de 2026  
+**Versão**: 1.2.5  
+**Data**: 04 de Março de 2026  
 **Status**: ✅ **PRODUÇÃO**
 
 **⭐ Se este projeto foi útil, considere dar uma estrela no GitHub!**

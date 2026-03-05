@@ -89,14 +89,8 @@ export function attachToolbarListeners(container) {
 
     bind('toolbar-start-replay', () => {
         if (state.interactions && state.interactions.length > 0) {
-            // Abre modal de configuração antes de iniciar
-            const { showReplayConfig } = require('./replay-config.js');
-            const panel = container.closest('.gherkin-panel');
-            if (panel) {
-                showReplayConfig(panel, state.interactions);
-            } else {
-                store.startReplay(); // Fallback direto
-            }
+            const repeatCount = (state.replayConfig && state.replayConfig.repeatCount) ? state.replayConfig.repeatCount : 1;
+            store.startReplayWithConfig({ repeatCount });
         }
     });
 

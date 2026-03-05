@@ -183,6 +183,7 @@ export function injectGherkinStyles() {
 .gherkin-panel-header {
   background: #2c3e50;
   color: #ffffff;
+
   padding: var(--spacing-md) var(--spacing-lg);
   display: flex;
   align-items: center;
@@ -1127,11 +1128,10 @@ label {
     .gherkin-recording-layout {
         display: grid;
         grid-template-columns: 1fr 380px;
-        grid-template-rows: 1fr auto;
         flex: 1;
         min-height: 0;
         overflow: hidden;
-        max-height: calc(100vh - 120px);
+        max-height: calc(100vh - 80px); /* Ajustado para compensar remoção do footer de detalhes */
     }
 
     /* Scenario Editor (Left Column) */
@@ -1141,7 +1141,7 @@ label {
         display: flex;
         flex-direction: column;
         border-right: 1px solid var(--border-color);
-        overflow-y: auto;
+        overflow: hidden;
         min-height: 0;
     }
     .gherkin-scenario-editor__header {
@@ -1332,6 +1332,7 @@ label {
         display: flex;
         flex-direction: column;
         height: 100%;
+        max-height: 100%;
         min-height: 0;
         overflow: hidden;
         background: var(--bg-primary);
@@ -1382,6 +1383,9 @@ label {
         flex: 1;
         overflow-y: auto;
         padding: 16px;
+        min-height: 0; /* Importante para permitir scroll em flex containers */
+    }
+    .gherkin-step-editor-content {
         display: flex;
         flex-direction: column;
         gap: 12px;
@@ -1425,6 +1429,7 @@ label {
         display: block;
     }
     .gherkin-step-editor__footer {
+        flex-shrink: 0;
         padding: 12px 16px;
         border-top: 1px solid var(--border-color);
         display: flex;
@@ -1539,75 +1544,12 @@ label {
         word-break: break-all;
     }
 
-    /* Element Details (Below Scenario Editor) */
-    .gherkin-element-details {
-        padding: 12px 16px;
-    }
-    .gherkin-element-details__title {
-        margin: 0 0 10px 0;
-        font-size: 0.95rem;
-        font-weight: 700;
-        color: var(--text-primary);
-    }
-    .gherkin-element-details__grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 8px;
-    }
-    .gherkin-element-details__field {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-    .gherkin-element-details__label {
-        font-size: 0.82rem;
-        font-weight: 600;
-        color: var(--text-secondary);
-        min-width: 50px;
-    }
-    .gherkin-element-details__input {
-        flex: 1;
-        padding: 6px 10px !important;
-        font-size: 0.82rem !important;
-        border: 1px solid transparent !important;
-        border-radius: 6px !important;
-        background: var(--bg-secondary) !important;
-        color: var(--text-primary);
-        font-family: var(--font-mono);
-        transition: all 0.2s;
-    }
-    .gherkin-element-details__input:focus {
-        outline: none !important;
-        border-color: var(--color-primary-light) !important;
-        background: var(--bg-primary) !important;
-    }
-    .gherkin-element-details__code {
-        background: #2c3e50;
-        border-radius: 8px;
-        padding: 8px 12px;
-        margin-top: 10px;
-        display: inline-block;
-    }
-    .gherkin-element-details__code code {
-        color: #ecf0f1;
-        font-family: var(--font-mono);
-        font-size: 0.8rem;
-    }
-
-    /* Element Details Bottom Section */
-    .gherkin-element-details-container {
-        grid-column: 1;
-        grid-row: 2;
-        border-top: 1px solid var(--border-color);
-        background: var(--bg-secondary);
-    }
-
     /* Step Editor Container (spans right column) */
     .gherkin-step-editor-container {
         grid-column: 2;
-        grid-row: 1 / 3;
+        grid-row: 1;
         border-left: 1px solid var(--border-color);
-        overflow-y: auto;
+        overflow: hidden; /* O scroll será interno ao editor */
     }
 
     /* Minimized state */

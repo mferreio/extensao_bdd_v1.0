@@ -42,7 +42,7 @@ style: |
 ---
 
 # 🚀 Retorno sobre o Investimento (ROI) em Automação
-## BDD Test Generator vs Modelos Tradicionais
+## BDD_PyTech vs Modelos Tradicionais
 ### Aceleração Estratégica da Qualidade de Software
 
 ---
@@ -53,7 +53,7 @@ A automação clássica virou um gargalo nas Sprints. Avaliamos 3 modelos comuns
 
 1. **Testes Puramente Manuais:** Lentos, repetitivos e extremamente propensos a falhas humanas (Fadiga Dielétrica). O custo acompanha a escala linearmente.
 2. **Automação Tradicional (Hard-Code):** Times inteiros criando scripts no Cypress/Selenium do zero. Meses de Setup e semanas só para manter XPaths quando a tela muda.
-3. **💥 BDD Test Generator:** Gravação Low-Code integrada direto com exportação de Clean Code estrutural (Page Objects) nativo para Continuous Integration.
+3. **💥 BDD_PyTech:** Gravação Low-Code integrada direto com exportação de Clean Code estrutural (Page Objects) nativo para Continuous Integration.
 
 ---
 
@@ -61,12 +61,12 @@ A automação clássica virou um gargalo nas Sprints. Avaliamos 3 modelos comuns
 
 Quanto tempo leva para criar e colocar em produção uma suíte E2E com **10 Fluxos Complexos (Ex: Login, Checkouts, Cadastros)**?
 
-| Etapa | Automação Clássica (Coding) | BDD Test Generator | Ganho |
+| Etapa | Automação Clássica (Coding) | BDD_PyTech | Ganho |
 | :--- | :--- | :--- | :--- |
 | **Setup do Projeto** | 8 a 16 horas | **0 horas** *(via Extensão)* | **100%** |
 | **Mapeamento (Locators)** | 12 a 24 horas | **1 hora** *(Spy Mode)* | **95%** |
 | **Criação dos Scripts** | 40 horas *(1 semana)* | **2 horas** *(Auto-Geração)* | **95%** |
-| **Data Generation (Mocks)** | 10 horas | **Instantes** *(Fake Data + Bulk)* | **98%** |
+| **Data Generation (Mocks)** | 10 horas | **Instantes** | **98%** |
 | **Total Estimado** | **70 a 90 horas** | **~3 a 4 horas** | **🔥 95% mais rápido** |
 
 ---
@@ -90,7 +90,7 @@ Não é apenas sobre velocidade, é sobre **Confiabilidade**. Por que a Automaç
 **Problema (Tradicional):**
 Dev do Front-End altera o CSS (`id="btn-login"` vira `class="sc-jTk1x"`). O Selenium/Cypress não acha o elemento. Pipeline falha, liberação da Sprint é abortada, abre-se ticket de correção para a automação. 
 
-**Solução (BDD Test Generator):**
+**Solução (BDD_PyTech):**
 Exportamos **Page Object Models**. Se o layout mudar amanhã, você não escava 500 linhas de código no Cypress. Abre a Extensão, regrava o Passo quebrado, e o **Spotlight Tracker (👁️)** acha o botão em 1 segundo e recria o Locator para toda a classe da Página (usando `text()` XPath resiliente).
 
 ---
@@ -100,9 +100,7 @@ Exportamos **Page Object Models**. Se o layout mudar amanhã, você não escava 
 A ferramenta conta com injeções Enterprise gratuitas para impulsionar a validação antes da implantação.
 
 1. **Replay Nativo (Zero-Compile):** Pare de compilar para testar se funciona! Clicou no `Play` (▶️) na Extensão, ela própria roda e simula toda a tela para você bater o martelo rapidamente.
-2. **Bulk Data Injection (Multiplicador):** Validar 50 cadastros? Com a função **(📑)**, crie um Scenario Outline automatizado inserindo tabelas Gherkin dinâmicas em 2 cliques.
-3. **Auditoria de Performance (Lighthouse):** Clicou no raio **(⚡)**, seu teste E2E vira uma barreira de performance injetando checagens de Core Web Vitals no CI/CD automaticamente sem esforço extra.
-4. **Fake Data Native:** Esqueça parar o teste por dados sujos no Banco. Botão (🎲) gera CPFs válidos matematicamente sob demanda no seu script visual.
+2. **Auditoria de Performance (Lighthouse):** Clicou no raio **(⚡)**, seu teste E2E vira uma barreira de performance injetando checagens de Core Web Vitals no CI/CD automaticamente sem esforço extra.
 
 ---
 
@@ -110,7 +108,7 @@ A ferramenta conta com injeções Enterprise gratuitas para impulsionar a valida
 
 Muitas ferramentas Low-Code (Ex: Katalon, Mabl) prendem você na infraestrutura paga deles. Você paga por licenças ou uso de nuvem.
 
-O nosso **BDD Test Generator** quebra o silenciamento tecnológico (Vendor Lock-in).
+O nosso **BDD_PyTech** quebra o silenciamento tecnológico (Vendor Lock-in).
 
 A mágica no arquivo ZIP criado não gera códigos dependentes da nossa plataforma, e sim **código legível puro**:
 - **Selenium** (Python)

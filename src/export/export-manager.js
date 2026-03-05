@@ -17,6 +17,8 @@ import { CypressGenerator } from './cypress-generator.js';
 import { PlaywrightGenerator } from './playwright-generator.js';
 import { BDDExportValidator } from './pre-export-validator.js';
 import { generateCoverageSection } from './coverage-report.js';
+import { getExcelGenerator } from './excel-generator.js';
+import { getStore } from '../state/store.js';
 
 /**
  * ExportLogger - Gerencia logging de auditoria
@@ -338,8 +340,20 @@ export class ExportManager {
             includeLogs = true,
             includeAudit = true,
             onProgress = null,
-            language = 'python'
+            language = 'python',
+            globalLighthouse = false,
+            preferredSelector = null
         } = options;
+
+        // Se a preferência não for passada, tenta pegar do Store
+        if (!options.preferredSelector) {
+            try {
+                const store = getStore();
+                options.preferredSelector = store.getState().preferredSelector || 'xpath'; // XPath como prioridade se não houver escolha
+            } catch (e) {
+                options.preferredSelector = 'xpath';
+            }
+        }
 
         // Validação inicial
         if (!features || features.length === 0) {
@@ -394,12 +408,12 @@ export class ExportManager {
                     let files = [];
                     if (options.language === 'playwright') {
                         const pwGen = new PlaywrightGenerator();
-                        files = pwGen.generateFeatureFiles(feature, globalUniqueSteps);
+                        files = pwGen.generateFeatureFiles(feature, globalUniqueSteps, options);
                     } else if (options.language === 'cypress') {
                         const cyGen = new CypressGenerator();
-                        files = cyGen.generateFeatureFiles(feature, globalUniqueSteps);
+                        files = cyGen.generateFeatureFiles(feature, globalUniqueSteps, options);
                     } else {
-                        files = this.generateFeatureFiles(feature, globalUniqueSteps);
+                        files = this.generateFeatureFiles(feature, globalUniqueSteps, options);
                     }
                     exportData.push({
                         featureName: feature.name,
@@ -427,6 +441,21 @@ export class ExportManager {
                 });
                 this.logger.success('Logs inclusos');
             }
+
+            // Dicionário de Seletores Alternativos
+            const dictionaryContent = this.generateSelectorsDictionaryContent(features);
+            
+            // Caderno de Testes em Excel
+            const excelBuffer = getExcelGenerator().generateTestWorkbook(features);
+
+            exportData.push({
+                featureName: 'DOCUMENTATION',
+                files: [
+                    { name: 'docs/seletores_alternativos.md', content: dictionaryContent },
+                    { name: 'docs/caderno_de_testes.xlsx', content: excelBuffer }
+                ]
+            });
+            this.logger.success('Documentações geradas');
 
             // Executar exportação
             if (format === 'zip') {
@@ -456,18 +485,83 @@ export class ExportManager {
     }
 
     /**
+     * Gera documento com mapeamento de todos os seletores e suas alternativas
+     * @param {Array} features 
+     * @returns {string} Markdown content
+     */
+    generateSelectorsDictionaryContent(features) {
+        let md = `# Dicionário de Seletores Alternativos\n\n`;
+        md += `> **Nota:** Este documento foi gerado automaticamente para facilitar a manutenção futura dos testes. `;
+        md += `Caso algum elemento da interface mude e o teste quebre, você pode consultar as alternativas capturadas durante a gravação para substituí-lo.\n\n`;
+        
+        let hasSelectors = false;
+
+        features.forEach(feature => {
+            md += `## 📁 Feature: ${feature.name}\n\n`;
+            (feature.scenarios || []).forEach(scenario => {
+                md += `### 🏷️ Cenário: ${scenario.name}\n\n`;
+                
+                const validInteractions = (scenario.interactions || []).filter(i => 
+                    i.acao !== 'acessa_url' && i.acao !== 'espera_segundos' && (i.cssSelector || i.xpath)
+                );
+
+                if (validInteractions.length === 0) {
+                    md += `*Nenhum seletor mapeado internamente neste cenário.*\n\n`;
+                    return;
+                }
+
+                md += `| Passo | Ação | Elemento Alvo | Seletor Principal Usado | Alternativas Capturadas |\n`;
+                md += `|-------|------|---------------|-------------------------|-------------------------|\n`;
+
+                validInteractions.forEach(i => {
+                    hasSelectors = true;
+                    // Format alternatives
+                    let alts = [];
+                    if (i.alternativeSelectors && i.alternativeSelectors.length > 0) {
+                        i.alternativeSelectors.forEach(alt => {
+                            const par = [];
+                            if (alt.selector) par.push(`**CSS:** \`${alt.selector}\``);
+                            if (alt.xpath) par.push(`**XPATH:** \`${alt.xpath}\``);
+                            if (par.length > 0) alts.push(par.join('<br>'));
+                        });
+                    } else if (i.xpath && i.xpath !== i.cssSelector) {
+                        alts.push(`**XPATH:** \`${i.xpath}\``);
+                    }
+                    
+                    const alternativesStr = alts.length > 0 ? alts.join('<br><br>• ') : '-';
+                    
+                    let principalStrChunks = [];
+                    if (i.cssSelector) principalStrChunks.push(`**CSS:** \`${i.cssSelector}\``);
+                    if (i.xpath) principalStrChunks.push(`**XPATH:** \`${i.xpath}\``);
+                    
+                    const principalStr = principalStrChunks.join('<br>');
+                    
+                    md += `| ${i.step || '-'} | ${i.acao || '-'} | ${i.nomeElemento || '-'} | ${principalStr} | ${alternativesStr} |\n`;
+                });
+                md += `\n`;
+            });
+        });
+
+        if (!hasSelectors) {
+            md += `*Nenhum seletor de tela foi encontrado nos cenários gravados para documentação.*\n`;
+        }
+
+        return md;
+    }
+
+    /**
      * Gera todos os arquivos para uma feature específica (Python/Selenium)
      * @param {Object} feature
      * @param {Set} globalUniqueSteps
      */
-    generateFeatureFiles(feature, globalUniqueSteps = new Set()) {
+    generateFeatureFiles(feature, globalUniqueSteps = new Set(), options = {}) {
         const files = [];
         const featureName = this.slugify(feature.name);
 
         // Gherkin file
         files.push({
             name: `features/${featureName}.feature`,
-            content: this.generateGherkinContent(feature)
+            content: this.generateGherkinContent(feature, options)
         });
 
         // Steps.py (dentro de features)
@@ -479,11 +573,11 @@ export class ExportManager {
         // Pages.py (dentro de features/pages) e init para pacote Python
         files.push({
             name: `features/pages/__init__.py`,
-            content: `# Arquivo de inicializacao do modulo pages\n`
+            content: ``
         });
         files.push({
             name: `features/pages/${featureName}_page.py`,
-            content: this.generatePagesContent(feature)
+            content: this.generatePagesContent(feature, options)
         });
 
         return files;
@@ -537,6 +631,11 @@ export class ExportManager {
             content: this.generateRunShContent()
         });
 
+        files.push({
+            name: `improve_report.py`,
+            content: this.generateImproveReportScript()
+        });
+
         // __init__.py files para compatibilidade de pacotes
         // features/__init__.py
         files.push({
@@ -546,13 +645,13 @@ export class ExportManager {
 
         // features/steps/__init__.py
         files.push({
-            name: `steps/__init__.py`,
+            name: `features/steps/__init__.py`,
             content: ''
         });
 
         // features/pages/__init__.py
         files.push({
-            name: `pages/__init__.py`,
+            name: `features/pages/__init__.py`,
             content: ''
         });
 
@@ -567,7 +666,6 @@ export class ExportManager {
         return `# -*- coding: utf-8 -*-
 """
 Base Page Object
-Implementa as funções centrais do Selenium para reuso em todas as páginas.
 """
 from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions as EC
@@ -577,14 +675,11 @@ from selenium.webdriver.remote.webelement import WebElement
 from typing import Tuple, Optional, Any
 
 class BasePage:
-    """Classe base para todos os Page Objects"""
-
     def __init__(self, browser: WebDriver, timeout: int = 10):
         self.browser = browser
         self.wait = WebDriverWait(browser, timeout)
 
     def _find_element(self, locator: Tuple[str, str], timeout: Optional[int] = None) -> WebElement:
-        """Busca elemento com espera explícita"""
         wait = WebDriverWait(self.browser, timeout) if timeout else self.wait
         try:
             return wait.until(EC.presence_of_element_located(locator))
@@ -592,7 +687,6 @@ class BasePage:
             raise TimeoutException(f"Elemento não encontrado: {locator}")
 
     def _click_element(self, locator: Tuple[str, str], timeout: Optional[int] = None) -> 'BasePage':
-        """Clica em elemento com espera por clicabilidade"""
         wait = WebDriverWait(self.browser, timeout) if timeout else self.wait
         try:
             element = wait.until(EC.element_to_be_clickable(locator))
@@ -602,7 +696,6 @@ class BasePage:
             raise TimeoutException(f"Elemento não clicável: {locator}")
 
     def _fill_element(self, locator: Tuple[str, str], text: str, clear: bool = True) -> 'BasePage':
-        """Preenche elemento com texto"""
         try:
             element = self.wait.until(EC.visibility_of_element_located(locator))
             if clear:
@@ -613,7 +706,6 @@ class BasePage:
             raise TimeoutException(f"Não foi possível preencher: {locator}")
 
     def _select_option(self, locator: Tuple[str, str], value: str) -> 'BasePage':
-        """Seleciona opção em dropdown"""
         try:
             element = self.wait.until(EC.presence_of_element_located(locator))
             select = Select(element)
@@ -626,27 +718,22 @@ class BasePage:
             raise TimeoutException(f"Dropdown não encontrado: {locator}")
 
     def _upload_file(self, locator: Tuple[str, str], file_path: str) -> 'BasePage':
-        """Faz upload de um arquivo para o elemento input[type='file']"""
         element = self._find_element(locator)
         element.send_keys(file_path)
         return self
 
     def _alter_value(self, locator: Tuple[str, str], value: str) -> 'BasePage':
-        """Altera o valor de um campo e tenta disparar eventos de mudança"""
         element = self._find_element(locator)
         element.clear()
         element.send_keys(value)
-        # Tentar acionar os eventos onChange (comum em SPAs)
         self.browser.execute_script("arguments[0].dispatchEvent(new Event('change', { bubbles: true }));", element)
         return self
 
     def _wait_element(self, locator: Tuple[str, str], timeout: int = 10) -> 'BasePage':
-        """Espera por um elemento estar presente na página"""
         self._find_element(locator, timeout)
         return self
 
     def verificar_carregamento(self) -> 'BasePage':
-        """Verifica se a página foi carregada corretamente"""
         from selenium.webdriver.common.by import By
         try:
             self.wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
@@ -654,205 +741,6 @@ class BasePage:
         except TimeoutException:
             raise TimeoutException("Página não carregou corretamente")
 `;
-    }
-
-    generatePagesContent(feature) {
-        const featureName = this.slugify(feature.name);
-        const className = this.toPascalCase(featureName);
-
-        let content = `# -*- coding: utf-8 -*-
-"""
-Page Object para ${feature.name}
-Gerado automaticamente pela extensão BDD Test Generator
-"""
-
-from selenium.webdriver.common.by import By
-from features.pages.base_page import BasePage
-
-class ${className}Locators:
-    """Classe centralizada de localizadores para ${feature.name}"""
-    
-`;
-
-        // Coletar elementos únicos com seletores reais
-        const elementsMap = new Map();
-        (feature.scenarios || []).forEach(scenario => {
-            (scenario.interactions || []).forEach(interaction => {
-                // Pular interações que não precisam de seletor (como acessa_url)
-                if (interaction.acao === 'acessa_url' || interaction.acao === 'espera_segundos') {
-                    return;
-                }
-
-                const elementName = interaction.nomeElemento || 'elemento';
-
-                if (!elementsMap.has(elementName)) {
-                    // Priorizar cssSelector, depois xpathSelector, depois xpath
-                    let seletor = interaction.cssSelector ||
-                        interaction.xpathSelector ||
-                        interaction.seletor ||
-                        interaction.xpath || '';
-
-                    let tipoSeletor = 'CSS_SELECTOR';
-
-                    // Determinar tipo de seletor
-                    if (interaction.cssSelector || interaction.seletor) {
-                        tipoSeletor = 'CSS_SELECTOR';
-                        seletor = interaction.cssSelector || interaction.seletor;
-                    } else if (interaction.xpathSelector || interaction.xpath) {
-                        tipoSeletor = 'XPATH';
-                        seletor = interaction.xpathSelector || interaction.xpath;
-                    } else if (elementName) {
-                        // Fallback: criar seletor baseado no nome
-                        seletor = `[name="${elementName}"]`;
-                        tipoSeletor = 'CSS_SELECTOR';
-                    }
-
-                    elementsMap.set(elementName, {
-                        seletor: seletor,
-                        tipo: tipoSeletor,
-                        acao: interaction.acao
-                    });
-                }
-            });
-        });
-
-        // Gerar locators seguindo boas práticas
-        if (elementsMap.size > 0) {
-            elementsMap.forEach((data, element) => {
-                const locatorName = this.generateValidLocatorName(element);
-                // Escapar aspas no seletor
-                const selector = data.seletor
-                    .replace(/\\/g, '\\\\')
-                    .replace(/"/g, '\\"')
-                    .replace(/\n/g, ' ')
-                    .replace(/\s+/g, ' ')
-                    .trim();
-                content += `    ${locatorName} = (By.${data.tipo}, "${selector}")\n`;
-            });
-        } else {
-            // Adicionar locator padrão caso não haja elementos
-            content += `    # Adicione seus locators aqui\n`;
-            content += `    # Exemplo: BOTAO_LOGIN = (By.CSS_SELECTOR, "#btn-login")\n`;
-        }
-
-        content += `\n\n`;
-
-        // Classe de Actions Herdando de BasePage
-        content += `class ${className}Page(BasePage):
-    """
-    Page Object para ${feature.name}
-    Herda funcoes base para manutencao do DRY
-    """
-    
-    def __init__(self, browser):
-        super().__init__(browser)
-        self.locators = ${className}Locators()
-    
-`;
-
-        // Gerar métodos específicos para cada elemento COM TYPE HINTS
-        elementsMap.forEach((data, element) => {
-            const methodBaseName = this.toSnakeCase(this.sanitizeMethodName(element));
-            const locatorName = this.generateValidLocatorName(element);
-
-            // Método de preenchimento
-            content += `    def preencher_${methodBaseName}(self, texto: str) -> '${className}Page':\n`;
-            content += `        """Preenche o campo ${element}"""\n`;
-            content += `        return self._fill_element(self.locators.${locatorName}, texto)\n`;
-            content += `    \n`;
-
-            // Método de clique
-            content += `    def clicar_${methodBaseName}(self) -> '${className}Page':\n`;
-            content += `        """Clica em ${element}"""\n`;
-            content += `        return self._click_element(self.locators.${locatorName})\n`;
-            content += `    \n`;
-
-            // Método para obter texto
-            content += `    def obter_texto_${methodBaseName}(self) -> str:\n`;
-            content += `        """Obtém o texto de ${element}"""\n`;
-            content += `        element = self._find_element(self.locators.${locatorName})\n`;
-            content += `        return element.text\n`;
-            content += `    \n`;
-
-            // Ações complexas mapeadas para métodos mais precisos no Python
-            const action = data.acao;
-            if (action === 'seleciona') {
-                content += `    def selecionar_${methodBaseName}(self, opcao: str) -> '${className}Page':\n`;
-                content += `        return self._select_option(self.locators.${locatorName}, opcao)\n\n`;
-            } else if (action === 'upload') {
-                content += `    def upload_${methodBaseName}(self, filepath: str) -> '${className}Page':\n`;
-                content += `        return self._upload_file(self.locators.${locatorName}, filepath)\n\n`;
-            } else if (action === 'altera') {
-                content += `    def alterar_${methodBaseName}(self, valor: str) -> '${className}Page':\n`;
-                content += `        return self._alter_value(self.locators.${locatorName}, valor)\n\n`;
-            } else if (action === 'espera_elemento') {
-                content += `    def esperar_elemento_${methodBaseName}(self, timeout: int = 10) -> '${className}Page':\n`;
-                content += `        return self._wait_element(self.locators.${locatorName}, timeout)\n\n`;
-            }
-
-            // Sempre gerar o método de visibilidade caso seja usado para asserções genéricas
-            content += `    def elemento_visivel_${methodBaseName}(self) -> bool:\n`;
-            content += `        """Verifica se ${element} está visível"""\n`;
-            content += `        try:\n`;
-            content += `            from selenium.webdriver.support import expected_conditions as EC\n`;
-            content += `            self.wait.until(EC.visibility_of_element_located(self.locators.${locatorName}))\n`;
-            content += `            return True\n`;
-            content += `        except:\n`;
-            content += `            return False\n`;
-            content += `    \n`;
-        });
-
-        // Adicionar método de alto nível se houver padrão de login
-        const hasLogin = Array.from(elementsMap.keys()).some(key =>
-            key.toLowerCase().includes('login') ||
-            key.toLowerCase().includes('usuario') ||
-            key.toLowerCase().includes('user') ||
-            key.toLowerCase().includes('email')
-        );
-        const hasPassword = Array.from(elementsMap.keys()).some(key =>
-            key.toLowerCase().includes('senha') ||
-            key.toLowerCase().includes('password')
-        );
-
-        if (hasLogin && hasPassword) {
-            content += `    def realizar_login(self, usuario: str, senha: str) -> '${className}Page':\n`;
-            content += `        """Realiza login completo"""\n`;
-
-            // Encontrar os campos corretos
-            const loginField = Array.from(elementsMap.keys()).find(key =>
-                key.toLowerCase().includes('login') ||
-                key.toLowerCase().includes('usuario') ||
-                key.toLowerCase().includes('user') ||
-                key.toLowerCase().includes('email')
-            );
-            const passwordField = Array.from(elementsMap.keys()).find(key =>
-                key.toLowerCase().includes('senha') ||
-                key.toLowerCase().includes('password')
-            );
-            const submitButton = Array.from(elementsMap.keys()).find(key =>
-                key.toLowerCase().includes('entrar') ||
-                key.toLowerCase().includes('login') ||
-                key.toLowerCase().includes('submit') ||
-                key.toLowerCase().includes('botao')
-            );
-
-            if (loginField) {
-                const methodName = this.toSnakeCase(this.sanitizeMethodName(loginField));
-                content += `        self.preencher_${methodName}(usuario)\n`;
-            }
-            if (passwordField) {
-                const methodName = this.toSnakeCase(this.sanitizeMethodName(passwordField));
-                content += `        self.preencher_${methodName}(senha)\n`;
-            }
-            if (submitButton) {
-                const methodName = this.toSnakeCase(this.sanitizeMethodName(submitButton));
-                content += `        self.clicar_${methodName}()\n`;
-            }
-            content += `        return self\n`;
-            content += `    \n`;
-        }
-
-        return content;
     }
 
     generateReadmeContent(features = []) {
@@ -876,6 +764,8 @@ No terminal, execute:
 
 - Python 3.8 ou superior
 - Google Chrome instalado
+- Node.js e npm (para Auditoria de Performance)
+- Lighthouse CLI instalado globalmente (\`npm install -g lighthouse\`)
 
 ## 🛠️ Instalação Manual
 
@@ -941,85 +831,44 @@ Certifique-se de ativar o ambiente virtual (\`venv\`) antes de rodar os comandos
         return content;
     }
 
-    generateGitignoreContent() {
-        return `# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-env/
-venv/
-ENV/
-*.egg-info/
-dist/
-build/
 
-# Testes
-.pytest_cache/
-.coverage
-htmlcov/
-*.log
 
-# Screenshots
-screenshots/
-*.png
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS
-.DS_Store
-Thumbs.db
-`;
-    }
-
-    generateBehaveIniContent() {
-        return `[behave]
-show_skipped = false
-show_timings = true
-stdout_capture = false
-stderr_capture = false
-log_capture = false
-format = progress
-color = true
-`;
-    }
-
-    slugify(text) {
-        return text
-            .toLowerCase()
-            .trim()
-            .replace(/\s+/g, '_')
-            .replace(/[^\w\-]/g, '')
-            .replace(/\-+/g, '_')
-            .substring(0, 50);
-    }
-
-    translateStepKeyword(step) {
-        const map = {
-            'Given': 'Dado',
-            'When': 'Quando',
-            'Then': 'Então',
-            'And': 'E',
-            'But': 'Mas'
-        };
-        return map[step] || step;
-    }
-
-    generateGherkinContent(feature) {
+    generateGherkinContent(feature, options = {}) {
         let content = `# language: pt\n`;
+        
+        const hasPerformance = options.globalPerformance || (feature.scenarios || []).some(scenario => 
+            (scenario.interactions || []).some(i => i.performanceCheck && i.performanceCheck.enabled)
+        );
+
+        if (hasPerformance) {
+            content += `@performance\n`;
+        }
+
         content += `Funcionalidade: ${feature.name}\n\n`;
 
         (feature.scenarios || []).forEach(scenario => {
+            // Suporte para tag de performance leve
+            if (options.globalPerformance) {
+                content += `  @performance\n`;
+            } else {
+                const perfInteraction = (scenario.interactions || []).find(i => i.performanceCheck && i.performanceCheck.enabled);
+                if (perfInteraction) {
+                    content += `  @performance\n`;
+                }
+            }
             content += `  Cenário: ${scenario.name}\n`;
             (scenario.interactions || []).forEach(interaction => {
                 const rawStep = interaction.step || 'Dado';
                 const step = this.translateStepKeyword(rawStep);
-                const action = this.formatGherkinStep(interaction);
+                
+                let action;
+                if (interaction.acao === 'auditoria_performance') {
+                    const threshold = (interaction.performanceCheck && interaction.performanceCheck.threshold) || 90;
+                    action = `realizo auditoria de performance com meta de ${threshold}%`;
+                } else {
+                    action = this.formatGherkinStep(interaction);
+                }
+                
                 content += `    ${step} ${action}\n`;
             });
             content += `\n`;
@@ -1070,22 +919,17 @@ color = true
         }
     }
 
-    generatePagesContent(feature) {
+    generatePagesContent(feature, options = {}) {
         const featureName = this.slugify(feature.name);
         const className = this.toPascalCase(featureName);
+        const preferred = options.preferredSelector || 'xpath';
 
         let content = `# -*- coding: utf-8 -*-
-"""
-Page Object para ${feature.name}
-Implementa o padrão Page Object Model com separação de locators e actions
-
-Gerado automaticamente pela extensão BDD Test Generator
-"""
 
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException, NoSuchElementException
+from selenium.common.exceptions import TimeoutException, NoSuchElementException, InvalidElementStateException
 from selenium.webdriver.common.keys import Keys
 
 
@@ -1099,32 +943,44 @@ class ${className}Locators:
         (feature.scenarios || []).forEach(scenario => {
             (scenario.interactions || []).forEach(interaction => {
                 // Pular interações que não precisam de seletor (como acessa_url)
-                if (interaction.acao === 'acessa_url' || interaction.acao === 'espera_segundos') {
+                if (interaction.acao === 'acessa_url' || interaction.acao === 'navega' || interaction.acao === 'espera_segundos') {
                     return;
                 }
 
                 const elementName = interaction.nomeElemento || 'elemento';
 
                 if (!elementsMap.has(elementName)) {
-                    // Priorizar cssSelector, depois xpathSelector, depois xpath
-                    let seletor = interaction.cssSelector ||
-                        interaction.xpathSelector ||
-                        interaction.seletor ||
-                        interaction.xpath || '';
-
+                    let seletor = '';
                     let tipoSeletor = 'CSS_SELECTOR';
 
-                    // Determinar tipo de seletor
-                    if (interaction.cssSelector || interaction.seletor) {
-                        tipoSeletor = 'CSS_SELECTOR';
-                        seletor = interaction.cssSelector || interaction.seletor;
-                    } else if (interaction.xpathSelector || interaction.xpath) {
+                    // Extração robusta de seletores (lida com inconsistências de nomenclaturas)
+                    const xpath = interaction.xpathSelector || interaction.xpath || (interaction.isValid && interaction.isValid.xpath ? interaction.xpath : '');
+                    const css = interaction.cssSelector || interaction.selector || interaction.seletor || (interaction.isValid && interaction.isValid.css ? interaction.cssSelector : '');
+
+                    // Lógica de seleção do seletor baseada na preferência
+                    if (preferred === 'xpath' && xpath) {
                         tipoSeletor = 'XPATH';
-                        seletor = interaction.xpathSelector || interaction.xpath;
-                    } else if (elementName) {
-                        // Fallback: criar seletor baseado no nome
-                        seletor = `[name="${elementName}"]`;
+                        seletor = xpath;
+                    } else if (preferred === 'css' && css) {
                         tipoSeletor = 'CSS_SELECTOR';
+                        seletor = css;
+                    } else if (preferred === 'best' || !preferred) {
+                        // Prioridade para XPath conforme solicitado pelo usuário
+                        if (xpath) {
+                            tipoSeletor = 'XPATH';
+                            seletor = xpath;
+                        } else if (css) {
+                            tipoSeletor = 'CSS_SELECTOR';
+                            seletor = css;
+                        } else {
+                            // Fallback final
+                            seletor = `[name="${elementName}"]`;
+                            tipoSeletor = 'CSS_SELECTOR';
+                        }
+                    } else {
+                        // Caso a preferência seja CSS mas não tenha CSS, ou vice-versa
+                        seletor = xpath || css || `[name="${elementName}"]`;
+                        tipoSeletor = (seletor === xpath) ? 'XPATH' : 'CSS_SELECTOR';
                     }
 
                     elementsMap.set(elementName, {
@@ -1161,12 +1017,6 @@ class ${className}Locators:
         content += `class ${className}Page:
     """
     Page Object para ${feature.name}
-    
-    Este Page Object implementa:
-    - Espera explícita para elementos
-    - Tratamento robusto de exceções
-    - Padrão fluente (method chaining)
-    - Métodos de alto nível para fluxos completos
     """
     
     def __init__(self, browser, timeout=10):
@@ -1419,19 +1269,9 @@ class ${className}Locators:
         return content;
     }
 
-    generateValidLocatorName(elementName) {
-        // Gera nome válido para locator seguindo boas práticas
-        return this.toSnakeCase(this.sanitizeMethodName(elementName)).toUpperCase();
-    }
 
-    sanitizeMethodName(name) {
-        // Remove caracteres especiais e sanitiza o nome
-        return name
-            .replace(/[^\w\s]/g, '')
-            .replace(/\s+/g, '_')
-            .replace(/_{2,}/g, '_')
-            .replace(/^_|_$/g, '');
-    }
+
+
 
     generateStepsContent(feature, globalUniqueSteps = new Set()) {
         const featureName = this.slugify(feature.name);
@@ -1457,6 +1297,11 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from features.pages.${featureName}_page import ${className}Page
 import time
+import os
+import json
+import subprocess
+import datetime
+
 
 `;
 
@@ -1468,18 +1313,19 @@ import time
         (feature.scenarios || []).forEach(scenario => {
             (scenario.interactions || []).forEach(interaction => {
                 const stepText = this.formatGherkinStep(interaction);
-                // Usar realStepType se disponível, senão fallback para step ou When
-                // Isso evita gerar @and (erro de sintaxe)
+                // Usar realStepType se disponível, senão fallback
                 const semanticType = interaction.realStepType || (interaction.step === 'And' ? 'When' : (interaction.step || 'When'));
 
-                const stepKey = `${semanticType}_${stepText}`;
+                // Chave única pelo TEXTO, não pelo Given/When/Then, 
+                // pois com @step do Behave a keyword inicial não importa.
+                const stepKey = stepText;
 
                 if (!trackerSet.has(stepKey)) {
                     trackerSet.add(stepKey);
                     allInteractions.push({
                         ...interaction,
                         stepText: stepText,
-                        stepType: semanticType // Passar o tipo semântico para o gerador
+                        stepType: semanticType // Apenas para ordenação cosmética no arquivo
                     });
                 }
             });
@@ -1498,507 +1344,14 @@ import time
         return content;
     }
 
-    generateEnvironmentContent() {
-        return `# -*- coding: utf-8 -*-
-"""
-Configurações de ambiente Behave
-"""
-
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.support.ui import WebDriverWait
-import os
-import time
-from datetime import datetime
-from fpdf import FPDF
-
-# ==============================================================================
-# CONFIGURAÇÃO DE RELATÓRIO PDF
-# ==============================================================================
-class PDFReport(FPDF):
-    def header(self):
-        self.set_font('Arial', 'B', 15)
-        self.cell(0, 10, 'Relatório de Execução de Testes', 0, 1, 'C')
-        self.ln(5)
-
-    def footer(self):
-        self.set_y(-15)
-        self.set_font('Arial', 'I', 8)
-        self.cell(0, 10, f'Página {self.page_no()}', 0, 0, 'C')
-
-def generate_pdf_report(context):
-    if not hasattr(context, 'pdf_data'):
-        return
-
-    pdf = PDFReport()
-    pdf.add_page()
-    pdf.set_font("Arial", size=12)
-
-    # Resumo
-    pdf.set_font("Arial", 'B', 12)
-    pdf.cell(0, 10, f"Data da Execução: {datetime.now().strftime('%d/%m/%Y %H:%M')}", 0, 1)
-    pdf.ln(5)
-
-    for feature in context.pdf_data['features']:
-        pdf.set_font("Arial", 'B', 14)
-        pdf.cell(0, 10, f"Feature: {feature['name']}", 0, 1)
-        
-        for scenario in feature['scenarios']:
-            status_color = (0, 128, 0) if scenario['status'] == 'passed' else (255, 0, 0)
-            pdf.set_text_color(*status_color)
-            pdf.set_font("Arial", 'B', 12)
-            pdf.cell(0, 10, f"  Cenario: {scenario['name']} - {scenario['status'].upper()}", 0, 1)
-            pdf.set_text_color(0, 0, 0)
-            
-            for step in scenario['steps']:
-                pdf.set_font("Arial", size=10)
-                pdf.multi_cell(0, 6, f"    Step: {step['name']} ({step['status']})")
-                
-                # Inserir screenshot se houver
-                if 'screenshot' in step and os.path.exists(step['screenshot']):
-                    try:
-                        # Centralizar imagem
-                        pdf.ln(2)
-                        original_x = pdf.get_x()
-                        
-                        # Tenta ajustar tamanho (largura máx 100)
-                        pdf.image(step['screenshot'], x=pdf.get_x() + 20, w=100)
-                        pdf.ln(5)
-                    except Exception:
-                        pdf.cell(0, 5, "[Erro ao inserir imagem]", 0, 1)
-
-            pdf.ln(5)
-            
-    try:
-        pdf.output("relatorio_testes_detalhado.pdf")
-        print("[RELATORIO] PDF gerado: relatorio_testes_detalhado.pdf")
-    except Exception as e:
-        print(f"[ERRO] Falha ao gerar PDF: {e}")
-
-# ==============================================================================
-# HOOKS DO BEHAVE
-# ==============================================================================
-
-def before_all(context):
-    """Executado antes de todos os testes"""
-    # Inicializa estrutura de dados para o relatório
-    context.pdf_data = {'features': []}
-    
-    # URL Base global (pode ser sobrescrita por variavel de ambiente)
-    context.base_url = os.getenv('BASE_URL', 'http://localhost:8080')
-
-def after_all(context):
-    """Executado após todos os testes"""
-    generate_pdf_report(context)
-
-def before_feature(context, feature):
-    context.current_feature_data = {
-        'name': feature.name,
-        'scenarios': []
-    }
-    context.pdf_data['features'].append(context.current_feature_data)
-
-def before_scenario(context, scenario):
-    """Executado antes de cada cenário"""
-    # Configuração do WebDriver (Por Cenário para isolamento)
-    chrome_options = Options()
-    chrome_options.add_argument("--start-maximized")
-    chrome_options.add_argument("--disable-blink-features=AutomationControlled")
-    chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    
-    if os.getenv('HEADLESS') == 'true':
-        chrome_options.add_argument("--headless")
-
-    try:
-        service = Service(ChromeDriverManager().install())
-        context.browser = webdriver.Chrome(service=service, options=chrome_options)
-    except Exception as e:
-        print(f"Erro service: {e}. Tentando direto.")
-        context.browser = webdriver.Chrome(options=chrome_options)
-        
-    
-    # Implicit wait REMOVIDO para favorecer espera explicita
-    # context.browser.implicitly_wait(10)
-    
-    # Dados para relatório
-    context.current_scenario_data = {
-        'name': scenario.name,
-        'steps': [],
-        'status': 'unknown'
-    }
-    context.current_feature_data['scenarios'].append(context.current_scenario_data)
-
-def after_scenario(context, scenario):
-    """Executado após cada cenário"""
-    context.current_scenario_data['status'] = scenario.status.name
-    
-    if scenario.status == 'failed':
-        take_screenshot(context, f"FALHA_{scenario.name}")
-        
-    if hasattr(context, 'browser'):
-        context.browser.quit()
-
-def before_step(context, step):
-    """Executado antes de cada step"""
-    # Monkey-patch para corrigir erro 'Step object has no attribute embed'
-    # causado pelo behave-html-formatter em versoes mais antigas do behave
-    if not hasattr(step, 'embed'):
-        step.embed = lambda mime_type, data, caption=None: None
-
-def after_step(context, step):
-    """Executado após cada step"""
-    step_name = step.name.replace('"', '').replace("'", "").replace(" ", "_")
-    screenshot_path = take_screenshot(context, f"OK_{step_name}")
-    
-    # Garantir status correto (string)
-    status_name = step.status.name if hasattr(step.status, 'name') else str(step.status)
-    
-    step_data = {
-        'keyword': step.keyword,
-        'name': step.name,
-        'status': status_name
-    }
-    
-    # Capturar mensagem de erro se falhou
-    if status_name == 'failed':
-        if hasattr(step, 'exception') and step.exception:
-            step_data['error_message'] = str(step.exception)
-        elif hasattr(step, 'error_message'):
-            step_data['error_message'] = step.error_message
-        else:
-             step_data['error_message'] = "Erro desconhecido capturado no step."
-
-    if screenshot_path:
-        step_data['screenshot'] = screenshot_path
-        
-    context.current_scenario_data['steps'].append(step_data)
-
-def take_screenshot(context, name):
-    """
-    Tira screenshot garantindo que a página esteja carregada.
-    Retorna o caminho do arquivo ou None.
-    """
-    if not hasattr(context, 'browser'):
-        return None
-        
-    screenshots_dir = 'screenshots'
-    if not os.path.exists(screenshots_dir):
-        os.makedirs(screenshots_dir)
-
-    # ============================================================
-    # GARANTIA DE ESTABILIDADE (WAIT FOR READY)
-    # ============================================================
-    try:
-        # 1. Aguarda document.readyState == 'complete'
-        WebDriverWait(context.browser, 2).until(
-            lambda d: d.execute_script("return document.readyState") == "complete"
-        )
-        # 2. Pequeno delay para animações/renderização final
-        time.sleep(0.5)
-    except:
-        # Se der timeout, tira o print mesmo assim (melhor que nada)
-        pass
-
-    timestamp = datetime.now().strftime("%H-%M-%S")
-    safe_name = "".join([c for c in name if c.isalpha() or c.isdigit() or c=='_' or c=='-']).rstrip()
-    screenshot_name = f"{screenshots_dir}/{timestamp}_{safe_name}.png"
-
-    try:
-        context.browser.save_screenshot(screenshot_name)
-        return screenshot_name
-    except Exception as e:
-        print(f"Erro ao salvar screenshot: {e}")
-        return None
-`;
-    }
-
-    generateGitignoreContent() {
-        return `# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-env/
-venv/
-ENV/
-*.egg-info/
-dist/
-build/
-
-# Testes
-.pytest_cache/
-.coverage
-htmlcov/
-*.log
-
-# Screenshots
-screenshots/
-*.png
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS
-.DS_Store
-Thumbs.db
-`;
-    }
-
-    generateBehaveIniContent() {
-        return `[behave]
-show_skipped = false
-show_timings = true
-stdout_capture = false
-stderr_capture = false
-log_capture = false
-format = pretty
-color = true
-lang = pt
-`;
-    }
-
-    generateRunBatContent() {
-        return `@echo off
-echo ===================================================
-echo      Automação BDD - BDD Test Generator Enterprise
-echo      Desenvolvido por: Matheus Ferreira
-echo ===================================================
-echo.
-
-if not exist "venv" (
-    echo [INFO] Criando ambiente virtual...
-    python -m venv venv
-)
-
-echo [INFO] Ativando ambiente virtual...
-call venv\\Scripts\\activate
-
-echo [INFO] Instalando dependencias...
-pip install -r requirements.txt > nul
-
-echo.
-echo [INFO] Executando testes...
-behave --color --format pretty
-
-echo.
-echo ===================================================
-echo      Teste Finalizado
-echo ===================================================
-pause
-`;
-    }
-
-    generateRunShContent() {
-        return `#!/bin/bash
-echo "==================================================="
-echo "     Automação BDD - BDD Test Generator Enterprise"
-echo "     Desenvolvido por: Matheus Ferreira"
-echo "==================================================="
-echo ""
-
-if [ ! -d "venv" ]; then
-    echo "[INFO] Criando ambiente virtual..."
-    python3 -m venv venv
-fi
-
-echo "[INFO] Ativando ambiente virtual..."
-source venv/bin/activate
-
-echo "[INFO] Instalando dependencias..."
-pip install -r requirements.txt > /dev/null
-
-echo ""
-echo "[INFO] Executando testes..."
-behave --color --format pretty
-
-echo ""
-echo "==================================================="
-echo "     Teste Finalizado"
-echo "==================================================="
-`;
-    }
-
-
-    generateRequirementsContent() {
-        return `# Dependências Python para testes BDD
-# Instale com: pip install -r requirements.txt
-
-selenium==4.15.2
-behave==1.2.6
-webdriver-manager==4.0.1
-parse==1.19.1
-parse-type==0.6.2
-six==1.16.0
-`;
-    }
-
-    formatInteractionText(interaction) {
-        const action = interaction.acao || 'ação';
-        const element = interaction.nomeElemento || 'elemento';
-        const value = interaction.valorPreenchido || '';
-
-        let text = '';
-        switch (action) {
-            case 'clica':
-                text = `clica no ${element} `;
-                break;
-            case 'preenche':
-                text = `preenche ${element} com "${value}"`;
-                break;
-            case 'seleciona':
-                text = `seleciona "${value}" em ${element} `;
-                break;
-            case 'acessa_url':
-                text = `acessa a URL "${value || element}"`;
-                break;
-            default:
-                text = `executa ação "${action}" em ${element} `;
-        }
-
-        return text;
-    }
-
-    toPascalCase(text) {
-        return text
-            .split('_')
-            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-            .join('');
-    }
-
-    toSnakeCase(text) {
-        return text
-            .replace(/([A-Z])/g, '_$1')
-            .toLowerCase()
-            .replace(/^_/, '')
-            .replace(/\s+/g, '_');
-    }
-
-    exportAsIndividualFiles(exportData) {
-        exportData.forEach(item => {
-            const featureSlug = this.slugify(item.featureName);
-
-            item.files.forEach(file => {
-                let filename = file.name;
-
-                // Estrutura do Behave:
-                // features/
-                //   ├── *.feature
-                //   ├── pages/
-                //   │   └── *_page.py
-                //   └── steps/
-                //       └── *_steps.py
-                // environment.py (raiz)
-                // requirements.txt (raiz)
-
-                if (filename.endsWith('.feature')) {
-                    filename = `features / ${filename} `;
-                } else if (filename.startsWith('pages/')) {
-                    filename = `features / ${filename} `;
-                } else if (filename.startsWith('steps/')) {
-                    filename = `features / ${filename} `;
-                } else if (filename.includes('metadata')) {
-                    filename = `metadata / ${filename} `;
-                } else if (filename.includes('audit')) {
-                    filename = `logs / ${filename} `;
-                }
-
-                downloadFile(filename, file.content);
-            });
-        });
-    }
-
-    async exportAsZip(exportData) {
-        try {
-            const folderStructure = {
-                '': [], // Arquivos na raiz
-                'features': [],
-                'features/steps': [],
-                'features/pages': [],
-                'features/utils': [], // Nova pasta utils
-                'logs': [],
-                'metadata': []
-            };
-
-            exportData.forEach(item => {
-                item.files.forEach(file => {
-                    let filename = file.name;
-                    let targetFolder = ''; // Raiz por padrão
-
-                    // Determinar pasta de destino baseado no tipo/nome do arquivo
-                    if (filename.endsWith('.feature')) {
-                        targetFolder = 'features';
-                    } else if (filename.startsWith('pages/')) {
-                        targetFolder = 'features/pages';
-                        file.name = file.name.replace('pages/', '');
-                    } else if (filename.startsWith('steps/')) {
-                        targetFolder = 'features/steps';
-                        file.name = file.name.replace('steps/', '');
-                    } else if (filename.startsWith('features/')) {
-                        // Para arquivos genéricos dentro de features (ex: __init__.py)
-                        targetFolder = 'features';
-                        file.name = file.name.replace('features/', '');
-                    } else if (filename.includes('expert_audit') || filename.includes('audit')) {
-                        targetFolder = 'logs';
-                    } else if (filename.includes('metadata')) {
-                        targetFolder = 'metadata';
-                    } else if (filename === 'environment.py' || filename === 'requirements.txt' || filename === 'README.md' || filename.endsWith('.bat') || filename.endsWith('.sh') || filename.endsWith('.ini') || filename.startsWith('.')) {
-                        targetFolder = '';
-                    }
-
-                    // Se a pasta não existir no mapa, criar
-                    if (!folderStructure[targetFolder] && targetFolder !== '') {
-                        folderStructure[targetFolder] = [];
-                    }
-
-                    const targetArray = targetFolder === '' ? folderStructure[''] : folderStructure[targetFolder];
-                    targetArray.push(file);
-                });
-            });
-
-            // Gerar ZIP
-            const zipBuffer = FileCompressor.createStructuredZip(folderStructure, 'bdd_project_export.zip');
-
-            // Download
-            const blob = new Blob([zipBuffer], { type: 'application/zip' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `bdd_export_${new Date().toISOString().split('T')[0]}.zip`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-
-            this.logger.success('Arquivo ZIP gerado e baixado com sucesso');
-
-        } catch (error) {
-            this.logger.error('Falha na geração do ZIP', { error: error.message });
-            throw error; // Propagar para ser tratado pelo caller
-        }
-    }
-
     generateStepDefinition(interaction, className, featureName) {
-        let stepType = interaction.step || interaction.stepType || 'When';
-
-        // CORREÇÃO CRÍTICA: Behave não aceita @and ou @but
-        // Garante que o decorator seja sempre given, when ou then
-        if (['And', 'But', 'and', 'but'].includes(stepType)) {
-            stepType = 'When'; // Default seguro se a info semântica falhar
-        }
-
         const stepText = interaction.stepText;
         const methodBaseName = this.toSnakeCase(this.sanitizeMethodName(interaction.nomeElemento || 'elemento'));
 
         let pythonCode = '';
-        const decorator = stepType.toLowerCase();
 
-        pythonCode += `@${decorator}('${stepText}')\n`;
+        // Usar @step genérico do Behave garante match independente de Given/When/Then/And no arquivo feature
+        pythonCode += `@step('${stepText}')\n`;
         pythonCode += `def step_impl(context):\n`;
 
         pythonCode += `    if not hasattr(context, 'page') or not isinstance(context.page, ${className}Page):\n`;
@@ -2065,6 +1418,10 @@ six==1.16.0
                 pythonCode += `    # TODO: Login action needs explicit implementation or custom steps\n`;
                 pythonCode += `    pass\n`;
                 break;
+            case 'auditoria_performance':
+                pythonCode += `    # Auditoria de Performance Leve\n`;
+                pythonCode += `    get_performance_metrics(context)\n`;
+                break;
             default:
                 if (interaction.acao.startsWith('clica')) {
                     pythonCode += `    context.page.clicar_${methodBaseName}()\n`;
@@ -2099,6 +1456,8 @@ import json
 import base64
 from datetime import datetime
 from fpdf import FPDF
+from behave import fixture
+from behave.fixture import use_fixture
 
 class PDFReport(FPDF):
     """Classe customizada para relatório PDF"""
@@ -2123,6 +1482,32 @@ class PDFReport(FPDF):
         self.cell(0, 6, title, 0, 1, 'L', 1)
         self.ln(2)
 
+@fixture
+def browser_chrome(context, timeout=30, **kwargs):
+    chrome_options = Options()
+    chrome_options.add_argument("--start-maximized")
+    chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+    chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    chrome_options.add_experimental_option('useAutomationExtension', False)
+    
+    if os.getenv('HEADLESS', 'false').lower() == 'true':
+        chrome_options.add_argument("--headless")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--window-size=1920,1080")
+    
+    try:
+        service = Service(ChromeDriverManager().install())
+        browser = webdriver.Chrome(service=service, options=chrome_options)
+    except Exception as e:
+        print(f"Erro ao inicializar driver: {e}")
+        browser = webdriver.Chrome(options=chrome_options) # Fallback if DriverManager fails
+        
+    browser.set_page_load_timeout(timeout)
+    browser.implicitly_wait(10)
+    context.browser = browser
+    yield context.browser
+    browser.quit()
+
 def before_all(context):
     """Executado antes de todos os testes"""
     context.start_time = datetime.now()
@@ -2130,6 +1515,7 @@ def before_all(context):
     context.pdf_data = {'features': []}
     # URL base global
     context.base_url = os.getenv('BASE_URL', 'http://localhost:8080')
+    context.config.setup_logging()
 
 def after_all(context):
     """Executado após todos os testes"""
@@ -2174,6 +1560,7 @@ def after_all(context):
         generate_management_report(summary, context)
         generate_evidence_report(context)
         generate_bug_report(context)
+        generate_performance_report(context)
     except Exception as e:
         print(f"Erro ao gerar relatórios PDF: {e}")
 
@@ -2188,26 +1575,8 @@ def before_feature(context, feature):
 def before_scenario(context, scenario):
     """Executado antes de cada cenário"""
     # Configuração do WebDriver (Por Cenário)
-    chrome_options = Options()
-    chrome_options.add_argument("--start-maximized")
-    chrome_options.add_argument("--disable-blink-features=AutomationControlled")
-    chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    chrome_options.add_experimental_option('useAutomationExtension', False)
-    
-    if os.getenv('HEADLESS', 'false').lower() == 'true':
-        chrome_options.add_argument("--headless")
-        chrome_options.add_argument("--disable-gpu")
-        chrome_options.add_argument("--window-size=1920,1080")
-    
-    try:
-        service = Service(ChromeDriverManager().install())
-        context.browser = webdriver.Chrome(service=service, options=chrome_options)
-    except Exception as e:
-        print(f"Erro ao inicializar driver: {e}")
-        context.browser = webdriver.Chrome(options=chrome_options)
+    use_fixture(browser_chrome, context)
         
-    context.browser.implicitly_wait(10)
-
     # Dados para relatório
     context.current_scenario_data = {
         'name': scenario.name,
@@ -2226,9 +1595,54 @@ def after_scenario(context, scenario):
     if scenario.status == 'failed':
         take_screenshot(context, f"FALHA_{scenario.name}")
         
+    # Coleta de Performance (Navigation Timing)
+    if hasattr(context, 'browser') and context.browser:
+        all_tags = []
+        if hasattr(scenario, 'tags'): all_tags.extend(scenario.tags)
+        if hasattr(scenario, 'feature') and hasattr(scenario.feature, 'tags'): all_tags.extend(scenario.feature.tags)
+        
+        if any(tag.lower() == 'performance' for tag in all_tags):
+            print(f"\\n[PERF] Tag @performance detectada no cenário: {scenario.name}")
+            get_performance_metrics(context)
+
     # Encerra o navegador ao fim do cenário
     if hasattr(context, 'browser'):
         context.browser.quit()
+
+def get_performance_metrics(context):
+    """Captura métricas de performance via Navigation Timing API"""
+    if not hasattr(context, 'browser') or not context.browser:
+        return
+        
+    try:
+        # Script para extrair métricas do window.performance.timing
+        timing_script = \"\"\"
+        const t = window.performance.timing;
+        return {
+            'response_time': t.responseEnd - t.navigationStart,
+            'dom_complete': t.domComplete - t.domLoading,
+            'load_time': t.loadEventEnd - t.navigationStart,
+            'url': window.location.href
+        };
+        \"\"\"
+        metrics = context.browser.execute_script(timing_script)
+        
+        # Filtra valores inválidos (0 ou negativos)
+        for key in ['response_time', 'dom_complete', 'load_time']:
+            if metrics[key] <= 0: metrics[key] = "N/A"
+            else: metrics[key] = f"{metrics[key]}ms"
+            
+        print(f"[PERF] Métricas capturadas para: {metrics['url']}")
+        print(f"      - Tempo Resposta: {metrics['response_time']}")
+        print(f"      - Carregamento DOM: {metrics['dom_complete']}")
+        print(f"      - Tempo Total: {metrics['load_time']}")
+        
+        # Salva no relatório PDF
+        if hasattr(context, 'current_scenario_data'):
+            context.current_scenario_data['performance'] = metrics
+            
+    except Exception as e:
+        print(f"[PERF] Erro ao coletar métricas: {e}")
 
 def after_step(context, step):
     """Executado após cada step"""
@@ -2294,24 +1708,21 @@ def take_screenshot(context, name):
         print(f"Erro ao salvar screenshot: {e}")
         return None
 
-    except Exception as e:
-        print(f"[ERRO] Falha ao gerar relatório PDF: {e}")
-
 def draw_dashboard_card(pdf, x, y, w, h, title, value, color):
     pdf.set_xy(x, y)
     pdf.set_fill_color(*color)
     pdf.rect(x, y, w, h, 'F')
     
     # Title
-    pdf.set_xy(x, y + 5)
+    pdf.set_xy(x, y + 6)
     pdf.set_font('Arial', '', 10)
     pdf.set_text_color(255, 255, 255)
     pdf.cell(w, 5, title, 0, 1, 'C')
     
     # Value
-    pdf.set_xy(x, y + 15)
+    pdf.set_xy(x, y + 16)
     pdf.set_font('Arial', 'B', 16)
-    pdf.cell(w, 10, str(value), 0, 1, 'C')
+    pdf.cell(w, 8, str(value), 0, 1, 'C')
 
 def generate_management_report(summary, context):
     """Gera o Relatório Gerencial (Dashboard) em PDF com layout profissional"""
@@ -2507,6 +1918,16 @@ def generate_evidence_report(context):
                 
                 pdf.cell(0, 10, f"Cenário: {scenario['name']}", 0, 1, 'L', 1)
                 pdf.set_text_color(0, 0, 0)
+                
+                # Exibição de Métricas de Performance Leve
+                if 'performance' in scenario:
+                    pdf.set_font('Arial', 'B', 9)
+                    perf = scenario['performance']
+                    perf_str = f"Performance: Resposta: {perf['response_time']} | DOM: {perf['dom_complete']} | Total: {perf['load_time']}"
+                    pdf.set_text_color(100, 100, 100)
+                    pdf.cell(0, 6, perf_str, 0, 1, 'L')
+                    pdf.set_text_color(0, 0, 0)
+                
                 pdf.ln(2)
                 
                 for step in scenario['steps']:
@@ -2581,7 +2002,7 @@ def generate_evidence_report(context):
         print(f"[ERRO] Falha ao gerar Relatório de Evidências: {e}")
 
 def generate_bug_report(context):
-    \"\"\"Gera o Relatório de Bugs (Apenas Falhas)\"\"\"
+    """Gera o Relatório de Bugs (Apenas Falhas)"""
     try:
         has_failures = False
         for feature in context.pdf_data['features']:
@@ -2596,7 +2017,7 @@ def generate_bug_report(context):
             return
 
         def safe_text(text, max_len=200):
-            \"\"\"Sanitiza texto para FPDF (latin-1 only, trunca)\"\"\"
+            """Sanitiza texto para FPDF (latin-1 only, trunca)"""
             if not text: return ""
             t = str(text)
             t = t.encode('latin-1', 'replace').decode('latin-1')
@@ -2714,21 +2135,226 @@ def generate_bug_report(context):
         
     except Exception as e:
         print(f"[ERRO] Falha ao gerar Relatorio de Bugs: {e}")
+
+def generate_performance_report(context):
+    """Gera o Relatório de Performance (Dashboard de Métricas) em PDF"""
+    try:
+        # Coleta todos os cenários que possuem dados de performance
+        perf_data = []
+        for feature in context.pdf_data['features']:
+            for scenario in feature['scenarios']:
+                if 'performance' in scenario:
+                    perf_data.append({
+                        'feature': feature['name'],
+                        'scenario': scenario['name'],
+                        'metrics': scenario['performance']
+                    })
+        
+        if not perf_data:
+            print("[RELATORIO] Nenhuma metrica de performance encontrada para gerar o relatorio.")
+            return
+
+        pdf = PDFReport()
+        pdf.add_page()
+        pdf.set_auto_page_break(auto=True, margin=15)
+        
+        # Cores
+        COLOR_PERF_BG = (248, 249, 250)
+        COLOR_PERF_HEADER = (66, 133, 244) # Blue
+        
+        # Cabeçalho
+        pdf.set_fill_color(*COLOR_PERF_HEADER)
+        pdf.rect(0, 0, 210, 40, 'F')
+        
+        pdf.set_y(10)
+        pdf.set_font('Arial', 'B', 20)
+        pdf.set_text_color(255, 255, 255)
+        pdf.cell(0, 10, 'Dashboard de Performance Web', 0, 1, 'C')
+        pdf.set_font('Arial', '', 12)
+        pdf.cell(0, 10, f"Gerado em: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}", 0, 1, 'C')
+        pdf.ln(10)
+        
+        # Obter informacoes do sistema
+        import platform
+        sys_os = platform.system() + " " + platform.release()
+        is_headless = "Sim" if os.getenv('HEADLESS', 'false').lower() == 'true' else "Nao"
+        browser_info = "Google Chrome (Inferred)" # Context details usually aren't guaranteed in after_all without deep driver digging
+        try:
+            if hasattr(context, 'browser') and context.browser:
+               caps = context.browser.capabilities
+               browser_info = f"{caps.get('browserName', 'Chrome')} {caps.get('browserVersion', '')}"
+        except: pass
+
+        pdf.set_font('Arial', 'I', 10)
+        pdf.cell(0, 8, f"Ambiente: {sys_os} | Navegador: {browser_info} | Headless: {is_headless}", 0, 1, 'C')
+        pdf.ln(2)
+        
+        # Linha visível sutil para separar Cabeçalho/Ambiente da parte de dados
+        pdf.set_draw_color(220, 220, 220)
+        pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+        pdf.ln(10)
+        
+        pdf.set_text_color(0, 0, 0)
+        
+        # --- CARDS DE RESUMO ---
+        total_times = []
+        for x in perf_data:
+            try:
+                if 'ms' in x['metrics']['load_time']:
+                    total_times.append(int(x['metrics']['load_time'].replace('ms', '')))
+            except: pass
+            
+        avg_time = sum(total_times) // len(total_times) if total_times else 0
+        fastest = min(total_times) if total_times else 0
+        slowest = max(total_times) if total_times else 0
+        
+        def get_color(val):
+            if val == 0: return (108, 117, 125) # Grey
+            elif val <= 1000: return (40, 167, 69) # Green
+            elif val <= 2500: return (255, 193, 7) # Yellow
+            else: return (220, 53, 69) # Red
+
+        # Definir uma posicao fixa (Y) para que os tres retangulos fiquem super alinhados horizontalmente
+        # Pagina A4 tem ~210mm de largura. Margem = ~10mm de cada lado -> 190mm de area util
+        # 3 cards de 60mm ocupam 180mm. Restam 10mm para espaco entre eles (2 espacos de 5mm)
+        start_y = pdf.get_y()
+        card_w = 60
+        card_h = 30 # Aumentando a altura para respirar melhor
+        gap = 5
+        
+        # Card 1    
+        draw_dashboard_card(pdf, 10, start_y, card_w, card_h, "Media (Páginas)", f"{avg_time}ms", get_color(avg_time))
+        # Card 2
+        draw_dashboard_card(pdf, 10 + card_w + gap, start_y, card_w, card_h, "Mais Rapida", f"{fastest}ms", get_color(fastest))
+        # Card 3 
+        draw_dashboard_card(pdf, 10 + (2 * card_w) + (2 * gap), start_y, card_w, card_h, "Mais Lenta (Alerta)", f"{slowest}ms", get_color(slowest))
+        
+        # Mudar a margem Y depois de desenhar os boxes explicitamente 
+        pdf.set_y(start_y + card_h + 10)
+
+        # --- TABELA DE MÉTRICAS ---
+        pdf.set_font('Arial', 'B', 12)
+        pdf.cell(0, 10, 'Detalhamento das Navegações', 0, 1, 'L')
+        pdf.ln(2)
+        
+        col_widths = [60, 43, 29, 29, 29] # Cenário, URL, Backend, DOM, Total
+        headers = ['Cenário', 'Página/URL', 'Backend', 'DOM', 'Total']
+        
+        # Cabecalho escuro para contraste
+        pdf.set_fill_color(52, 58, 64) # Dark Grey
+        pdf.set_text_color(255, 255, 255) # White Text
+        pdf.set_font('Arial', 'B', 9)
+        for i, h in enumerate(headers):
+            pdf.cell(col_widths[i], 8, h, 1, 0, 'C', 1)
+        pdf.ln()
+        
+        pdf.set_font('Arial', '', 8)
+        pdf.set_text_color(0, 0, 0) # Forca texto preto nas celulas
+        
+        for item in perf_data:
+            m = item['metrics']
+            url_short = m['url'].split('?')[0]
+            if len(url_short) > 30: url_short = "..." + url_short[-27:]
+            
+            # Altura dinâmica para o nome do cenário caso tenha quebra
+            curr_y = pdf.get_y()
+            if curr_y > 260:
+                pdf.add_page()
+                curr_y = pdf.get_y()
+            
+            # Logica de cores baseada no Tempo Total
+            total_time_ms = 0
+            try:
+                if 'ms' in m['load_time']:
+                    total_time_ms = int(m['load_time'].replace('ms', ''))
+            except: pass
+            
+            row_bg = (255, 255, 255)
+            if total_time_ms > 0:
+                if total_time_ms < 1000: row_bg = (212, 237, 218) # Verde
+                elif total_time_ms > 2500: row_bg = (248, 215, 218) # Vermelho
+            
+            pdf.set_fill_color(*row_bg)
+            
+            # Truncar nomes
+            scen_name = (item['scenario'][:35] + '..') if len(item['scenario']) > 37 else item['scenario']
+            
+            pdf.cell(col_widths[0], 8, scen_name, 1, 0, 'L', 1)
+            pdf.cell(col_widths[1], 8, url_short, 1, 0, 'L', 1)
+            pdf.cell(col_widths[2], 8, m['response_time'], 1, 0, 'C', 1)
+            pdf.cell(col_widths[3], 8, m['dom_complete'], 1, 0, 'C', 1)
+            pdf.cell(col_widths[4], 8, m['load_time'], 1, 1, 'C', 1)
+
+        # --- LEGENDA ---
+        pdf.ln(10)
+        # Fundo claro com borda sutil em vez de fundo todo cinza para melhorar contraste do box
+        pdf.set_fill_color(252, 252, 252)
+        pdf.set_draw_color(200, 200, 200)
+        # Borda com fundo quase branco (True)
+        pdf.rect(10, pdf.get_y(), 190, 48, 'DF')
+        pdf.set_xy(15, pdf.get_y() + 5)
+        
+        # Garante que todo o texto sera preto
+        pdf.set_text_color(0, 0, 0)
+        
+        pdf.set_font('Arial', 'B', 9)
+        pdf.cell(0, 5, "Glossario de Metricas (Baseado no Google Core Web Vitals):", 0, 1)
+        pdf.set_font('Arial', '', 9) # Aumentado fonte para 9
+        pdf.cell(0, 5, "- Backend (Response Time/TTFB): Tempo desde a requisicao ate a resposta inicial do servidor (Download).", 0, 1)
+        pdf.cell(0, 5, "- DOM (Processing): Tempo de construcao e processamento da Interface visual da pagina.", 0, 1)
+        pdf.cell(0, 5, "- Total (Page Load): Equivalente ao 'Largest Contentful Paint', maximo tolerado pela UX moderna.", 0, 1)
+        pdf.ln(3)
+        pdf.set_font('Arial', 'B', 9)
+        pdf.cell(0, 5, "Interpretacao das Cores (Metrica: Tempo Total):", 0, 1)
+        pdf.set_font('Arial', 'I', 9)
+        # Define the bullet point string correctly as a raw string
+        bullet = chr(149) if hasattr(chr, 'encode') else '-'
+        pdf.cell(0, 5, f"  * Verde (< 1.0s) : Desempenho Excelente. A pagina parece instatanea para o usuario.", 0, 1)
+        pdf.cell(0, 5, f"  * Amarelo (1.0s a 2.5s) : Desempenho Aceitavel. Dentro dos limites saudaveis de utilizacao.", 0, 1)
+        pdf.cell(0, 5, f"  * Vermelho (> 2.5s) : Desempenho Pobre (Lento). Risco alto de abandono de pagina e impacto em SEO.", 0, 1)
+
+        output_file = 'relatorio_performance.pdf'
+        pdf.output(output_file)
+        print(f"[RELATORIO] Relatório de Performance gerado: {output_file}")
+        
+    except Exception as e:
+        print(f"[ERRO] Falha ao gerar Relatorio de Performance: {e}")
 `;
     }
 
-    generateRequirementsContent() {
-        return `# Dependências Python para testes BDD
-# Instale com: pip install -r requirements.txt
+    generateGitignoreContent() {
+        return `# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+*.egg-info/
+dist/
+build/
 
-selenium==4.15.2
-behave==1.2.6
-behave-html-formatter==0.9.10
-fpdf2==2.7.4
-webdriver-manager==4.0.1
-parse==1.19.1
-parse-type==0.6.2
-six==1.16.0
+# Testes
+.pytest_cache/
+.coverage
+htmlcov/
+*.log
+
+# Screenshots
+screenshots/
+*.png
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
 `;
     }
 
@@ -2744,82 +2370,7 @@ lang = pt
 `;
     }
 
-    generateProjectFiles() {
-        const files = [];
 
-        // Environment.py (dentro de features para padrão behave)
-        files.push({
-            name: `features/environment.py`,
-            content: this.generateEnvironmentContent()
-        });
-
-        // Base Page (Nova estrutura DRY)
-        files.push({
-            name: `features/pages/base_page.py`,
-            content: this.generateBasePageContent()
-        });
-
-        // Requirements.txt (raiz do projeto)
-        files.push({
-            name: `requirements.txt`,
-            content: this.generateRequirementsContent()
-        });
-
-        files.push({
-            name: `improve_report.py`,
-            content: this.generateImproveReportScript()
-        });
-
-        // README.md
-        files.push({
-            name: `README.md`,
-            content: this.generateReadmeContent()
-        });
-
-        // Arquivos de Configuração e Scripts (QA/DevOps)
-        files.push({
-            name: `.gitignore`,
-            content: this.generateGitignoreContent()
-        });
-
-        files.push({
-            name: `behave.ini`,
-            content: this.generateBehaveIniContent()
-        });
-
-        files.push({
-            name: `run_tests.bat`,
-            content: this.generateRunBatContent()
-        });
-
-        files.push({
-            name: `run_tests.sh`,
-            content: this.generateRunShContent()
-        });
-
-
-
-        // __init__.py files para compatibilidade de pacotes
-        // features/__init__.py
-        files.push({
-            name: `features/__init__.py`,
-            content: ''
-        });
-
-        // features/steps/__init__.py
-        files.push({
-            name: `steps/__init__.py`,
-            content: ''
-        });
-
-        // features/pages/__init__.py
-        files.push({
-            name: `pages/__init__.py`,
-            content: ''
-        });
-
-        return files;
-    }
 
     generateImproveReportScript() {
         return `
@@ -3017,6 +2568,37 @@ echo "==================================================="
 `;
     }
 
+    generateRequirementsContent() {
+        return `# Dependências Python para testes BDD
+# Instale com: pip install -r requirements.txt
+
+selenium==4.15.2
+behave==1.2.6
+behave-html-formatter==0.9.10
+fpdf2==2.7.4
+webdriver-manager==4.0.1
+parse==1.19.1
+parse-type==0.6.2
+six==1.16.0
+`;
+    }
+
+    translateStepKeyword(step) {
+        const keyword = step.trim().toLowerCase();
+        const map = {
+            'given': 'Dado',
+            'when': 'Quando',
+            'then': 'Então',
+            'and': 'E',
+            'but': 'Mas'
+        };
+        // Tenta encontrar o mapeamento, caso contrário retorna o original com a primeira letra maiúscula
+        const translated = map[keyword];
+        if (translated) return translated;
+        
+        return step.charAt(0).toUpperCase() + step.slice(1).toLowerCase();
+    }
+
     normalizeFeatures(features) {
         // Mapa global de nomes canônicos: lowercase -> original (primeiro encontrado)
         const canonicalNames = new Map();
@@ -3133,6 +2715,109 @@ echo "==================================================="
         }
         
         return name;
+    }
+
+    exportAsIndividualFiles(exportData) {
+        exportData.forEach(item => {
+            const featureSlug = this.slugify(item.featureName);
+
+            item.files.forEach(file => {
+                let filename = file.name;
+                
+                // Garantir estrutura correta de pastas na exportação individual (download direto do navegador)
+                if (filename.endsWith('.feature')) {
+                    // Browsers não suportam subpastas reais via download attribute facilmente, 
+                    // mas mantemos o nome indicativo se necessário ou deixamos limpo.
+                }
+
+                downloadFile(filename, file.content);
+            });
+        });
+    }
+
+    async exportAsZip(exportData) {
+        try {
+            const folderStructure = {
+                '': [], // Arquivos na raiz
+                'features': [],
+                'features/steps': [],
+                'features/pages': [],
+                'metadata': []
+            };
+
+            exportData.forEach(item => {
+                item.files.forEach(file => {
+                    let filename = file.name;
+                    let targetFolder = ''; // Raiz por padrão
+
+                    // Determinar pasta de destino baseado no tipo/nome do arquivo
+                    // Se o nome já começa com 'features/', extraímos a subpasta para o mapeamento estruturado
+                    if (filename.startsWith('tests/features/')) {
+                        targetFolder = 'tests/features';
+                        file.name = filename.replace('tests/features/', '');
+                    } else if (filename.startsWith('tests/pages/')) {
+                        targetFolder = 'tests/pages';
+                        file.name = filename.replace('tests/pages/', '');
+                    } else if (filename.startsWith('e2e/steps/')) {
+                        targetFolder = 'e2e/steps';
+                        file.name = filename.replace('e2e/steps/', '');
+                    } else if (filename.startsWith('features/pages/')) {
+                        targetFolder = 'features/pages';
+                        file.name = filename.replace('features/pages/', '');
+                    } else if (filename.startsWith('features/steps/')) {
+                        targetFolder = 'features/steps';
+                        file.name = filename.replace('features/steps/', '');
+                    } else if (filename.startsWith('features/')) {
+                        targetFolder = 'features';
+                        file.name = filename.replace('features/', '');
+                    } else if (filename.endsWith('.feature')) {
+                        targetFolder = 'features';
+                    } else if (filename.startsWith('pages/')) {
+                        targetFolder = 'features/pages';
+                        file.name = filename.replace('pages/', '');
+                    } else if (filename.startsWith('steps/')) {
+                        targetFolder = 'features/steps';
+                        file.name = filename.replace('steps/', '');
+                    } else {
+                        // Arquivos que ficam na raiz (run_*.bat, requirements.txt, README.md, etc.)
+                        targetFolder = '';
+                        file.name = filename;
+                    }
+
+                    if (!folderStructure[targetFolder]) {
+                        folderStructure[targetFolder] = [];
+                    }
+
+                    const targetArray = folderStructure[targetFolder];
+                    
+                    // Prevenir duplicados no ZIP
+                    const fileExists = targetArray.some(existingFile => existingFile.name === file.name);
+                    if (!fileExists) {
+                        targetArray.push(file);
+                    }
+                });
+            });
+
+            // Gerar ZIP com FileCompressor (importado no topo)
+            const zipBuffer = FileCompressor.createStructuredZip(folderStructure, 'bdd_project_export.zip');
+
+            // Download
+            const blob = new Blob([zipBuffer], { type: 'application/zip' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `bdd_export_${new Date().toISOString().split('T')[0]}.zip`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            this.logger.success('Arquivo ZIP gerado e baixado com sucesso');
+
+        } catch (error) {
+            this.logger.error('Falha na geração do ZIP', { error: error.message });
+            throw error;
+        }
     }
 
 }

@@ -3,7 +3,7 @@
 
 **Última atualização:** 16 de Janeiro de 2026
 
-Sua privacidade é importante para nós. Esta política de privacidade explica como a extensão "Assistente Automatizador" coleta, usa e protege suas informações.
+Sua privacidade é importante para nós. Esta política de privacidade explica como a extensão "BDD_PyTech" coleta, usa e protege suas informações.
 
 ## Coleta de Dados
 

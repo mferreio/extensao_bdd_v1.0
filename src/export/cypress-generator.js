@@ -2,7 +2,7 @@
  * Módulo de geração de código Cypress integrado.
  */
 import { generateCypressPOM } from './pom-generator.js';
-import { PERFORMANCE_ACTION, PERFORMANCE_GHERKIN } from '../utils/performance-config.js';
+
 import { generateCoverageSection } from './coverage-report.js';
 
 export class CypressGenerator {
@@ -22,7 +22,7 @@ export class CypressGenerator {
     }
 
     // Gera todos os arquivos específicos de uma feature
-    generateFeatureFiles(feature, globalUniqueSteps = new Set()) {
+    generateFeatureFiles(feature, globalUniqueSteps = new Set(), options = {}) {
         const files = [];
         const featureSlug = this.slugify(feature.name);
 
@@ -35,7 +35,7 @@ export class CypressGenerator {
         // Steps file
         files.push({
             name: `cypress/e2e/steps/${featureSlug}.steps.js`,
-            content: this.generateStepDefinitions(feature, globalUniqueSteps)
+            content: this.generateStepDefinitions(feature, globalUniqueSteps, options)
         });
 
         // Page Object Model
@@ -43,38 +43,42 @@ export class CypressGenerator {
         if (allInteractions.length > 0) {
             files.push({
                 name: `cypress/support/pages/${featureSlug}_page.js`,
-                content: generateCypressPOM(feature.name, allInteractions)
+                content: generateCypressPOM(feature.name, allInteractions, options)
             });
         }
 
         return files;
     }
 
-    generateProjectFiles(features = []) {
+    generateProjectFiles(features = [], options = {}) {
         const files = [];
         
         files.push({
             name: 'cypress.config.js',
             content: `const { defineConfig } = require("cypress");
 const createBundler = require("@bahmutov/cypress-esbuild-preprocessor");
-const addCucumberPreprocessorPlugin = require("@badeball/cypress-cucumber-preprocessor").addCucumberPreprocessorPlugin;
-const createEsbuildPlugin = require("@badeball/cypress-cucumber-preprocessor/esbuild").createEsbuildPlugin;
+const preprocessor = require("@badeball/cypress-cucumber-preprocessor");
+const createEsbuildPlugin = require("@badeball/cypress-cucumber-preprocessor/esbuild");
 
 module.exports = defineConfig({
   e2e: {
     setupNodeEvents(on, config) {
-      addCucumberPreprocessorPlugin(on, config);
+      preprocessor.addCucumberPreprocessorPlugin(on, config);
+
       on(
         "file:preprocessor",
         createBundler({
-          plugins: [createEsbuildPlugin(config)],
+          plugins: [createEsbuildPlugin.default(config)],
         })
       );
+
       return config;
     },
-    specPattern: "**/*.feature",
+    specPattern: "cypress/e2e/features/**/*.feature",
     supportFile: "cypress/support/e2e.js",
-    baseUrl: process.env.BASE_URL || "http://localhost:3000",
+    viewportWidth: 1280,
+    viewportHeight: 720,
+    defaultCommandTimeout: ${options.globalTimeout || 10} * 1000,
   },
 });
 `
@@ -89,13 +93,11 @@ module.exports = defineConfig({
     "test": "cypress run",
     "cypress:open": "cypress open"
   },
-  "devDependencies": {
+    "devDependencies": {
     "@badeball/cypress-cucumber-preprocessor": "^20.0.0",
     "@bahmutov/cypress-esbuild-preprocessor": "^2.2.0",
     "cypress": "^13.0.0",
-    "esbuild": "^0.19.0",
-    "@cypress-audit/lighthouse": "^1.0.0",
-    "lighthouse": "^11.0.0"
+    "esbuild": "^0.19.0"
   }
 }
 `
@@ -110,7 +112,8 @@ import './commands'
         
         files.push({
             name: 'cypress/support/commands.js',
-            content: `// Custom Cypress Commands\n`
+            content: `// Importa plugin xpath caso não venha no setup
+import 'cypress-xpath';`
         });
 
         let readmeContent = `# Projeto de Testes Cypress BDD\n\nEste projeto foi gerado automaticamente.\n\n## Como executar\n1. Feche todos os terminais\n2. Rode \`npm install\`\n3. Rode \`npx cypress open\` ou \`npm run test\` para modo headless.\n\n---\n\n`;
@@ -135,6 +138,10 @@ import './commands'
                 const bulkInteraction = (scenario.interactions || []).find(
                     i => Array.isArray(i.bulkData) && i.bulkData.length > 0
                 );
+
+                if (scenario.description) {
+                    content += `  # ${scenario.description.replace(/\n/g, '\n  # ')}\n`;
+                }
 
                 if (bulkInteraction) {
                     // Scenario Outline com Examples
@@ -174,11 +181,7 @@ import './commands'
                             let value = interaction.valorPreenchido ? ` "${interaction.valorPreenchido}"` : '';
                             content += `    ${stepType} ${actionText} "${elementName}"${value}\n`;
 
-                        // Injetar step de performance se marcado
-                        if (interaction.performanceCheck && interaction.performanceCheck.enabled) {
-                            const threshold = interaction.performanceCheck.threshold || 90;
-                            content += `    And ${PERFORMANCE_GHERKIN.en(threshold)}\n`;
-                        }
+
                     });
                 }
                 }
@@ -188,7 +191,7 @@ import './commands'
         return content;
     }
 
-    generateStepDefinitions(feature, globalUniqueSteps = new Set()) {
+    generateStepDefinitions(feature, globalUniqueSteps = new Set(), options = {}) {
         let content = `import { Given, When, Then } from "@badeball/cypress-cucumber-preprocessor";\n\n`;
 
         const trackerSet = globalUniqueSteps instanceof Set ? globalUniqueSteps : new Set();
@@ -205,11 +208,27 @@ import './commands'
                         const hasValue = !!interaction.valorPreenchido;
                         const hasBulk = Array.isArray(interaction.bulkData) && interaction.bulkData.length > 0;
                         
-                        // Resolver melhor seletor: xpath > cssSelector > fallback
-                        const xpath = interaction.xpath || '';
-                        const cssSelector = interaction.cssSelector || interaction.selector || '';
-                        const isXPath = xpath && (xpath.startsWith('//') || xpath.startsWith('/'));
-                        const selector = isXPath ? xpath : (cssSelector || `[name="${elementName}"]`);
+                        // Resolver melhor seletor: config
+                        // Extração robusta de seletores (lida com inconsistências de nomenclaturas)
+                        const xpath = interaction.xpath || interaction.xpathSelector || (interaction.isValid && interaction.isValid.xpath ? interaction.xpath : '');
+                        const cssSelector = interaction.cssSelector || interaction.selector || interaction.seletor || (interaction.isValid && interaction.isValid.css ? interaction.cssSelector : '');
+                        const preferred = options.preferredSelector || 'best';
+                        
+                        let isXPath = false;
+                        let selector = '';
+
+                        if (preferred === 'xpath' && xpath) {
+                            isXPath = true;
+                            selector = xpath;
+                        } else if (preferred === 'css' && cssSelector) {
+                            isXPath = false;
+                            selector = cssSelector;
+                        } else {
+                            // Default / Best (Tenta XPath primeiro como antes, ou cai pra CSS)
+                            isXPath = !!xpath;
+                            selector = isXPath ? xpath : (cssSelector || `[name="${elementName}"]`);
+                        }
+
                         const escapedSelector = selector.replace(/"/g, '\\"').replace(/'/g, "\\'");
                         
                         if (isXPath) needsXPathPlugin = true;
@@ -281,19 +300,7 @@ import './commands'
             content = `import 'cypress-xpath';\n` + content;
         }
 
-        // Adicionar step de Performance Lighthouse se necessário
-        if (needsPerformanceStep) {
-            content = `import '@cypress-audit/lighthouse';\n` + content;
-            content += `// --- Performance Audit Step (Lighthouse) ---\n`;
-            content += `Then("${PERFORMANCE_GHERKIN.en('{int}')}", (threshold) => {\n`;
-            content += `  cy.lighthouse({\n`;
-            content += `    performance: threshold,\n`;
-            content += `    accessibility: 80,\n`;
-            content += `    "best-practices": 80,\n`;
-            content += `    seo: 70\n`;
-            content += `  });\n`;
-            content += `});\n`;
-        }
+
 
         return content;
     }

@@ -31,7 +31,10 @@ class ExportBridge {
             includeMetadata,
             includeLogs,
             includeAudit: true,
-            language: options.language // Correção: repassando a linguagem para o manager
+            language: options.language,
+            globalLighthouse: options.globalLighthouse || false,
+            globalPerformance: options.globalPerformance || false,
+            preferredSelector: options.preferredSelector || 'best'
         });
     }
 
@@ -47,38 +50,35 @@ class ExportBridge {
     }
 
     /**
-     * Exporta em ZIP (quando suportado)
+     * Exporta em ZIP processando a árvore pré-montada de exportData
+     * (Isso garante que LOGS, PROJECT, DOCUMENTATION sejam incluídos)
      */
-    async exportAsZip(features) {
-        const files = [];
-
-        // Coletar todos os arquivos de todas as features
-        features.forEach(feature => {
-            const featureFiles = this.manager.generateFeatureFiles(feature);
-            files.push(...featureFiles);
-        });
-
-        // Criar estrutura de pasta dinamicamente baseada no file.name provido pelos geradores
+    async exportAsZip(exportData) {
+        // Criar estrutura de pasta dinamicamente
         const folderStructure = {};
 
-        files.forEach(file => {
-            // Se o arquivo contém '/', usamos o prefixo como pasta
-            const parts = file.name.split('/');
-            const filename = parts.pop();
-            const targetFolder = parts.join('/');
+        exportData.forEach(module => {
+            const files = module.files || [];
+            files.forEach(file => {
+                // Se o arquivo contém '/', usamos o prefixo como pasta
+                const parts = file.name.split('/');
+                const filename = parts.pop();
+                const targetFolder = parts.join('/');
 
-            if (!folderStructure[targetFolder]) {
-                folderStructure[targetFolder] = [];
-            }
-            
-            // Clonar o arquivo atualizando apenas o nome (remoção das pastas do nome)
-            folderStructure[targetFolder].push({
-                name: filename,
-                content: file.content
+                if (!folderStructure[targetFolder]) {
+                    folderStructure[targetFolder] = [];
+                }
+                
+                // Adicionamos no folder
+                folderStructure[targetFolder].push({
+                    name: filename,
+                    content: file.content
+                });
             });
         });
 
-        // Compressor não comprime (simples armazenamento), apenas empacota
+        // Compressor empacota
+
         const zipData = FileCompressor.createStructuredZip(
             folderStructure,
             `export_${new Date().toISOString().split('T')[0]}.zip`

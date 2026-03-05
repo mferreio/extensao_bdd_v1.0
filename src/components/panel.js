@@ -5,7 +5,6 @@ import { getStore } from '../state/store.js';
 import { showEditModal, showLogDetailsModal, showXPathModal, showPostExportModal, showAddStepModal, showScreenshotModal } from './modals.js';
 import { renderToolbar, attachToolbarListeners } from './toolbar.js';
 import { renderStepEditor, clearStepEditor } from './step-editor.js';
-import { renderElementDetails } from './element-details.js';
 import { renderReplayProgress, attachReplayProgressListeners } from './replay-progress.js';
 import { showPreExportValidation } from '../export/pre-export-validator.js';
 
@@ -124,7 +123,6 @@ export function renderPanelContent(panel) {
                     </div>
                 </div>
                 <div id="gherkin-step-editor-container" class="gherkin-step-editor-container"></div>
-                <div id="gherkin-element-details-container" class="gherkin-element-details-container"></div>
             </div>
         `;
     } else if (panelState === 'cenario_finalizado') {
@@ -195,6 +193,13 @@ export function renderPanelContent(panel) {
                         <option value="cypress">🟩 Node + Cypress</option>
                         <option value="playwright">🎭 Node + Playwright</option>
                     </select>
+                </div>
+                
+                <div class="gherkin-flex-col gherkin-gap-xs" style="margin-bottom: 12px;">
+                    <label class="gherkin-label" style="display: flex; align-items: center; cursor: pointer; font-size: 0.9em;">
+                        <input type="checkbox" id="export-global-performance" style="margin-right: 8px;">
+                        Habilitar Performance Global (Todos os Cenários)
+                    </label>
                 </div>
                 <button id="export-individual" class="gherkin-btn gherkin-btn-main gherkin-w-full" style="height: 38px;">
                     📄 Exportar Arquivos Individuais
@@ -345,11 +350,7 @@ export function renderPanelContent(panel) {
                 clearStepEditor(stepEditorContainer);
             }
 
-            // Element details (vazio por padrão)
-            const elementDetailsContainer = panel.querySelector('#gherkin-element-details-container');
-            if (elementDetailsContainer) {
-                renderElementDetails(elementDetailsContainer, null);
-            }
+
         }
 
         // Inicializar FormValidator para campos de entrada
@@ -582,6 +583,8 @@ function attachFunctionalListeners(panel, store) {
             return;
         }
 
+        const isGlobalPerformanceEnabled = panel.querySelector('#export-global-performance') ? panel.querySelector('#export-global-performance').checked : false;
+
         const featuresToExport = store.exportFeatures(selectedIndexes);
 
         // Validação de completude pré-export
@@ -593,12 +596,14 @@ function attachFunctionalListeners(panel, store) {
             const { exportBridge } = await import('../export/export-bridge.js');
             const { showFeedback } = await import('../../utils.js');
 
-            // Use exportBridge functionality
             const result = await exportBridge.exportWithEnhancements(featuresToExport, {
                 useZip: useZip,
                 includeMetadata: true,
                 includeLogs: true,
-                language: exportLanguage
+                language: exportLanguage,
+                globalLighthouse: false, // Legado
+                globalPerformance: isGlobalPerformanceEnabled,
+                preferredSelector: store.getState().preferredSelector || 'best'
             });
 
             if (result) {

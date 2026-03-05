@@ -743,13 +743,6 @@ class ${className}Locators:
     """
     Page Object para ${feature.name}
     
-    Este Page Object implementa:
-    - Espera explícita para elementos
-    - Tratamento robusto de exceções
-    - Padrão fluente (method chaining)
-    - Métodos de alto nível para fluxos completos
-    """
-    
     def __init__(self, browser, timeout=10):
         """
         Inicializa o Page Object

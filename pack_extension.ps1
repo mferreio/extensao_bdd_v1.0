@@ -35,9 +35,9 @@ Copy-Item "$srcDir/options.html" -Destination "$releaseDir/src"
 Copy-Item "$srcDir/help.html" -Destination "$releaseDir/src"
 
 # 7. Criar ZIP (opcional, requer Powershell 5+)
-$zipName = "GherkinGenerator_Distribuicao.zip"
-if (Test-Path $zipName) { Remove-Item $zipName }
-Compress-Archive -Path "$releaseDir/*" -DestinationPath $zipName
+$ZipFile = "BDD_PyTech_Distribuicao.zip"
+if (Test-Path $ZipFile) { Remove-Item $ZipFile }
+Compress-Archive -Path "$releaseDir/*" -DestinationPath $ZipFile
 
 Write-Host "---------------------------------------------------" -ForegroundColor Green
 Write-Host "SUCESSO!" -ForegroundColor Green

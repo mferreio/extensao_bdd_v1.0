@@ -1270,6 +1270,11 @@ export function showScenarioSettingsModal(store) {
 
     const state = store.getState();
     const currentGlobalTimeout = state.globalTimeout || 10; // Default de exibição
+    const currentDescription = state.scenarioDescription || '';
+    const currentSelector = state.preferredSelector || 'best';
+    
+    // Ler do objeto config interno
+    const currentReplayCount = (state.replayConfig && state.replayConfig.repeatCount) ? state.replayConfig.repeatCount : 1;
     
     const modalBg = document.createElement('div');
     modalBg.id = 'gherkin-modal';
@@ -1277,7 +1282,7 @@ export function showScenarioSettingsModal(store) {
 
     const modal = document.createElement('div');
     modal.className = 'gherkin-modal-content gherkin-flex-col gherkin-gap-md';
-    modal.style.maxWidth = '450px';
+    modal.style.maxWidth = '500px';
 
     const title = document.createElement('h3');
     title.textContent = 'Configurações de Cenário';
@@ -1287,13 +1292,38 @@ export function showScenarioSettingsModal(store) {
     // Corpo de config
     const body = document.createElement('div');
     body.className = 'gherkin-w-full gherkin-flex-col gherkin-gap-md';
+    body.style.maxHeight = '70vh';
+    body.style.overflowY = 'auto';
+    body.style.paddingRight = '5px';
+
     body.innerHTML = `
         <div class="gherkin-flex-col gherkin-gap-xs">
-            <label class="gherkin-label">Timeout Global (s):</label>
+            <label class="gherkin-label">📝 Descrição do Cenário:</label>
+            <textarea id="settings-desc" class="gherkin-input gherkin-w-full" rows="3" placeholder="Ex: Este cenário testa o fluxo de compra completo com Pix...">${currentDescription}</textarea>
+            <span class="gherkin-text-muted" style="font-size:0.8rem">Este texto será incluído como comentário no arquivo Gherkin exportado.</span>
+        </div>
+
+        <div class="gherkin-flex-col gherkin-gap-xs">
+            <label class="gherkin-label">🎯 Estratégia de Seletores Preferida:</label>
+            <select id="settings-selector" class="gherkin-input gherkin-w-full">
+                <option value="best" ${currentSelector === 'best' ? 'selected' : ''}>Inteligente (Recomendado)</option>
+                <option value="xpath" ${currentSelector === 'xpath' ? 'selected' : ''}>Forçar XPath (ex: //div[@id='login'])</option>
+                <option value="css" ${currentSelector === 'css' ? 'selected' : ''}>Forçar CSS Selector (ex: #login > div)</option>
+            </select>
+            <span class="gherkin-text-muted" style="font-size:0.8rem">A extensão tentará usar este formato no código gerado para Playwright e Cypress.</span>
+        </div>
+
+        <div class="gherkin-flex-col gherkin-gap-xs" style="border-top: 1px solid var(--border-color); padding-top: 10px; margin-top: 5px;">
+            <label class="gherkin-label">⏱️ Timeout Global (s):</label>
             <input type="number" id="settings-timeout" class="gherkin-input gherkin-w-full" value="${currentGlobalTimeout}" min="1" max="60">
             <span class="gherkin-text-muted" style="font-size:0.8rem">Tempo máximo de espera antes da automação falhar ao buscar elementos.</span>
         </div>
-        <!-- Espaço para mais configs no futuro, ex: URL Base -->
+
+        <div class="gherkin-flex-col gherkin-gap-xs">
+            <label class="gherkin-label">🔄 Replay Embutido (Dry-Run):</label>
+            <input type="number" id="settings-replay" class="gherkin-input gherkin-w-full" value="${currentReplayCount}" min="1" max="999">
+            <span class="gherkin-text-muted" style="font-size:0.8rem">Número de vezes que a automação repetirá o mesmo cenário ao clicar em Reproduzir.</span>
+        </div>
     `;
     modal.appendChild(body);
 
@@ -1305,9 +1335,27 @@ export function showScenarioSettingsModal(store) {
     saveBtn.className = 'gherkin-btn gherkin-btn-main gherkin-flex-1';
     saveBtn.onclick = () => {
         const tObj = modal.querySelector('#settings-timeout');
-        if (tObj && tObj.value) {
-            store.setState({ globalTimeout: parseInt(tObj.value, 10) });
-        }
+        const descObj = modal.querySelector('#settings-desc');
+        const selObj = modal.querySelector('#settings-selector');
+        const replayObj = modal.querySelector('#settings-replay');
+
+        const updates = {};
+        if (tObj && tObj.value) updates.globalTimeout = parseInt(tObj.value, 10);
+        if (descObj) updates.scenarioDescription = descObj.value;
+        if (selObj) updates.preferredSelector = selObj.value;
+        
+        // Atualizamos o state level 1 com a config que o startReplayWithConfig usa (embora lá ela resete, precisamos gravar o "default")
+        // O replayRepeatCount vai ficar na raiz para consulta rápica. E ao iniciar o replay as configs o engolem.
+        const repeatVal = replayObj && replayObj.value ? parseInt(replayObj.value, 10) : 1;
+        
+        // Mantemos um objeto separado pra não bagunçar, ou passamos para o updateReplayState.
+        const prevConfig = state.replayConfig || {};
+        updates.replayConfig = {
+            ...prevConfig,
+            repeatCount: Math.max(1, repeatVal)
+        };
+
+        store.setState(updates);
         modalBg.remove();
         showFeedback('Configurações salvas!', 'success');
     };

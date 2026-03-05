@@ -1,4 +1,4 @@
-RESUMO EXECUTIVO: EXTENSÃO BDD v1.4
+RESUMO EXECUTIVO: EXTENSÃO BDD_PyTech v1.2.5
 ================================================================================
 
 1. O DESAFIO (CONTEXTO ATUAL)
@@ -14,7 +14,12 @@ RESUMO EXECUTIVO: EXTENSÃO BDD v1.4
 - Conceito: "Automatizar a Automação".
 - Como funciona: Transforma a navegação manual do usuário diretamente em código 
   profissional estruturado.
-- Output: Gera projeto completo em Python + Selenium + Behave (Gherkin).
+- Output: Gera projeto completo em 3 frameworks:
+  * Python + Selenium + Behave (BDD/Gherkin)
+  * Cypress (JavaScript) com Cucumber
+  * Playwright (TypeScript) com BDD
+- Extras: Exportação de Caderno de Testes em Excel, Auditoria de Performance 
+  (Lighthouse) e Validação Visual de Seletores (Spotlight Tracker).
 
 3. COMPARATIVO DE EFICIÊNCIA
 --------------------------------------------------------------------------------
@@ -45,6 +50,7 @@ A. Governança e Qualidade
 B. Integração DevOps & CI/CD
    - Plug & Play: O código nasce pronto para rodar em Jenkins, Azure DevOps, GitHub.
    - Headless Ready: Pronto para execução em containers Docker (sem interface).
+   - Multi-Framework: Exporta para Python, Cypress e Playwright simultaneamente.
 
 C. Cultura e Retenção de Talentos
    - Transformação do Papel: O QA deixa de ser um "robô executor" e passa a atuar 
@@ -54,7 +60,7 @@ C. Cultura e Retenção de Talentos
 6. PROPRIEDADE INTELECTUAL E SEGURANÇA
 --------------------------------------------------------------------------------
 - Sem "Vendor Lock-in": Diferente de ferramentas Low-Code proprietárias, o 
-  código gerado (Python) é 100% legível e pertence à empresa.
+  código gerado (Python/JS/TS) é 100% legível e pertence à empresa.
 - Independência: Se a extensão deixar de existir, os testes continuam funcionando
   para sempre.
 ================================================================================

@@ -1,0 +1,70 @@
+
+> bdd-test-generator@1.2.4 build
+> webpack --config webpack.config.js
+
+assets by status 1.2 MiB [1m[32m[cached][39m[22m 3 assets
+orphan modules 403 KiB [1m[33m[orphan][39m[22m 21 modules
+runtime modules 937 bytes 4 modules
+cacheable modules 1.48 MiB
+  modules by path [1m./src/[39m[22m 629 KiB
+    modules by path [1m./src/*.js[39m[22m 278 KiB 3 modules
+    modules by path [1m./src/components/*.js[39m[22m 66.2 KiB 3 modules
+    modules by path [1m./src/export/*.js[39m[22m 211 KiB 3 modules
+    modules by path [1m./src/utils/*.js[39m[22m 40.9 KiB 2 modules
+    + 1 module
+  modules by path [1m./node_modules/xlsx-js-style/dist/*.js[39m[22m 876 KiB
+    [1m./node_modules/xlsx-js-style/dist/xlsx.min.js[39m[22m 415 KiB [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
+    [1m./node_modules/xlsx-js-style/dist/cpexcel.js[39m[22m 461 KiB [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
+  [1m./utils.js[39m[22m 8.29 KiB [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
+  [1mfs (ignored)[39m[22m 15 bytes [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
+  [1mstream (ignored)[39m[22m 15 bytes [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
+
+[1m[31mERROR[39m[22m in [1m./src/components/step-editor.js[39m[22m [1m[32m7:0-109[39m[22m
+[1mModule [1m[31mnot found[39m[22m[1m: [1m[31mError[39m[22m[1m: Can't resolve '../utils/performance-config.js' in 'C:\Matheus\Pessoal\extensao_bdd_testes\src\components'[39m[22m
+resolve '../utils/performance-config.js' in 'C:\Matheus\Pessoal\extensao_bdd_testes\src\components'
+  using description file: C:\Matheus\Pessoal\extensao_bdd_testes\package.json (relative path: ./src/components)
+    Field 'browser' doesn't contain a valid alias configuration
+    using description file: C:\Matheus\Pessoal\extensao_bdd_testes\package.json (relative path: ./src/utils/performance-config.js)
+      no extension
+        Field 'browser' doesn't contain a valid alias configuration
+[1m[31m        C:\Matheus\Pessoal\extensao_bdd_testes\src\utils\performance-config.js doesn't exist[39m[22m
+      .js
+        Field 'browser' doesn't contain a valid alias configuration
+[1m[31m        C:\Matheus\Pessoal\extensao_bdd_testes\src\utils\performance-config.js.js doesn't exist[39m[22m
+      .json
+        Field 'browser' doesn't contain a valid alias configuration
+[1m[31m        C:\Matheus\Pessoal\extensao_bdd_testes\src\utils\performance-config.js.json doesn't exist[39m[22m
+      .wasm
+        Field 'browser' doesn't contain a valid alias configuration
+[1m[31m        C:\Matheus\Pessoal\extensao_bdd_testes\src\utils\performance-config.js.wasm doesn't exist[39m[22m
+      as directory
+[1m[31m        C:\Matheus\Pessoal\extensao_bdd_testes\src\utils\performance-config.js doesn't exist[39m[22m
+ @ ./src/components/panel.js 11:0-69 207:8-23 781:8-24
+ @ ./src/content.js 7:0-92 52:18-29 58:12-30 60:14-32 89:18-36 122:16-34
+
+[1m[31mERROR[39m[22m in [1m./src/export/playwright-generator.js[39m[22m [1m[32m12:0-89[39m[22m
+[1mModule [1m[31mnot found[39m[22m[1m: [1m[31mError[39m[22m[1m: Can't resolve '../utils/performance-config.js' in 'C:\Matheus\Pessoal\extensao_bdd_testes\src\export'[39m[22m
+resolve '../utils/performance-config.js' in 'C:\Matheus\Pessoal\extensao_bdd_testes\src\export'
+  using description file: C:\Matheus\Pessoal\extensao_bdd_testes\package.json (relative path: ./src/export)
+    Field 'browser' doesn't contain a valid alias configuration
+    using description file: C:\Matheus\Pessoal\extensao_bdd_testes\package.json (relative path: ./src/utils/performance-config.js)
+      no extension
+        Field 'browser' doesn't contain a valid alias configuration
+[1m[31m        C:\Matheus\Pessoal\extensao_bdd_testes\src\utils\performance-config.js doesn't exist[39m[22m
+      .js
+        Field 'browser' doesn't contain a valid alias configuration
+[1m[31m        C:\Matheus\Pessoal\extensao_bdd_testes\src\utils\performance-config.js.js doesn't exist[39m[22m
+      .json
+        Field 'browser' doesn't contain a valid alias configuration
+[1m[31m        C:\Matheus\Pessoal\extensao_bdd_testes\src\utils\performance-config.js.json doesn't exist[39m[22m
+      .wasm
+        Field 'browser' doesn't contain a valid alias configuration
+[1m[31m        C:\Matheus\Pessoal\extensao_bdd_testes\src\utils\performance-config.js.wasm doesn't exist[39m[22m
+      as directory
+[1m[31m        C:\Matheus\Pessoal\extensao_bdd_testes\src\utils\performance-config.js doesn't exist[39m[22m
+ @ ./src/export/export-manager.js 30:0-64 354:28-47 379:33-52
+ @ ./src/export/export-bridge.js 22:0-52 31:23-36
+ @ ./src/components/panel.js
+ @ ./src/content.js 7:0-92 52:18-29 58:12-30 60:14-32 89:18-36 122:16-34
+
+webpack 5.99.9 compiled with [1m[31m2 errors[39m[22m in 5684 ms

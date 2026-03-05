@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BDD_PyTech — Apresentação</title>
+  <meta name="description" content="Automatize a criação de testes E2E com gravação inteligente e exportação multi-framework.">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Particle Canvas -->
+  <canvas id="particles"></canvas>
+
+  <!-- Navigation -->
+  <nav id="navbar">
+    <div class="nav-logo">
+      <span class="logo-icon">⚡</span>
+      <span class="logo-text">BDD_<span class="accent">PyTech</span></span>
+    </div>
+    <div class="nav-links">
+      <a href="#hero">Início</a>
+      <a href="#about">Sobre Mim</a>
+      <a href="#problem">Problema</a>
+      <a href="#solution">Solução</a>
+      <a href="#features">Features</a>
+      <a href="#roi">ROI</a>
+      <a href="#demo">Demo</a>
+      <a href="#frameworks">Frameworks</a>
+      <a href="#security">Segurança</a>
+      <a href="#devops">DevOps</a>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section id="hero">
+    <div class="hero-content">
+      <div class="hero-badge">🚀 Extensão Chrome · v1.2.5 · Produção</div>
+      <h1>Automatize a<br><span class="gradient-text">Automação de Testes</span></h1>
+      <p class="hero-subtitle">Transforme navegação manual em projetos completos de testes E2E — com <strong>Page Objects</strong>, <strong>Gherkin</strong> e código pronto para CI/CD.</p>
+      <div class="hero-stats">
+        <div class="stat-card">
+          <span class="stat-number" data-target="16">0</span><span class="stat-suffix">x</span>
+          <span class="stat-label">Mais Rápido</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-number" data-target="93">0</span><span class="stat-suffix">%</span>
+          <span class="stat-label">Redução de Tempo</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-number" data-target="3">0</span><span class="stat-suffix"></span>
+          <span class="stat-label">Frameworks</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-number" data-target="0">0</span><span class="stat-suffix"></span>
+          <span class="stat-label">Vendor Lock-in</span>
+        </div>
+      </div>
+      <a href="#about" class="scroll-cta">
+        <span>Conheça a Revolução</span>
+        <div class="scroll-arrow">↓</div>
+      </a>
+    </div>
+  </section>
+
+  <!-- ABOUT / PRESENTER -->
+  <section id="about">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Quem Apresenta</span>
+        <h2>Olá, eu sou <span class="gradient-text">Matheus Ferreira</span></h2>
+      </div>
+      <div class="about-layout">
+        <div class="about-avatar-wrap">
+          <div class="about-avatar">
+            <div class="avatar-ring"></div>
+            <img src="profile.jpg" alt="Matheus Ferreira" class="avatar-image">
+          </div>
+          <div class="about-name-block">
+            <h3>Matheus Ferreira</h3>
+            <p class="about-role">QA Specialist · Automação Inteligente</p>
+          </div>
+        </div>
+        <div class="about-details">
+          <p class="about-bio">QA Specialist, focado em <strong>automação inteligente</strong> e <strong>soluções de teste com IA</strong>. Transformando qualidade em excelência através de ferramentas inovadoras que aceleram a entrega de software confiável.</p>
+          <div class="about-credentials">
+            <div class="credential glass">
+              <span class="cred-icon">🏅</span>
+              <div>
+                <strong>CTFL - ISTQB</strong>
+                <span>Certified Tester Foundation Level · 2023</span>
+              </div>
+            </div>
+            <div class="credential glass">
+              <span class="cred-icon">🎓</span>
+              <div>
+                <strong>Análise e Desenvolvimento de Sistemas</strong>
+                <span>Formação Superior</span>
+              </div>
+            </div>
+          </div>
+          <div class="about-xp">
+            <h4>Conhecimento e Experiência</h4>
+            <div class="xp-tags">
+              <span>Selenium</span><span>Playwright</span>
+              <span>BDD / Gherkin</span><span>CI/CD Pipelines</span><span>API Testing</span>
+              <span>Python</span><span>Page Object Model</span>
+              <span>IA & Automação</span>
+            </div>
+          </div>
+          <a href="https://portifolioprofissionalqa.vercel.app/" target="_blank" class="about-portfolio-link">
+            <span>🌐 Ver Portfólio Completo</span>
+            <span class="link-arrow">→</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PROBLEM -->
+  <section id="problem">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">O Desafio</span>
+        <h2>Desafios da <span class="gradient-text">automação tradicional.</span></h2>
+      </div>
+      <div class="problem-grid">
+        <div class="problem-card" data-delay="0">
+          <div class="problem-icon">⏳</div>
+          <h3>Setup Demorado</h3>
+          <p>Tempo inicial de configuração do projeto pode levar dias, incluindo Frameworks, dependências, estrutura de pastas… antes de escrever um único teste.</p>
+          <div class="problem-metric">8-16h <span>por projeto</span></div>
+        </div>
+        <div class="problem-card" data-delay="100">
+          <div class="problem-icon">🔧</div>
+          <h3>Manutenção Constante</h3>
+          <p>XPaths quebram a cada deploy. Classes CSS mudam. O time gasta mais tempo consertando seletores do que testando funcionalidades.</p>
+          <div class="problem-metric">60% <span>do tempo gasto em manutenção</span></div>
+        </div>
+        <div class="problem-card" data-delay="200">
+          <div class="problem-icon">🧑‍💻</div>
+          <h3>Exige Especialistas</h3>
+          <p>Automação tradicional exige engenheiros e automatizadores sêniors. QAs manuais ficam excluídos do processo, criando silos de conhecimento.</p>
+          <div class="problem-metric">R$ Alto <span>custo por recurso</span></div>
+        </div>
+        <div class="problem-card" data-delay="300">
+          <div class="problem-icon">🐛</div>
+          <h3>Flaky Tests</h3>
+          <p>"God Steps" monolíticos, código espaguete, scripts frágeis que falham na pipeline e travam a entrega da Sprint.</p>
+          <div class="problem-metric">Sprint <span>inteira comprometida</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SOLUTION -->
+  <section id="solution">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">A Solução</span>
+        <h2>Grave. Exporte. <span class="gradient-text">Execute.</span></h2>
+        <p class="section-desc">Três passos para transformar qualquer fluxo manual em testes automatizados profissionais.</p>
+      </div>
+      <div class="workflow-timeline">
+        <div class="workflow-step" data-step="1">
+          <div class="step-number">01</div>
+          <div class="step-content">
+            <h3>🎥 Grave sua Navegação</h3>
+            <p>Navegue normalmente pelo sistema. A extensão captura cliques, preenchimentos, seleções e navegações — tudo em tempo real.</p>
+            <div class="step-tags"><span>No-Code</span><span>Orgânico</span><span>Transparente</span></div>
+          </div>
+        </div>
+        <div class="workflow-step" data-step="2">
+          <div class="step-number">02</div>
+          <div class="step-content">
+            <h3>✏️ Refine no Editor</h3>
+            <p>Edite passos, valide seletores com o Spotlight Tracker, injete dados fake (CPF, CNPJ) entre outras funcionalidades.</p>
+            <div class="step-tags"><span>Editor Visual</span><span>5 Locators</span><span>Validação</span></div>
+          </div>
+        </div>
+        <div class="workflow-step" data-step="3">
+          <div class="step-number">03</div>
+          <div class="step-content">
+            <h3>📦 Exporte o Projeto</h3>
+            <p>Baixe um ZIP com projeto completo: features Gherkin, Page Objects, Step Definitions, configs e dependências — pronto para CI/CD.</p>
+            <div class="step-tags"><span>Python</span><span>Cypress</span><span>Playwright</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section id="features">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Funcionalidades</span>
+        <h2>Arsenal completo para <span class="gradient-text">QA Enterprise</span></h2>
+      </div>
+      <div class="features-grid">
+        <div class="feature-card glass">
+          <div class="feature-icon">🏗️</div>
+          <h3>Page Object Model</h3>
+          <p>Gera classes de página com Locators separados e métodos fluentes. Clean Code nível sênior, mesmo gerado por júnior.</p>
+        </div>
+
+        <div class="feature-card glass">
+          <div class="feature-icon">▶️</div>
+          <h3>Replay Nativo</h3>
+          <p>Dry-run no próprio browser antes de exportar. Spotlight Tracker valida cada elemento em tempo real.</p>
+        </div>
+        <div class="feature-card glass">
+          <div class="feature-icon">⚡</div>
+          <h3>Performance Audit</h3>
+          <p>Injete checagens de Core Web Vitals no fluxo E2E. Lighthouse integrado no pipeline de testes.</p>
+        </div>
+        <div class="feature-card glass">
+          <div class="feature-icon">👁️</div>
+          <h3>Validação de Seletores</h3>
+          <p>5 melhores locators sugeridos por elemento. Teste visual instantâneo: se piscar verde, roda em produção.</p>
+        </div>
+        <div class="feature-card glass">
+          <div class="feature-icon">📊</div>
+          <h3>Export Excel (Manual)</h3>
+          <p>Gere planilha profissional para testes manuais com roteiros, seletores e dicionário de elementos.</p>
+        </div>
+        <div class="feature-card glass">
+          <div class="feature-icon">🔒</div>
+          <h3>Zero Lock-in</h3>
+          <p>Código gerado é 100% open-source puro. Se a extensão desaparecer, seus testes rodam para sempre.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ROI -->
+  <section id="roi">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Impacto</span>
+        <h2>A matemática que <span class="gradient-text">convence qualquer gestor</span></h2>
+      </div>
+      <div class="roi-comparison">
+        <div class="roi-table-wrap glass">
+          <table class="roi-table">
+            <thead>
+              <tr>
+                <th>Etapa</th>
+                <th class="col-old">⚙️ Tradicional</th>
+                <th class="col-new">⚡ BDD Generator</th>
+                <th class="col-gain">Ganho</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Setup do Projeto</td><td class="col-old">8-16 horas</td><td class="col-new">0 horas</td><td class="col-gain">100%</td></tr>
+              <tr><td>Mapeamento de Locators</td><td class="col-old">12-24 horas</td><td class="col-new">1 hora</td><td class="col-gain">95%</td></tr>
+              <tr><td>Criação dos Scripts</td><td class="col-old">40 horas</td><td class="col-new">2 horas</td><td class="col-gain">95%</td></tr>
+              <tr><td>Geração de Dados</td><td class="col-old">10 horas</td><td class="col-new">Instantes</td><td class="col-gain">98%</td></tr>
+              <tr class="total-row"><td><strong>TOTAL (10 fluxos)</strong></td><td class="col-old"><strong>70-90h</strong></td><td class="col-new"><strong>~3-4h</strong></td><td class="col-gain"><strong>🔥 95%</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="roi-bottom-cards">
+        <div class="roi-card glass">
+          <div class="roi-card-icon">📅</div>
+          <h4>Base 100 Cenários</h4>
+          <p><strong>De:</strong> ~400 horas (2.5 meses)</p>
+          <p><strong>Para:</strong> ~25 horas (&lt;1 semana)</p>
+        </div>
+        <div class="roi-card glass">
+          <div class="roi-card-icon">💰</div>
+          <h4>Economia Operacional</h4>
+          <p>QAs de <strong>60% manutenção</strong> para <strong>90% inovação</strong></p>
+          <p>Meia semana extra por Sprint</p>
+        </div>
+        <div class="roi-card glass">
+          <div class="roi-card-icon">🛡️</div>
+          <h4>Resiliência</h4>
+          <p>Page Objects isolam mudanças de layout</p>
+          <p>Regrave 1 passo, não 500 linhas</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DEMO CODE -->
+  <section id="demo">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Em Ação</span>
+        <h2>De cliques a <span class="gradient-text">código profissional</span></h2>
+      </div>
+      <div class="demo-grid">
+        <div class="code-block glass">
+          <div class="code-header">
+            <div class="code-dots"><span></span><span></span><span></span></div>
+            <span class="code-title">login.feature</span>
+          </div>
+          <pre><code class="gherkin"><span class="kw"># language: pt</span>
+<span class="kw">Funcionalidade:</span> Login no Sistema
+
+  <span class="kw">Cenário:</span> Login com sucesso
+    <span class="g">Given</span> acessa a URL <span class="str">"https://app.com/login"</span>
+    <span class="w">When</span> preenche usuario com <span class="str">"qa@empresa.com"</span>
+    <span class="w">When</span> preenche senha com <span class="str">"Secure#2026"</span>
+    <span class="t">Then</span> clica no botao_entrar
+    <span class="t">Then</span> verifica elemento dashboard_title</code></pre>
+        </div>
+        <div class="code-block glass">
+          <div class="code-header">
+            <div class="code-dots"><span></span><span></span><span></span></div>
+            <span class="code-title">login_page.py</span>
+          </div>
+          <pre><code class="python"><span class="kw">class</span> <span class="cls">LoginLocators</span>:
+    USUARIO    = (By.CSS_SELECTOR, <span class="str">"#username"</span>)
+    SENHA      = (By.CSS_SELECTOR, <span class="str">"#password"</span>)
+    BTN_ENTRAR = (By.XPATH, <span class="str">"//button[@type='submit']"</span>)
+
+<span class="kw">class</span> <span class="cls">LoginPage</span>(<span class="cls">BasePage</span>):
+    <span class="kw">def</span> <span class="fn">preencher_usuario</span>(self, texto):
+        <span class="str">"""Preenche o campo usuario"""</span>
+        <span class="kw">return</span> self._fill(self.locators.USUARIO, texto)
+
+    <span class="kw">def</span> <span class="fn">clicar_botao_entrar</span>(self):
+        <span class="str">"""Clica no botão entrar"""</span>
+        <span class="kw">return</span> self._click(self.locators.BTN_ENTRAR)</code></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FRAMEWORKS -->
+  <section id="frameworks">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Multi-Framework</span>
+        <h2>Você escolhe o <span class="gradient-text">ecossistema</span></h2>
+      </div>
+      <div class="fw-grid">
+        <div class="fw-card glass">
+          <div class="fw-icon">🐍</div>
+          <h3>Python + Behave</h3>
+          <p>Selenium robusto com BasePage nativa, expected_conditions e Gherkin em português.</p>
+          <div class="fw-tags"><span>Selenium</span><span>BDD</span><span>Gherkin PT</span></div>
+        </div>
+        <div class="fw-card glass">
+          <div class="fw-icon">🟩</div>
+          <h3>Cypress</h3>
+          <p>Testes reativos para front-ends modernos com cy.get().type() fluente e assertions nativas.</p>
+          <div class="fw-tags"><span>JavaScript</span><span>Mocha</span><span>Chai</span></div>
+        </div>
+        <div class="fw-card glass">
+          <div class="fw-icon">🎭</div>
+          <h3>Playwright</h3>
+          <p>Paralelização nativa, async/await, suporte a XPath e config pronta para CI/CD.</p>
+          <div class="fw-tags"><span>TypeScript</span><span>Microsoft</span><span>Parallel</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECURITY / LGPD -->
+  <section id="security">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Segurança</span>
+        <h2>Projetado para <span class="gradient-text">Privacidade e LGPD</span></h2>
+      </div>
+      <div class="security-grid">
+        <div class="security-card glass">
+          <div class="security-icon">🔒</div>
+          <h3>100% Local (Zero Cloud)</h3>
+          <p>A extensão roda <strong>exclusivamente no navegador</strong> do engenheiro. Não existe servidor intermediário, login na nuvem ou telemetria oculta.</p>
+        </div>
+        <div class="security-card glass">
+          <div class="security-icon">🚫</div>
+          <h3>Sem IA Invasiva</h3>
+          <p>Nosso motor <strong>Node-Tree Analyzer</strong> lê a árvore DOM localmente e extrai XPaths em milissegundos. Nenhum byte cruza seu firewall corporativo.</p>
+        </div>
+        <div class="security-card glass">
+          <div class="security-icon">⚖️</div>
+          <h3>Conformidade LGPD/GDPR</h3>
+          <p>Processamento 100% local. Dados preenchidos ficam na <strong>memória do navegador</strong>. Arquivos exportados podem ser sanitizados antes do commit.</p>
+        </div>
+        <div class="security-card glass">
+          <div class="security-icon">🔐</div>
+          <h3>Saída Limpa (Clean Output)</h3>
+          <p>O artefato final é um arquivo <code>.zip</code> com código puro. O <strong>SonarQube</strong> e AppSec podem varrer antes do deploy. Sem painel SaaS obscuro.</p>
+        </div>
+      </div>
+      <div class="security-summary glass">
+        <table class="security-table">
+          <tr><th>Risco de Mercado</th><th>Solução BDD Generator</th><th>Status</th></tr>
+          <tr><td>Exfiltração via Nuvem</td><td>Arquitetura 100% Local / Browser-based</td><td><span class="badge-ok">✅ Mitigado</span></td></tr>
+          <tr><td>Interceptação por IA</td><td>Lógica de DOM puramente Algorítmica off-line</td><td><span class="badge-ok">✅ Mitigado</span></td></tr>
+          <tr><td>Violação de PII (LGPD)</td><td>Processamento local, sem trânsito de dados sensíveis</td><td><span class="badge-ok">✅ Mitigado</span></td></tr>
+          <tr><td>Vendor Lock-in</td><td>Exportação Open-Source, código 100% legível</td><td><span class="badge-none">🟢 Nenhum</span></td></tr>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- DEVOPS / CI/CD -->
+  <section id="devops">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Integração</span>
+        <h2>Plug & Play no seu <span class="gradient-text">pipeline</span></h2>
+      </div>
+      <div class="devops-grid">
+        <div class="devops-card glass">
+          <div class="devops-icon">🔄</div>
+          <h3>CI/CD Ready</h3>
+          <p>O código nasce pronto para rodar em <strong>Jenkins</strong>, <strong>Azure DevOps</strong>, <strong>GitHub Actions</strong> e qualquer runner de integração contínua.</p>
+        </div>
+        <div class="devops-card glass">
+          <div class="devops-icon">🐳</div>
+          <h3>Headless & Docker</h3>
+          <p>Pronto para execução em containers Docker sem interface gráfica. Ideal para pipelines automatizados em escala.</p>
+        </div>
+        <div class="devops-card glass">
+          <div class="devops-icon">📊</div>
+          <h3>Caderno de Testes Excel</h3>
+          <p>Gere uma planilha profissional com roteiros manuais, dicionário de seletores e rastreabilidade — tudo automaticamente.</p>
+        </div>
+        <div class="devops-card glass">
+          <div class="devops-icon">⚡</div>
+          <h3>Performance Audit</h3>
+          <p>Injete checagens de <strong>Core Web Vitals</strong> (Lighthouse) diretamente nos seus testes E2E. Se a página ficar lenta, o pipeline falha.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section id="cta">
+    <div class="container">
+      <div class="cta-content glass">
+        <div class="cta-badge">🎉 Notícia Boa!</div>
+        <h2>A ferramenta já está <span class="gradient-text">disponível</span> para você!</h2>
+        <p>O BDD_PyTech está publicado na Chrome Web Store e pronto para uso imediato. Instale agora e comece a automatizar seus testes hoje mesmo.</p>
+        <div class="cta-buttons">
+          <a href="https://chromewebstore.google.com/detail/assistente-automatizador/pofkijblkakgjagekjenlecdbhmllepp?hl=pt-BR" target="_blank" class="cta-btn primary">
+            <span class="cta-btn-icon">🚀</span>
+            <span>Instalar Extensão</span>
+          </a>
+          <a href="https://chromewebstore.google.com/detail/assistente-automatizador/pofkijblkakgjagekjenlecdbhmllepp?hl=pt-BR" target="_blank" class="cta-btn secondary">
+            <span class="cta-btn-icon">⭐</span>
+            <span>Avaliar na Chrome Store</span>
+          </a>
+        </div>
+        <p class="cta-review-msg">Gostou? Sua avaliação nos ajuda a crescer e melhorar a ferramenta para toda a comunidade de QA! ⭐⭐⭐⭐⭐</p>
+        <div class="cta-pillars">
+          <span>🏗️ Escalabilidade</span>
+          <span>✨ Clean Code</span>
+          <span>🛡️ Confiabilidade</span>
+        </div>
+        <div class="cta-footer">
+          <p class="cta-author">Desenvolvido por <strong>Matheus Ferreira de Oliveira</strong></p>
+          <p class="cta-version">BDD_PyTech · v1.2.5 · 2026</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script src="script.js"></script>
+</body>
+</html>

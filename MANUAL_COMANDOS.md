@@ -49,7 +49,7 @@ Para gerar o arquivo `.zip` final para enviar para a Chrome Web Store ou compart
 1.  Limpa a pasta `release/` (se existir).
 2.  Copia apenas os arquivos necessários (`manifest.json`, `src/`, `dist/`, `icons/`, `styles/`, etc.) para `release/`.
 3.  Ignora arquivos de desenvolvimento (`node_modules`, `.git`, arquivos `.crx`, etc.).
-4.  Gera um arquivo **`GherkinGenerator_Distribuicao.zip`** na raiz do projeto.
+4.  Gera um arquivo **`BDD_PyTech_Distribuicao.zip`** na raiz do projeto.
 
 ---
 
@@ -64,7 +64,7 @@ Para gerar o arquivo `.zip` final para enviar para a Chrome Web Store ou compart
     .\pack_extension.ps1
     ```
 3.  Acesse o [Painel do Desenvolvedor da Chrome Web Store](https://chrome.google.com/webstore/developer/dashboard).
-4.  Faça upload do arquivo **`GherkinGenerator_Distribuicao.zip`** gerado.
+4.  Faça upload do arquivo **`BDD_PyTech_Distribuicao.zip`** gerado.
 
 ---
 
@@ -76,7 +76,7 @@ Para testar suas alterações no Chrome sem precisar gerar um ZIP:
 2.  Abra o Chrome e vá para `chrome://extensions/`.
 3.  Ative o **"Modo do desenvolvedor"** (canto superior direito).
 4.  Clique em **"Carregar sem compactação"** (Load Unpacked).
-5.  Selecione a pasta raiz do projeto (`c:\Matheus\extensao_bdd_v1.4`).
+5.  Selecione a pasta raiz do projeto (`c:\Matheus\Pessoal\extensao_bdd_testes`).
 6.  **Importante:** Sempre que você mudar o código e recompilar (`build`), volte nessa tela e clique no ícone de atualização (🔄) no card da extensão.
 
 ---

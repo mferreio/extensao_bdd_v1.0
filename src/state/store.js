@@ -43,7 +43,11 @@ class Store {
 
       // Timing
       elapsedSeconds: 0,
-      startTime: null
+      startTime: null,
+
+      // Settings Extras
+      preferredSelector: 'best', // 'best', 'xpath', 'css'
+      scenarioDescription: ''
     };
 
     this.listeners = [];
@@ -333,9 +337,10 @@ class Store {
     const { currentFeature, currentScenario, interactions } = this.state;
 
     if (currentFeature && currentScenario) {
-      // Salva cenário na feature
+      // Salva cenário na feature agregando a descrição atual do painel de Configs
       const scenarioToSave = {
         ...currentScenario,
+        description: this.state.scenarioDescription || '',
         interactions: [...interactions]
       };
 
@@ -352,6 +357,7 @@ class Store {
         isGhostMode: false, // Expande ao finalizar gravação
         isPaused: false,
         currentScenario: null,
+        scenarioDescription: '', // Limpa a descrição para o próximo cenário
         interactions: [],
         elapsedSeconds: 0,
         startTime: null
@@ -425,7 +431,8 @@ class Store {
       panelState: 'feature',
       isRecording: false,
       isPaused: false,
-      elapsedSeconds: 0
+      elapsedSeconds: 0,
+      scenarioDescription: ''
     });
   }
 
@@ -521,6 +528,20 @@ class Store {
           chrome.storage.local.get(['gherkin-state'], (result) => {
             if (result['gherkin-state']) {
               this.state = { ...this.state, ...result['gherkin-state'] };
+
+              // Corrige URL caso o cenário tenha sido iniciado em uma página (como um relatório ou aba vazia)
+              // e o usuário navegue manualmente pelo address bar para o sistema-alvo logo em seguida
+              if (this.state.isRecording && this.state.interactions && this.state.interactions.length === 1) {
+                  const firstStep = this.state.interactions[0];
+                  const newUrl = window.location.href;
+                  
+                  if (firstStep.acao === 'acessa_url' && firstStep.url !== newUrl && !newUrl.startsWith('chrome-extension://')) {
+                      firstStep.valorPreenchido = newUrl;
+                      firstStep.url = newUrl;
+                      // Salvar correção para não perder
+                      setTimeout(() => this.saveToStorage(), 100);
+                  }
+              }
 
               // Garante que a UI esteja visível se estiver gravando ou pausado
               if (this.state.isRecording ||

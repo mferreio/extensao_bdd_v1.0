@@ -165,6 +165,9 @@ export class ExcelGenerator {
         // Gerar aba de Caderno de Testes (um passo por linha)
         this.addTestCasesSheet(features);
 
+        // Gerar aba do Dicionário de Seletores
+        this.addSelectorsDictionarySheet(features);
+
         // Gerar buffer do arquivo
         const buffer = XLSX.write(this.workbook, {
             bookType: 'xlsx',
@@ -451,6 +454,113 @@ export class ExcelGenerator {
     }
 
     /**
+     * Adiciona a aba Dicionário de Seletores
+     * Mapeia os passos para os seus respectivos seletores e alternativas capturadas
+     * @param {Array} features - Lista de features
+     */
+    addSelectorsDictionarySheet(features) {
+        // Estilos customizados para as células do dicionário (alinhamento no topo melhora leitura de textos grandes)
+        const cellStyle = {
+            ...STYLES.cellEven,
+            alignment: { vertical: 'top', wrapText: true }
+        };
+        const cellStyleCenter = {
+            ...STYLES.cellEven,
+            alignment: { horizontal: 'center', vertical: 'top', wrapText: true }
+        };
+
+        const headers = [
+            { v: 'Feature', s: STYLES.header },
+            { v: 'Cenário', s: STYLES.header },
+            { v: 'Passo', s: STYLES.header },
+            { v: 'Ação', s: STYLES.header },
+            { v: 'Elemento Alvo', s: STYLES.header },
+            { v: 'Seletor Principal', s: STYLES.header },
+            { v: 'Seletores Alternativos', s: STYLES.header }
+        ];
+
+        const data = [headers];
+        let hasSelectors = false;
+
+        features.forEach(feature => {
+            (feature.scenarios || []).forEach(scenario => {
+                const interactions = scenario.interactions || [];
+
+                interactions.forEach((interaction, stepIndex) => {
+                    // Ignorar passos que não interagem com elementos na tela
+                    if (interaction.acao === 'acessa_url' || interaction.acao === 'espera_segundos') return;
+                    if (!interaction.cssSelector && !interaction.xpath) return;
+
+                    hasSelectors = true;
+                    // Formatar Seletor Principal
+                    let mainSelectors = [];
+                    if (interaction.cssSelector) mainSelectors.push(`[ CSS ] ${interaction.cssSelector}`);
+                    if (interaction.xpath) mainSelectors.push(`[ XPATH ] ${interaction.xpath}`);
+
+                    // Formatar Associados
+                    let alternativeSelectors = [];
+                    if (interaction.alternativeSelectors && interaction.alternativeSelectors.length > 0) {
+                        interaction.alternativeSelectors.forEach(alt => {
+                            const par = [];
+                            // Adicionar a Estratégia de onde o seletor veio, se existir
+                            if (alt.strategy) {
+                                par.push(`💡 Estratégia: ${alt.strategy}`);
+                            }
+                            if (alt.selector) par.push(`[ CSS ] ${alt.selector}`);
+                            if (alt.xpath) par.push(`[ XPATH ] ${alt.xpath}`);
+                            
+                            if (par.length > 0) alternativeSelectors.push(par.join('\n'));
+                        });
+                    } else if (interaction.xpath && interaction.xpath !== interaction.cssSelector) {
+                        alternativeSelectors.push(`[ XPATH ] ${interaction.xpath}`);
+                    }
+                    // Determinar Ação (usar tradução mais humana do Caderno)
+                    const acaoFormatada = this.formatStepText(interaction);
+
+                    // Aumentar o espaçamento visual usando linhas e quebras
+                    const separator = '\n\n---------------------------------------\n\n';
+                    
+                    data.push([
+                        { v: feature.name, s: cellStyle },
+                        { v: scenario.name, s: cellStyle },
+                        { v: `Passo ${stepIndex + 1}`, s: cellStyleCenter },
+                        { v: acaoFormatada, s: cellStyle },
+                        { v: interaction.nomeElemento || '-', s: cellStyle },
+                        { v: mainSelectors.join(separator), s: cellStyle },
+                        { v: alternativeSelectors.join(separator) || 'Nenhuma alternativa capturada', s: cellStyle }
+                    ]);
+                });
+            });
+        });
+
+        if (!hasSelectors) {
+            data.push([{ v: 'Nenhum seletor salvo encontrado nos cenários gravados.', s: cellStyle }]);
+        }
+
+        const ws = XLSX.utils.aoa_to_sheet(data);
+
+        // Largura das Colunas - Aumentar drasticamente para os seletores
+        ws['!cols'] = [
+            { wch: 15 }, // Feature
+            { wch: 25 }, // Cenário
+            { wch: 10 }, // Passo
+            { wch: 35 }, // Ação
+            { wch: 20 }, // Elemento Alvo
+            { wch: 55 }, // Seletor Principal
+            { wch: 80 }  // Seletores Alternativos
+        ];
+
+        // Altura dinâmica não é exata no XLSX mas wrapText faz o trabalho. 
+        // Vamos dar um padding extra de altura para a primeira linha
+        ws['!rows'] = data.map((_, idx) => idx === 0 ? { hpt: 30 } : null);
+
+        // Travar cabeçalho
+        ws['!freeze'] = { xSplit: 0, ySplit: 1 };
+
+        XLSX.utils.book_append_sheet(this.workbook, ws, 'Dicionário de Seletores');
+    }
+
+    /**
      * Formata o texto de um step para exibição em linguagem natural BDD
      * @param {Object} interaction - Interação/step
      * @returns {string} Texto formatado em linguagem natural
@@ -473,52 +583,52 @@ export class ExcelGenerator {
             return String(val).replace(/\n/g, ' ').trim();
         };
 
-        // Templates por tipo de ação - Linguagem Natural BDD em Português
+        // Templates por tipo de ação - Linguagem Natural (Manual de Testes/Instrutivo)
         const templates = {
             // Navegação
             'acessa_url': () => {
                 if (stepType === 'Given') {
-                    return `Estou na página "${element || 'inicial'}"`;
+                    return `Usuário está na página "${element || 'inicial'}"`;
                 }
-                return `Acesso a URL ${truncateUrl(value || element)}`;
+                return `Acessar a URL: ${truncateUrl(value || element)}`;
             },
-            'navega': () => `Navego para a página "${cleanValue(value) || element}"`,
+            'navega': () => `Navegar para a página "${cleanValue(value) || element}"`,
 
             // Ações de clique
-            'clica': () => `Clico no botão/link "${element}"`,
+            'clica': () => `Clicar no elemento "${element}"`,
 
             // Preenchimento
-            'preenche': () => `Preencho o campo "${element}" com "${cleanValue(value)}"`,
+            'preenche': () => `Informar o valor "${cleanValue(value)}" no campo "${element}"`,
 
             // Seleção
-            'seleciona': () => `Seleciono a opção "${cleanValue(value)}" no campo "${element}"`,
-            'seleciona_radio': () => `Seleciono a opção "${element}"`,
-            'marca_checkbox': () => `Marco a caixa de seleção "${element}"`,
-            'desmarca_checkbox': () => `Desmarco a caixa de seleção "${element}"`,
-            'radio': () => `Seleciono a opção "${element}"`,
-            'caixa': () => `Marco a caixa de seleção "${element}"`,
+            'seleciona': () => `Selecionar a opção "${cleanValue(value)}" no campo "${element}"`,
+            'seleciona_radio': () => `Selecionar a opção "${element}"`,
+            'marca_checkbox': () => `Marcar a caixa de seleção "${element}"`,
+            'desmarca_checkbox': () => `Desmarcar a caixa de seleção "${element}"`,
+            'radio': () => `Selecionar a opção "${element}"`,
+            'caixa': () => `Marcar a caixa de seleção "${element}"`,
 
             // Validações (Then)
-            'valida_contem': () => `Devo ver o texto "${cleanValue(value)}" ${element ? `em "${element}"` : 'na página'}`,
-            'valida_nao_contem': () => `Não devo ver o texto "${cleanValue(value)}" ${element ? `em "${element}"` : 'na página'}`,
-            'valida_existe': () => `O elemento "${element}" deve estar visível`,
-            'valida_nao_existe': () => `O elemento "${element}" não deve estar visível`,
-            'valida_texto': () => `Devo ver o texto "${cleanValue(value)}" em "${element}"`,
-            'valida_visivel': () => `O elemento "${element}" deve estar visível na tela`,
-            'valida_nao_visivel': () => `O elemento "${element}" não deve estar visível`,
+            'valida_contem': () => `Verificar se o texto "${cleanValue(value)}" é exibido ${element ? `em "${element}"` : 'na página'}`,
+            'valida_nao_contem': () => `Verificar se o texto "${cleanValue(value)}" NÃO é exibido ${element ? `em "${element}"` : 'na página'}`,
+            'valida_existe': () => `Verificar se o elemento "${element}" está visível`,
+            'valida_nao_existe': () => `Verificar se o elemento "${element}" NÃO está visível`,
+            'valida_texto': () => `Verificar se o texto do elemento "${element}" é exatamente "${cleanValue(value)}"`,
+            'valida_visivel': () => `Verificar se o elemento "${element}" está presente e visível na tela`,
+            'valida_nao_visivel': () => `Verificar se o elemento "${element}" está invisível ou oculto`,
 
             // Esperas
-            'espera_segundos': () => `Aguardo ${value || '5'} segundos`,
-            'espera_elemento': () => `Aguardo o elemento "${element}" aparecer`,
-            'espera_nao_existe': () => `Aguardo o elemento "${element}" desaparecer`,
-            'espera_carregamento': () => `Aguardo a página carregar completamente`,
+            'espera_segundos': () => `Aguardar o tempo de ${value || '5'} segundos`,
+            'espera_elemento': () => `Aguardar até que o elemento "${element}" fique visível`,
+            'espera_nao_existe': () => `Aguardar até que o elemento "${element}" desapareça da tela`,
+            'espera_carregamento': () => `Aguardar o carregamento total da página`,
 
             // Upload
-            'upload': () => `Faço upload do arquivo em "${element}"`,
+            'upload': () => `Realizar upload do arquivo no campo "${element}"`,
 
             // Teclas
-            'pressiona_enter': () => `Pressiono a tecla Enter em "${element}"`,
-            'pressiona_tecla': () => `Pressiono a tecla ${value} em "${element}"`
+            'pressiona_enter': () => `Pressionar a tecla ENTER no campo "${element}"`,
+            'pressiona_tecla': () => `Pressionar a tecla "${value}" no campo "${element}"`
         };
 
         // Buscar template ou usar fallback
@@ -526,16 +636,16 @@ export class ExcelGenerator {
             return templates[action]();
         }
 
-        // Fallback: formatar de forma genérica mas legível
+        // Fallback: formatar de forma imperativa/instrutiva
         const actionName = action.replace(/_/g, ' ');
         if (value && element) {
-            return `${this.capitalizeFirst(actionName)}: "${element}" com "${cleanValue(value)}"`;
+            return `Executar ação de ${this.capitalizeFirst(actionName)} no elemento "${element}" informando o valor "${cleanValue(value)}"`;
         } else if (element) {
-            return `${this.capitalizeFirst(actionName)}: "${element}"`;
+            return `Executar ação de ${this.capitalizeFirst(actionName)} no elemento "${element}"`;
         } else if (value) {
-            return `${this.capitalizeFirst(actionName)}: "${cleanValue(value)}"`;
+            return `Executar ação de ${this.capitalizeFirst(actionName)} com o valor "${cleanValue(value)}"`;
         }
-        return this.capitalizeFirst(actionName);
+        return `Executar ação de ${this.capitalizeFirst(actionName)}`;
     }
 
     /**

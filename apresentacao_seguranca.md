@@ -40,7 +40,7 @@ style: |
 ---
 
 # 🔒 Segurança e Conformidade na Automação
-## BDD Test Generator: Projetado para Privacidade e LGPD
+## BDD_PyTech: Projetado para Privacidade e LGPD
 ### Automação Inteligente Sem Sacrificar a Segurança de Dados
 
 ---
@@ -57,7 +57,7 @@ style: |
 
 # 🛡️ Nossa Abordagem: Zero Trust & Zero Cloud
 
-O **BDD Test Generator** foi arquitetado sob o princípio de "Secure by Design". Nós resolvemos o gargalo da automação sem expor a empresa a riscos de conformidade:
+O **BDD_PyTech** foi arquitetado sob o princípio de "Secure by Design". Nós resolvemos o gargalo da automação sem expor a empresa a riscos de conformidade:
 
 - **100% Execução Local (Client-Side):** A extensão roda **exclusivamente no navegador do engenheiro**. Não existe servidor intermediário. Não existe "Login na Nuvem".
 - **Sem Telemetria Oculta:** O que é gravado no seu browser, fica no seu browser.
@@ -73,7 +73,7 @@ Enquanto o mercado adota LLMs (Large Language Models) de forma indiscriminada, n
 Quando seu QA grava um fluxo de "Pagamento de Fatura" na Intranet:
 
 - **Ferramentas Concorrentes:** Enviam a tela ou o código-fonte HTML do botão para o ChatGPT/OpenAI "entender" e tentar gerar um Locator mágico.
-- **BDD Test Generator:** Nosso motor interno embarcado *Node-Tree Analyzer* lê a árvore DOM localmente, extrai o XPath em milissegundos e salva na memória RAM do próprio computador. **Nenhum byte cruza seu firewall corporativo.**
+- **BDD_PyTech:** Nosso motor interno embarcado *Node-Tree Analyzer* lê a árvore DOM localmente, extrai o XPath em milissegundos e salva na memória RAM do próprio computador. **Nenhum byte cruza seu firewall corporativo.**
 
 ---
 
@@ -81,11 +81,11 @@ Quando seu QA grava um fluxo de "Pagamento de Fatura" na Intranet:
 
 A principal infração de conformidade em times de Engenharia é o vazamento secundário de PII (Personally Identifiable Information) em relatórios de teste.
 
-**A Solução Embarcada:** 🎲 *Fake Data Generator*
+**A Solução Embarcada:** Código gerado 100% local
 
-Incluímos um gerador de carga matemática "On-the-fly" direto na interface de gravação:
-- O QA clica no botão (🎲) no input do CPF, e o sistema forja um CPF matematicamente válido que passa na regex do Back-End, porém **totalmente fictício**.
-- Elimina-se a necessidade de usar bancos mascarados ou transitar CPFs reais em arquivos `.feature` (Gherkin) cacheados no GitHub. Testes limpos passíveis de auditoria.
+Todo o processamento ocorre no navegador do engenheiro, sem envio de dados a servidores externos:
+- O QA grava o fluxo normalmente e os dados preenchidos ficam armazenados **exclusivamente na memória local** do navegador.
+- Os arquivos `.feature` (Gherkin) exportados podem ser revisados e sanitizados antes de serem commitados no repositório Git. Testes limpos passíveis de auditoria.
 
 ---
 
@@ -102,11 +102,11 @@ O artefato de saída final da nossa ferramenta é estritamente um arquivo de tex
 
 # ✅ Resumo para a Área de InfoSec:
 
-| Risco Comum de Mercado | Solução mitigadora BDD Test Generator | Risco Residual |
+| Risco Comum de Mercado | Solução mitigadora BDD_PyTech | Risco Residual |
 | :--- | :--- | :--- |
 | **Exfiltração via Nuvem** | Arquitetura 100% Local / Browser-based. | **Mitigado** |
 | **Interceptação por IA** | Lógica de DOM puramente Algorítmica off-line. | **Mitigado** |
-| **Violação de PII (LGPD/GDPR)** | Fake Data Engine injetado nos testes E2E. | **Mitigado** |
+| **Violação de PII (LGPD/GDPR)** | Processamento 100% local, sem trânsito de dados sensíveis para servidores externos. | **Mitigado** |
 | **Vazamento de Métricas Sensíveis** | Auditoria Lighthouse (Performance) roda 100% no runner local do CI, sem expor notas a dashboards externos SaaS. | **Mitigado** |
 | **Vendor Lock-in Obfuscado** | Exportação de dependências Open-Source e código aberto. | **Nenhum** |
 

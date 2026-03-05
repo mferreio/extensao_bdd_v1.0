@@ -40,10 +40,20 @@ export class SimpleZipCreator {
     /**
      * Adiciona um arquivo ao ZIP
      * @param {string} filename - Nome do arquivo no ZIP
-     * @param {string} content - Conteúdo do arquivo
+     * @param {string|ArrayBuffer|Uint8Array} content - Conteúdo do arquivo
      */
     addFile(filename, content) {
-        const fileData = new TextEncoder().encode(content);
+        let fileData;
+        
+        // Suporte para binary buffers ou strings em base64/texto estruturado
+        if (content instanceof ArrayBuffer) {
+            fileData = new Uint8Array(content);
+        } else if (content instanceof Uint8Array) {
+            fileData = content;
+        } else {
+            fileData = new TextEncoder().encode(content);
+        }
+
         const crc = this.crc32(fileData);
 
         // Criar local file header

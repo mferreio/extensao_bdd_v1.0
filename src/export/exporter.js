@@ -4,6 +4,7 @@
  */
 import { downloadFile, showFeedback, slugify } from '../../utils.js';
 import { ExportManager } from './export-manager.js';
+import { getStore } from '../state/store.js';
 
 function validateDataConsistency(features) {
     const errors = [];
@@ -849,6 +850,8 @@ function exportFeatureFile(feature, featureSlug) {
             let frase = generateStepText(interaction);
             let stepLabel = interaction.step || 'When';
             featureText += `    ${stepLabel} ${frase}\n`;
+
+
         });
         featureText += '\n';
     });
@@ -861,9 +864,16 @@ function exportPagesFile(feature, featureSlug) {
     const locatorSet = new Set();
     const locatorMap = {};
     
+    const store = getStore();
+    const preferred = store.getState().preferredSelector || 'xpath';
+
     (feature.scenarios || []).forEach((scenario) => {
         (scenario.interactions || []).forEach((interaction) => {
-            if (interaction.cssSelector) {
+            // Extração robusta de seletores (lida com inconsistências de nomenclaturas)
+            const xpath = interaction.xpathSelector || interaction.xpath || (interaction.isValid && interaction.isValid.xpath ? interaction.xpath : '');
+            const css = interaction.cssSelector || interaction.selector || interaction.seletor || (interaction.isValid && interaction.isValid.css ? interaction.cssSelector : '');
+
+            if (css || xpath) {
                 let locatorName = generateLocatorName(interaction);
                 
                 // Garantir uniqueness
@@ -874,7 +884,31 @@ function exportPagesFile(feature, featureSlug) {
                     count++;
                 }
                 locatorSet.add(locatorName);
-                locatorMap[locatorName] = interaction.cssSelector;
+
+                // Lógica de seleção
+                let finalSelector = '';
+                let finalType = 'CSS_SELECTOR';
+
+                if (preferred === 'xpath' && xpath) {
+                    finalSelector = xpath;
+                    finalType = 'XPATH';
+                } else if (preferred === 'css' && css) {
+                    finalSelector = css;
+                    finalType = 'CSS_SELECTOR';
+                } else if (preferred === 'best' || !preferred) {
+                    if (xpath) {
+                        finalSelector = xpath;
+                        finalType = 'XPATH';
+                    } else {
+                        finalSelector = css || `[name="${interaction.nomeElemento || 'elemento'}"]`;
+                        finalType = 'CSS_SELECTOR';
+                    }
+                } else {
+                    finalSelector = xpath || css || `[name="${interaction.nomeElemento || 'elemento'}"]`;
+                    finalType = xpath ? 'XPATH' : 'CSS_SELECTOR';
+                }
+                
+                locatorMap[locatorName] = { selector: finalSelector, type: finalType };
             }
         });
     });
@@ -898,7 +932,10 @@ class Locators${className}:
     """
 ${locatorSet.size === 0
     ? `    # Nenhum locator identificado`
-    : Array.from(locatorSet).map(key => `    ${key} = (By.CSS_SELECTOR, '${locatorMap[key]}')`).join('\n')
+    : Array.from(locatorSet).map(key => {
+        const typeStr = locatorMap[key].type === 'XPATH' ? 'XPATH' : 'CSS_SELECTOR';
+        return `    ${key} = (By.${typeStr}, '${locatorMap[key].selector.replace(/'/g, "\\'")}')`;
+    }).join('\n')
 }
 
 class Page${className}:
@@ -1018,7 +1055,16 @@ function exportStepsFile(feature, featureSlug) {
     let stepsPy = `# ${featureSlug}_steps.py gerado automaticamente\n`;
     stepsPy += `# -*- coding: utf-8 -*-\n"""\nArquivo de steps do Behave para a feature "${feature.name}".\nUtiliza Page Object Model e locators definidos em pages.py.\n"""\n\n`;
     stepsPy += `from behave import given, when, then\n`;
-    stepsPy += `from ${featureSlug}_pages import Page${className}, Locators${className}\n\n`;
+    stepsPy += `from ${featureSlug}_pages import Page${className}, Locators${className}\n`;
+    
+    // Adicionar suporte ao Lighthouse se houver step de performance
+    const hasPerformance = (feature.scenarios || []).some(s => 
+        (s.interactions || []).some(i => i.performanceCheck && i.performanceCheck.enabled)
+    );
+    if (hasPerformance) {
+        stepsPy += `from lighthouse import LighthouseRunner\n`;
+    }
+    stepsPy += `\n`;
 
     // Step para inicializar o Page Object com URL dinâmica
     stepsPy += `@given('que o usuário acessa a página "{url}"')\ndef step_acessa_pagina_inicial(context, url):\n    context.page = Page${className}(context.driver)\n    context.page.acessar_url(url)\n\n`;
@@ -1091,6 +1137,46 @@ function exportStepsFile(feature, featureSlug) {
             stepsPy += `${decorator}('${frase}')\ndef ${funcName}(${params}):\n${body}\n\n`;
         });
     });
+
+    // Step de Performance Lighthouse
+    if (hasPerformance) {
+        stepsPy += `@then('audita performance da pagina com nota minima "{threshold}"')\n`;
+        stepsPy += `def step_audita_performance(context, threshold):\n`;
+        stepsPy += `    """\n    Executa auditoria do Lighthouse na URL atual e salva relatório HTML.\n    """\n`;
+        stepsPy += `    import os, json, subprocess, datetime\n`;
+        stepsPy += `    url_atual = context.driver.current_url\n`;
+        stepsPy += `    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")\n`;
+        stepsPy += `    output_dir = os.path.join('reports', 'lighthouse')\n`;
+        stepsPy += `    os.makedirs(output_dir, exist_ok=True)\n`;
+        stepsPy += `    report_base = os.path.join(output_dir, f"lighthouse_{timestamp}")\n\n`;
+        stepsPy += `    # Comando para gerar HTML e JSON usando CLI global do Lighthouse\n`;
+        stepsPy += `    # Nota: Requer 'npm install -g lighthouse'\n`;
+        stepsPy += `    cmd_str = f'lighthouse "{url_atual}" --output html --output json --output-path "{report_base}" --chrome-flags="--headless --no-sandbox" --quiet'\n\n`;
+        stepsPy += `    try:\n`;
+        stepsPy += `        # shell=True é necessário no Windows para encontrar o comando 'lighthouse' global\n`;
+        stepsPy += `        subprocess.run(cmd_str, shell=True, check=True)\n`;
+        stepsPy += `        # O Lighthouse salva como base.report.html e base.report.json quando há múltiplos outputs\n`;
+        stepsPy += `        # Mas com --output-path fixo e --output múltiplo, ele salva base.report.html e base.report.json\n`;
+        stepsPy += `        # Vamos tentar ler o JSON para validar o score\n`;
+        stepsPy += `        json_file = f"{report_base}.report.json"\n`;
+        stepsPy += `        if not os.path.exists(json_file): json_file = f"{report_base}.json"\n\n`;
+        stepsPy += `        with open(json_file, 'r', encoding='utf-8') as f:\n`;
+        stepsPy += `            data = json.load(f)\n`;
+        stepsPy += `            score = int(data['categories']['performance']['score'] * 100)\n\n`;
+        stepsPy += `        print(f"[INFO] Relatório HTML detalhado salvo na pasta: {output_dir}")\n`;
+        stepsPy += `        print(f"[INFO] Nota de Performance obtida: {score} (Esperada: {threshold})")\n`;
+        stepsPy += `        assert score >= int(threshold), f"Performance insuficiente: {score} < {threshold}"\n`;
+        stepsPy += `    except Exception as e:\n`;
+        stepsPy += `        print(f"[AVISO] Falha ao gerar relatório visual detalhado (verifique se possui Node.js e Lighthouse CLI): {e}")\n`;
+        stepsPy += `        # Fallback simples se o CLI falhar mas o usuário quiser apenas a nota via lighthouse-python\n`;
+        stepsPy += `        try:\n`;
+        stepsPy += `            from lighthouse import LighthouseRunner\n`;
+        stepsPy += `            report = LighthouseRunner(url_atual, form_factor='desktop', quiet=True).report\n`;
+        stepsPy += `            score = int(report.score['performance'] * 100)\n`;
+        stepsPy += `            assert score >= int(threshold)\n`;
+        stepsPy += `        except:\n`;
+        stepsPy += `            raise e\n\n`;
+    }
 
     stepsPy += `# Adicione outros steps conforme necessário, usando os métodos e locators definidos em pages.py\n`;
 
@@ -1183,6 +1269,7 @@ python-dotenv
 colorama
 pytest-bdd
 requests
+lighthouse-python
 `;
 
     downloadFile(`requirements_${featureSlug}.txt`, requirementsTxt);
@@ -1217,6 +1304,11 @@ function exportReadmeFile(feature, featureSlug) {
     
     readme += `**1.2. Instale as dependências:**\n`;
     readme += '   ```bash\n   pip install -r requirements.txt\n   ```\n\n';
+    
+    readme += `**1.3. Instale o Lighthouse (Obrigatório para Auditoria de Performance):**\n`;
+    readme += `- Certifique-se de ter o **Node.js** instalado.\n`;
+    readme += `- Execute no terminal:\n`;
+    readme += '   ```bash\n   npm install -g lighthouse\n   ```\n\n';
     
     readme += `**1.3. Configure o WebDriver (Chrome)**\n`;
     readme += `- Verifique sua versão do Chrome: Menu > Ajuda > Sobre o Google Chrome\n`;
