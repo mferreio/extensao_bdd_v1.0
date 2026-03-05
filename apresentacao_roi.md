@@ -52,7 +52,7 @@ style: |
 A automação clássica virou um gargalo nas Sprints. Avaliamos 3 modelos comuns na indústria:
 
 1. **Testes Puramente Manuais:** Lentos, repetitivos e extremamente propensos a falhas humanas (Fadiga Dielétrica). O custo acompanha a escala linearmente.
-2. **Automação Tradicional (Hard-Code):** Times inteiros criando scripts no Cypress/Selenium do zero. Meses de Setup e semanas só para manter XPaths quando a tela muda.
+2. **Automação Tradicional (Hard-Code):** Times inteiros criando scripts de Selenium e outros frameworks nativos do zero. Meses de Setup e semanas só para manter XPaths quando a tela muda.
 3. **💥 BDD_PyTech:** Gravação Low-Code integrada direto com exportação de Clean Code estrutural (Page Objects) nativo para Continuous Integration.
 
 ---
@@ -88,10 +88,10 @@ Considere um Esquadrão (Squad) de 2 QA's Plenos dedicados primariamente à auto
 Não é apenas sobre velocidade, é sobre **Confiabilidade**. Por que a Automação Clássica quebra na Pipeline (Continuous Integration)?
 
 **Problema (Tradicional):**
-Dev do Front-End altera o CSS (`id="btn-login"` vira `class="sc-jTk1x"`). O Selenium/Cypress não acha o elemento. Pipeline falha, liberação da Sprint é abortada, abre-se ticket de correção para a automação. 
+Dev do Front-End altera o CSS (`id="btn-login"` vira `class="sc-jTk1x"`). O Selenium/Script Hard-Coded não acha o elemento. Pipeline falha, liberação da Sprint é abortada, abre-se ticket de correção para a automação. 
 
 **Solução (BDD_PyTech):**
-Exportamos **Page Object Models**. Se o layout mudar amanhã, você não escava 500 linhas de código no Cypress. Abre a Extensão, regrava o Passo quebrado, e o **Spotlight Tracker (👁️)** acha o botão em 1 segundo e recria o Locator para toda a classe da Página (usando `text()` XPath resiliente).
+Exportamos **Page Object Models**. Se o layout mudar amanhã, você não escava 500 linhas de código do zero. Abre a Extensão, regrava o Passo quebrado, e o **Spotlight Tracker (👁️)** acha o botão em 1 segundo e recria o Locator para toda a classe da Página (usando `text()` XPath resiliente).
 
 ---
 

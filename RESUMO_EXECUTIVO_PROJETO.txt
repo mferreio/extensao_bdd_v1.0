@@ -14,10 +14,9 @@ RESUMO EXECUTIVO: EXTENSÃO BDD_PyTech v1.2.5
 - Conceito: "Automatizar a Automação".
 - Como funciona: Transforma a navegação manual do usuário diretamente em código 
   profissional estruturado.
-- Output: Gera projeto completo em 3 frameworks:
+- Output: Gera projeto completo em 2 frameworks:
   * Python + Selenium + Behave (BDD/Gherkin)
-  * Cypress (JavaScript) com Cucumber
-  * Playwright (TypeScript) com BDD
+  * Playwright (TypeScript/JavaScript) com BDD
 - Extras: Exportação de Caderno de Testes em Excel, Auditoria de Performance 
   (Lighthouse) e Validação Visual de Seletores (Spotlight Tracker).
 
@@ -50,7 +49,7 @@ A. Governança e Qualidade
 B. Integração DevOps & CI/CD
    - Plug & Play: O código nasce pronto para rodar em Jenkins, Azure DevOps, GitHub.
    - Headless Ready: Pronto para execução em containers Docker (sem interface).
-   - Multi-Framework: Exporta para Python, Cypress e Playwright simultaneamente.
+   - Multi-Framework: Exporta para Python e Playwright simultaneamente.
 
 C. Cultura e Retenção de Talentos
    - Transformação do Papel: O QA deixa de ser um "robô executor" e passa a atuar 

@@ -94,7 +94,7 @@ Todo o processamento ocorre no navegador do engenheiro, sem envio de dados a ser
 O formato "Low-Code" não escraviza sua empresa em um painel escuro online SaaS (onde você não sabe como o dado é armazenado).
 
 **Nobreza Tecnológica:** 
-O artefato de saída final da nossa ferramenta é estritamente um arquivo de texto `.zip` contendo código (Python, Cypress ou Playwright).
+O artefato de saída final da nossa ferramenta é estritamente um arquivo de texto `.zip` contendo código (Python ou Playwright).
 - O time de *Application Security (AppSec)* e o *SonarQube* podem varrer esse código antes do deploy. 
 - O código .zip exportado pode e deve ser armazenado exclusivamente no seu cofre de repositório GIT privado (Gitlab/Bitbucket interno).
 

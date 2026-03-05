@@ -1,13 +1,13 @@
 # Gerador de Testes Automatizados BDD
 
 ## 📋 Descrição
-O **Gerador de Testes Automatizados BDD** é uma extensão para Chrome que captura automaticamente as interações do usuário em páginas web e gera projetos completos de testes automatizados usando **Page Object Model (POM)** em 3 frameworks: **Python/Behave**, **Cypress** e **Playwright**.
+O **Gerador de Testes Automatizados BDD** é uma extensão para Chrome que captura automaticamente as interações do usuário em páginas web e gera projetos completos de testes automatizados usando **Page Object Model (POM)** em 2 frameworks principais: **Python/Behave** e **Playwright**.
 
 ## ✨ Funcionalidades
 - ✅ Gravação automática de interações (cliques, preenchimentos, navegação)
 - ✅ Conversão para sintaxe Gherkin (Given, When, Then)
 - ✅ Geração de Page Objects com seletores CSS/XPath reais
-- ✅ Exportação multi-framework: **Python/Behave**, **Cypress**, **Playwright**
+- ✅ Exportação multi-framework: **Python/Behave**, **Playwright**
 - ✅ Exportação de **Caderno de Testes em Excel** (roteiros manuais + dicionário de seletores)
 - ✅ **Auditoria de Performance** (Lighthouse) integrada nos testes
 - ✅ **Replay Nativo** (dry-run no próprio browser antes de exportar)

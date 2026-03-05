@@ -15,7 +15,7 @@ color: #333
 
 # 🎯 O Problema da Automação Tradicional
 
-- **Curva de Aprendizado Alta:** O time gasta mais tempo aprendendo frameworks (Cypress, Playwright, Selenium) do que testando a aplicação de fato.
+- **Curva de Aprendizado Alta:** O time gasta mais tempo aprendendo frameworks (Playwright, Selenium) do que testando a aplicação de fato.
 - **Manutenção Constante:** O XPath quebra? A classe Page Object precisa ser reescrita na mão do zero? Isso leva horas.
 - **Escalabilidade "Zero":** Sem engenharia sólida, os projetos de automação tendem a virar "God Steps" massivos, lentos e repetitivos.
 - **Silos de Conhecimento:** QAs seniores são o gargalo. Se o dev Front-end não entende Selenium, a pipeline inteira trava.
@@ -49,11 +49,10 @@ No momento de "Exportação Completa", o **BDD Test Engine** decompila o seu flu
 
 # 🌐 Ecossistema Multi-Framework (Você no Comando)
 
-Não te obrigamos a usar UMA única linguagem. Sua empresa cresceu e migrou do legadão pro mais moderno? Nossa ferramenta te atende na Exportação em 3 ecossistemas:
+Não te obrigamos a usar UMA única linguagem. Sua empresa cresceu e migrou do legadão pro mais moderno? Nossa ferramenta te atende na Exportação em 2 ecossistemas:
 
 1. **🐍 Python + Behave (Selenium):** Para backend clássico, robustez extrema, *expected_conditions*. (Gera BasePage nativo que suporta Timeout).
-2. **🟩 Node + Cypress:** Testes reativos para frontends geniais (Javascript). Exportação fluente com `cy.get().type()`.
-3. **🎭 Node + Playwright (Microsoft):** Paralelização brutal com suporte à XPath nativo e métodos estritamente assíncronos (`async await page.locator()`).
+2. **🎭 Node + Playwright (Microsoft):** Paralelização brutal com suporte à XPath nativo e métodos estritamente assíncronos (`async await page.locator()`).
 
 ---
 
@@ -83,7 +82,7 @@ Nossa ferramenta combate nativamente a fragilidade:
 
 O zip baixado no seu PC não é um script jogado. Ele é o repositório E2E inteiro pronto para pipeline:
 
-✅ **Dependencies Management:** Gera `package.json` (Playwright/Cypress) ou `requirements.txt` (Python).
+✅ **Dependencies Management:** Gera `package.json` (Playwright) ou `requirements.txt` (Python).
 ✅ **Configurations:** Gera `playwright.config.js` e setups de ambiente paralelos (CI mode flags).
 ✅ **Continuous Execution (C.I.):** Se baixar hoje, pode commitar agora mesmo no Github Actions que tem tudo que o agente necessita para startar seus relatórios Allure ou HTML.
 
