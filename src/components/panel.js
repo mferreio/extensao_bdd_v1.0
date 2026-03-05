@@ -190,7 +190,6 @@ export function renderPanelContent(panel) {
                     <label class="gherkin-label" style="font-size: 0.9em;">Linguagem de Exportação:</label>
                     <select id="export-language" class="gherkin-input">
                         <option value="python" selected>🐍 Python + Behave</option>
-                        <option value="cypress">🟩 Node + Cypress</option>
                         <option value="playwright">🎭 Node + Playwright</option>
                     </select>
                 </div>

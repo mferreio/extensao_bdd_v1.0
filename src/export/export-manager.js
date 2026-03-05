@@ -13,7 +13,6 @@
 
 import { downloadFile, showFeedback } from '../../utils.js';
 import { FileCompressor } from './compressor.js';
-import { CypressGenerator } from './cypress-generator.js';
 import { PlaywrightGenerator } from './playwright-generator.js';
 import { BDDExportValidator } from './pre-export-validator.js';
 import { generateCoverageSection } from './coverage-report.js';
@@ -385,10 +384,7 @@ export class ExportManager {
                 this.progress.update(1, 'Gerando arquivos base Playwright...');
                 const pwGen = new PlaywrightGenerator();
                 projectFiles = pwGen.generateProjectFiles(features);
-            } else if (language === 'cypress') {
-                this.progress.update(1, 'Gerando arquivos base Cypress...');
-                const cyGen = new CypressGenerator();
-                projectFiles = cyGen.generateProjectFiles(features);
+
             } else {
                 this.progress.update(1, 'Gerando arquivos base do projeto...');
                 projectFiles = this.generateProjectFiles(features);
@@ -409,9 +405,7 @@ export class ExportManager {
                     if (options.language === 'playwright') {
                         const pwGen = new PlaywrightGenerator();
                         files = pwGen.generateFeatureFiles(feature, globalUniqueSteps, options);
-                    } else if (options.language === 'cypress') {
-                        const cyGen = new CypressGenerator();
-                        files = cyGen.generateFeatureFiles(feature, globalUniqueSteps, options);
+
                     } else {
                         files = this.generateFeatureFiles(feature, globalUniqueSteps, options);
                     }
