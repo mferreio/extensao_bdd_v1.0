@@ -302,12 +302,12 @@ export class ExcelGenerator {
                     else if (stepType === 'And') typeStyle = STYLES.stepAnd;
 
                     // Separar Ação de Resultado Esperado
-                    let acaoTexto = '';
+                    let acaoTexto = this.formatStepText(interaction);
                     let resultadoEsperado = '';
+                    
                     if (stepType === 'Then') {
-                        resultadoEsperado = this.formatStepText(interaction);
-                    } else {
-                        acaoTexto = this.formatStepText(interaction);
+                        // Para validações, o texto descreve a ação de verificar e o resultado esperado simultaneamente
+                        resultadoEsperado = acaoTexto;
                     }
 
                     data.push([
